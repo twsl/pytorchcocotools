@@ -1,0 +1,101 @@
+{
+    "info": {
+        "description": "COCO 2017 Dataset",
+        "url": "http://cocodataset.org",
+        "version": "1.0",
+        "year": 2017,
+        "contributor": "COCO Consortium",
+        "date_created": "2017/09/01"
+    },
+    "licenses": [
+        {
+            "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+            "id": 1,
+            "name": "Attribution-NonCommercial-ShareAlike License"
+        }
+    ],
+    "images": [
+        {
+            "license": 1,
+            "file_name": "000000397133.jpg",
+            "coco_url": "http://images.cocodataset.org/val2017/000000397133.jpg",
+            "height": 427,
+            "width": 640,
+            "date_captured": "2013-11-14 17:02:52",
+            "flickr_url": "http://farm7.staticflickr.com/6116/6255196340_da26cf2c9e_z.jpg",
+            "id": 397133
+        }
+    ],
+    "annotations": [
+        {
+            "segmentation": [
+                [
+                    266.83,
+                    189.37,
+                    267.79,
+                    175.29,
+                    269.46,
+                    170.04,
+                    271.37,
+                    165.98,
+                    270.89,
+                    163.12,
+                    269.69,
+                    159.54,
+                    272.8,
+                    156.44,
+                    287.36,
+                    156.44,
+                    293.33,
+                    157.87,
+                    296.91,
+                    160.49,
+                    296.91,
+                    161.21,
+                    291.89,
+                    161.92,
+                    289.98,
+                    165.03,
+                    291.42,
+                    169.56,
+                    286.16,
+                    196.54
+                ],
+                [
+                    266.35,
+                    214.44,
+                    270.41,
+                    217.3,
+                    276.38,
+                    218.97,
+                    282.11,
+                    218.97,
+                    285.93,
+                    217.3,
+                    286.88,
+                    207.28,
+                    267.07,
+                    201.07
+                ]
+            ],
+            "area": 1060.2075000000007,
+            "iscrowd": 0,
+            "image_id": 397133,
+            "bbox": [
+                266.35,
+                156.44,
+                30.56,
+                62.53
+            ],
+            "category_id": 1,
+            "id": 2096753
+        }
+    ],
+    "categories": [
+        {
+            "supercategory": "person",
+            "id": 1,
+            "name": "person"
+        }
+    ]
+}
