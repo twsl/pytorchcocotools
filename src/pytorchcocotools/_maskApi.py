@@ -149,73 +149,53 @@ def rleFrBbox(R, bb: Tensor, h: int, w: int, n: int):
 def rleFrPoly(R, xy: float, k: int, h: int, w: int):
     pass
 
-
 def rleToString(rle_tensor: Tensor) -> bytes:  # noqa: N802
     """Similar to LEB128 but using 6 bits/char and ascii chars 48-111."""
     s = bytearray()
     n = len(rle_tensor)
     rle_tensor = rle_tensor.ceil().int()
 
-    for i in range(n // 2):
-        x = rle_tensor[i * 2]
-        cnt = rle_tensor[i * 2 + 1]
-
-        while cnt != 0:
-            c = x & 31  # 0x1F = 31
-            if cnt < 32:  # 0x20 = 32
-                s.append(c + 48)
-                cnt = 0
-            else:
-                s.append(c + 96)
-                cnt -= 32
-
+    for i in range(n):
+        x = rle_tensor[i]
+        if i > 2:
+            x -= rle_tensor[i - 2]
+        more = True
+        while more:
+            # take the 5 least significant bits of start point
+            c = x & 0x1f # 0x1f = 31
+            # shift right by 5 bits as there are already read in
             x >>= 5
-
+            more = x != -1 if (c & 0x10) else x != 0 # (c & 0x10) != 0 or x != 0
+            if more:
+                c |= 0x20
+            c += 48
+            s.append(c)
     return bytes(s)
 
 
-def stringToRLE(s: bytes) -> torch.Tensor:
-    rle_list = []
-    x = 0
-    cnt = 0
 
-    for c in s:
-        if c >= 128:
-            cnt += (c - 128) * 32
-        else:
-            cnt += c
-            rle_list.append(x)
-            rle_list.append(cnt)
-            x = 0
-            cnt = 0
-        x = (x << 5) | (c & 31)
-    return torch.tensor(rle_list)
-
-
-def rleFrString(rle_str: bytes) -> Tensor:
+def rleFrString(rle_str: bytes) -> Tensor:  # noqa: N802
+    """Similar to LEB128 but using 6 bits/char and ascii chars 48-111."""
+    m = 0
+    p = 0
     s = rle_str
     n = len(s)
+    more = True
     cnts = [0] * n
-    p = 0
-    m = 0
-
     while p < n:
         x = 0
         k = 0
         more = True
-
         while more:
             c = s[p] - 48
-            x |= (c & 31) << (5 * k)  # 0x1F = 31
-            more = bool(c & 32)  # 0x20 = 32
+            x |= (c & 0x1f) << (5 * k) # 0x1F = 31
+            more = bool(c & 0x20) # 0x20 = 32
             p += 1
             k += 1
-            if not more and (c & 16):  # 0x10 = 16
+            if not more and (c & 0x10):   # 0x10 = 16
                 x |= -1 << (5 * k)
-
         if m > 2:
             x += cnts[m - 2]
-
         cnts[m] = x
         m += 1
 
@@ -223,56 +203,3 @@ def rleFrString(rle_str: bytes) -> Tensor:
         cnts.append(0)
 
     return Tensor(cnts)
-
-
-def stringToRLE_(s: bytes) -> Tensor:
-    rle_tensor = []
-    n = len(s)
-    i = 0
-
-    while i < n:
-        c = s[i] - 48
-
-        if c <= 31:  # If c < 32, it represents a count of 1-31
-            x = c
-            cnt = 1
-        else:
-            x = c & 31  # Extract the lower 5 bits representing the value
-            cnt = c >> 5  # Shift right to get the count
-
-            # Continue reading additional bytes if the count requires more than 5 bits
-            while c >= 32:
-                i += 1
-                c = s[i] - 96
-                x += (c & 31) << 5  # Extract the lower 5 bits and shift to the left
-                cnt += c >> 5  # Shift right to get the count
-
-        rle_tensor.append(x)
-        rle_tensor.append(cnt)
-        i += 1
-
-    return torch.tensor(rle_tensor, dtype=torch.float)
-
-
-def b(encoded_bytes: bytes) -> Tensor:
-    """Decodes the encoded bytes back to the original RLE tensor."""
-    rle_tensor = []
-    x = 0
-    cnt = 0
-
-    for byte in encoded_bytes:
-        c = byte - 48
-        if c >= 48:  # For values encoded with cnt >= 32
-            c -= 48
-            cnt += 32
-
-        x |= c << (cnt % 32)
-        cnt += 6
-
-        if cnt >= 32:
-            rle_tensor.append(x)
-            rle_tensor.append(cnt)
-            x = 0
-            cnt = 0
-
-    return torch.tensor(rle_tensor, dtype=torch.float32)
