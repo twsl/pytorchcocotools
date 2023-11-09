@@ -149,6 +149,7 @@ def rleFrBbox(R, bb: Tensor, h: int, w: int, n: int):
 def rleFrPoly(R, xy: float, k: int, h: int, w: int):
     pass
 
+
 def rleToString(rle_tensor: Tensor) -> bytes:  # noqa: N802
     """Similar to LEB128 but using 6 bits/char and ascii chars 48-111."""
     s = bytearray()
@@ -162,16 +163,15 @@ def rleToString(rle_tensor: Tensor) -> bytes:  # noqa: N802
         more = True
         while more:
             # take the 5 least significant bits of start point
-            c = x & 0x1f # 0x1f = 31
+            c = x & 0x1F  # 0x1f = 31
             # shift right by 5 bits as there are already read in
             x >>= 5
-            more = x != -1 if (c & 0x10) else x != 0 # (c & 0x10) != 0 or x != 0
+            more = x != -1 if (c & 0x10) else x != 0  # (c & 0x10) != 0 or x != 0
             if more:
                 c |= 0x20
             c += 48
             s.append(c)
     return bytes(s)
-
 
 
 def rleFrString(rle_str: bytes) -> Tensor:  # noqa: N802
@@ -188,11 +188,11 @@ def rleFrString(rle_str: bytes) -> Tensor:  # noqa: N802
         more = True
         while more:
             c = s[p] - 48
-            x |= (c & 0x1f) << (5 * k) # 0x1F = 31
-            more = bool(c & 0x20) # 0x20 = 32
+            x |= (c & 0x1F) << (5 * k)  # 0x1F = 31
+            more = bool(c & 0x20)  # 0x20 = 32
             p += 1
             k += 1
-            if not more and (c & 0x10):   # 0x10 = 16
+            if not more and (c & 0x10):  # 0x10 = 16
                 x |= -1 << (5 * k)
         if m > 2:
             x += cnts[m - 2]
@@ -203,3 +203,56 @@ def rleFrString(rle_str: bytes) -> Tensor:  # noqa: N802
         cnts.append(0)
 
     return Tensor(cnts)
+
+
+##################################################
+from typing import Dict, List
+
+
+def rle_to_dict(R: dict[str, int]) -> bytes:
+    """Similar to LEB128 but using 6 bits/char and ascii chars 48-111."""
+    m = R["m"]
+    cnts = R["cnts"]
+    s = bytearray()
+    for i in range(m):
+        x = cnts[i]
+        if i > 2:
+            x -= cnts[i - 2]
+        more = True
+        while more:
+            c = x & 0x1F
+            x >>= 5
+            more = (c & 0x10) != 0 if x != -1 else x != 0
+            if more:
+                c |= 0x20
+            c += 48
+            s.append(c)
+    return bytes(s)
+
+
+def rle_fr_string(s: bytes, h: int, w: int) -> dict[str, list[int]]:
+    m = len(s)
+    p = 0
+    cnts = []
+    while p < m:
+        x = 0
+        k = 0
+        more = True
+        while more:
+            c = s[p] - 48
+            x |= (c & 0x1F) << (5 * k)
+            more = (c & 0x20) != 0
+            p += 1
+            k += 1
+            if not more and (c & 0x10):
+                x |= -1 << (5 * k)
+        if len(cnts) > 2:
+            x += cnts[-2]
+        cnts.append(x)
+    return {"h": h, "w": w, "m": len(cnts), "cnts": cnts}
+
+
+def rle_init(R: dict[str, list[int]], h: int, w: int) -> None:
+    R["h"] = h
+    R["w"] = w
+    R["m"] = len(R["cnts"])

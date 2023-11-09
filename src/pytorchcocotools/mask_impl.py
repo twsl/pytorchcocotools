@@ -17,7 +17,7 @@ import torch
 from torch import Tensor
 
 
-def _merge(rleObjs: Rs, intersect: bool = False) -> R:
+def _merge(rleObjs: Rs, intersect: bool = False) -> R:  # noqa: N803
     """Compute union or intersection of encoded masks."""
     rles, sizes = _frString(rleObjs)
     r = rleMerge(rles, sizes, intersect)
@@ -49,12 +49,14 @@ def _iou(dt: Tensor, gt: Tensor, pyiscrowd: list[Tensor]) -> Tensor:
             if not len(objs.shape) == 2 or not objs.shape[1] == 4:
                 raise Exception("torch.Tensor input is only for *bounding boxes* and should have Nx4 dimension")
             objs = objs.to(dtype=torch.double)
-        elif type(objs) == list:
+        elif isinstance(objs, list):
             # check if list is in box format and convert it to torch.Tensor
             isbox = torch.all(
-                torch.Tensor([(len(obj) == 4) and ((type(obj) == list) or (type(obj) == torch.Tensor)) for obj in objs])
+                torch.Tensor(
+                    [(len(obj) == 4) and (isinstance(objs, list) or (type(obj) == torch.Tensor)) for obj in objs]
+                )
             )
-            isrle = torch.all(torch.Tensor([type(obj) == dict for obj in objs]))
+            isrle = torch.all(torch.Tensor([isinstance(objs, dict) for obj in objs]))
             if isbox:
                 objs = torch.Tensor(objs, dtype=torch.double)
                 if len(objs.shape) == 1:
