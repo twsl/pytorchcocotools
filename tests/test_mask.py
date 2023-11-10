@@ -6,7 +6,7 @@ import torch
 
 
 @pytest.fixture
-def r() -> tmask.R:
+def r() -> tmask.RleObj:
     pass
 
 

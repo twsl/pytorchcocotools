@@ -1,7 +1,7 @@
 import numpy as np
 import pycocotools._mask as _mask
 import pytest
-import pytorchcocotools.mask_impl as _tmask
+import pytorchcocotools._mask as _tmask
 import torch
 
 
