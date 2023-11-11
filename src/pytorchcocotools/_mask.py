@@ -31,12 +31,11 @@ def _toString(Rs: RLEs) -> RleObjs:  # noqa: N802, N803
     Returns:
         _description_
     """
-    n = Rs.n
     py_string: bytes = None
     objs = []
-    for i in range(n):
-        py_string = rleToString(Rs[i])
-        objs.append({"size": [Rs[i].h, Rs[i].w], "counts": py_string})
+    for R in Rs:
+        py_string = rleToString(R)
+        objs.append({"size": [R.h, R.w], "counts": py_string})
     return objs
 
 
@@ -52,7 +51,7 @@ def _frString(rleObjs: RleObjs) -> RLEs:  # noqa: N802, N803
     n = len(rleObjs)
     Rs = []  # noqa: N806
     py_string: bytes = None
-    for i, obj in enumerate(rleObjs):
+    for obj in rleObjs:
         py_string = str.encode(obj["counts"]) if isinstance(obj["counts"], str) else obj["counts"]
         Rs.append(rleFrString(py_string, obj["size"][0], obj["size"][1]))
     return RLEs(Rs, n)

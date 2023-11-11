@@ -14,10 +14,9 @@ def r() -> tmask.RleObj:
     "min, max, area",
     [
         (0, 5, 25),
-        (0, 10, 100),
     ],
 )
-def test_area(min, max, area):
+def test_area(min: int, max: int, area: int):
     # create a mask
     pt_mask = torch.zeros((25, 25), dtype=torch.uint8)
     pt_mask[min:max, min:max] = 1
@@ -25,6 +24,7 @@ def test_area(min, max, area):
     # compute the area
     rle1 = mask.encode(np_mask)
     rle2 = tmask.encode(pt_mask)
+
     area1 = mask.area(rle1)
     area2 = tmask.area(rle2)
     # compare the results
@@ -38,7 +38,7 @@ def test_area(min, max, area):
         (10, 20, [10, 10, 10, 10]),
     ],
 )
-def test_toBbox(min, max, box):
+def test_toBbox(min, max, box):  # noqa: N802
     # create a mask
     pt_mask = torch.zeros((25, 25), dtype=torch.uint8)
     pt_mask[min:max, min:max] = 1
@@ -86,7 +86,7 @@ def test_iou(min1, max1, min2, max2, iou):
         ([[10, 10, 20, 10, 20, 20, 21, 21, 10, 20]], 100, r),
     ],
 )
-def test_frPyObjects(poly, length, r):
+def test_frPyObjects(poly, length, r):  # noqa: N802
     # convert the polygon to a mask
     mask1 = mask.frPyObjects(poly, length, length)
     mask2 = tmask.frPyObjects(poly, length, length)

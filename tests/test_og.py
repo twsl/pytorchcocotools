@@ -21,7 +21,7 @@ def test_frPyObjects():  # noqa: N802
     # Test frPyObjects() method
     polygons = [[0, 0, 0, 10, 10, 10, 10, 0]]
     obj = mask.frPyObjects(polygons, 10, 10)
-    data1 = np.asfortranarray(np.ones((10, 10), dtype=np.uint8))
+    data1 = np.ones((10, 10), dtype=np.uint8, order="F")
     rle = mask.encode(data1)
     assert obj[0] == rle
 

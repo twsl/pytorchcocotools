@@ -90,7 +90,7 @@ def encode(bimask: Tensor) -> RleObj | RleObjs:
     if len(bimask.shape) == 3:
         return _mask.encode(bimask)
     elif len(bimask.shape) == 2:
-        bimask = torch.unsqueeze(bimask, dim=-1)
+        bimask = torch.unsqueeze(bimask, dim=-1)  # masks expected to be in format [h,w,n]
         return _mask.encode(bimask)[0]
 
 
