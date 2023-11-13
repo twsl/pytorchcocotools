@@ -115,7 +115,8 @@
 				"github.vscode-github-actions",
 				"GitHub.vscode-pull-request-github",
 				"GitHub.copilot-chat",
-				"GitHub.copilot"
+				"GitHub.copilot",
+				"ms-vscode.cpptools-extension-pack"
 			]
 		}
 	},

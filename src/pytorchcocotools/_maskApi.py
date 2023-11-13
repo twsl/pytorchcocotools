@@ -457,9 +457,9 @@ def rleToString(R: RLE) -> bytes:  # noqa: N803, N802
     cnts = cnts.ceil().int()  # make sure it's integers
 
     for i in range(R.m):  # len(cnts)
-        x = cnts[i]
+        x = int(cnts[i])  # make sure its not a reference
         if i > 2:
-            x -= cnts[i - 2]
+            x -= int(cnts[i - 2])
         more = True
         while more:
             # take the 5 least significant bits of start point
@@ -467,7 +467,7 @@ def rleToString(R: RLE) -> bytes:  # noqa: N803, N802
             # shift right by 5 bits as there are already read in
             x >>= 5
             # (c & 0x10) != 0 or x != 0
-            more = bool(c & 0x10) if x != -1 else x != 0
+            more = x != -1 if bool(c & 0x10) else x != 0
             if more:
                 c |= 0x20
             c += 48
