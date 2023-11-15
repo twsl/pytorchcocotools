@@ -129,13 +129,14 @@ def rleDecode(R: RLEs, n: int) -> Mask:  # noqa: N802, N803
         # Calculate the number of pixels in the binary mask
         num_pixels = size[0] * size[1]
         # Create a binary mask tensor of zeros
-        mask_tensor = torch.zeros(num_pixels, dtype=torch.uint8)
+        mask_tensor = torch.zeros(num_pixels, dtype=torch.uint8, device=counts.device)
         # calculate absolute counts from relative counts
-        counts = torch.cumsum(torch.tensor(counts, dtype=torch.long), dim=0)
+        counts = torch.cumsum(counts.to(dtype=torch.long), dim=0)
         # Create pairs of starting and ending indices from the counts
-        pairs = torch.split(counts, 2)
+        pairs = list(torch.split(counts, 2))
+        m = len(counts) // 2
         # Create a list of the indices of the 1s in the mask
-        indices_list = [torch.arange(start, end) for start, end in pairs]
+        indices_list = [torch.arange(start, end) for start, end in pairs[:m]]
         # Set the corresponding pixels in the mask to 1 using vectorized indexing
         mask_tensor[torch.cat(indices_list)] = 1
         # Reshape the 1D tensor into a 2D binary mask tensor
@@ -144,7 +145,7 @@ def rleDecode(R: RLEs, n: int) -> Mask:  # noqa: N802, N803
     return torch.stack(objs, dim=-1)
 
 
-def rleMerge(R: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
+def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     """Compute union or intersection of encoded masks.
 
     Args:
@@ -155,15 +156,16 @@ def rleMerge(R: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     Returns:
         _description_
     """
-    if not R:
+    if not Rs:
         return RLE()
-    if len(R) == 1:
-        return RLE(R[0].h, R[0].w, R[0].m, R[0].cnts)
+    n = len(Rs)
+    if n == 1:
+        return Rs[0]
 
-    h, w, m = R[0].h, R[0].w, R[0].m
-    cnts = R[0].cnts
-    for i in range(1, len(R)):
-        B = R[i]
+    h, w, m = Rs[0].h, Rs[0].w, Rs[0].m
+    cnts = Rs[0].cnts
+    for i in range(1, n):
+        B = Rs[i]
         if B.h != h or B.w != w:
             return RLE()  # Return an empty RLE if dimensions don't match
 
@@ -209,7 +211,7 @@ def rleArea(R: RLEs, n: int) -> list[int]:  # noqa: N802, N803
         n: _description_
 
     Returns:
-        _description_
+        A list of areas of the encoded masks.
     """
     a = [int(torch.sum(R[i].cnts[1 : R[i].m : 2]).int()) for i in range(n)]
     return a
@@ -359,31 +361,34 @@ def rleToBbox(R: RLEs, n: int) -> BB:  # noqa: N802, N803
         n: _description_
 
     Returns:
-        _description_
+        List of bounding boxes in format [x y w h]
     """
-    bb = torch.zeros((n, 4), dtype=torch.int32)
+    device = R[0].cnts.device
+    bb = torch.zeros((n, 4), dtype=torch.int32, device=device)
     for i in range(n):
         if R[i].m == 0:
             continue
         h, w, m = R[i].h, R[i].w, R[i].m
         m = (m // 2) * 2
-        xs, ys, xe, ye = w, h, 0, 0
-        cc = 0
-        for j in range(m):
-            cc += R[i].cnts[j]
-            t = cc - (j % 2)
-            y, x = t % h, t // h
-            if j % 2 == 0:
-                xp = x
-            else:
-                if xp < x:
-                    ys = 0
-                    ye = h - 1
-            xs = min(xs, x)
-            xe = max(xe, x)
-            ys = min(ys, y)
-            ye = max(ye, y)
-        bb[4 * i : 4 * i + 4] = [xs, ys, xe - xs + 1, ye - ys + 1]
+
+        cc = torch.cumsum(R[i].cnts[:m], dim=0)
+        # Calculate x, y coordinates
+        t = cc - torch.arange(m) % 2
+        y = t % h
+        x = t // h
+
+        xs = torch.min(x[0::2])
+        xe = torch.max(x[1::2])
+        ys = torch.min(y[0::2])
+        ye = torch.max(y[1::2])
+
+        # Adjust for full height in case of full column runs
+        full_col_mask = x[0::2] < x[1::2]
+        if torch.any(full_col_mask):
+            ys = torch.full_like(ys, 0)
+            ye = torch.full_like(ye, (h - 1))
+
+        bb[i] = torch.stack([xs, ys, xe - xs + 1, ye - ys + 1])
     return bb
 
 
@@ -505,7 +510,8 @@ def rleFrString(s: bytes, h: int, w: int) -> RLE:  # noqa: N802
         cnts.append(x)  # cnts[m] = x
         m += 1
 
-    if len(cnts) % 2 != 0:
-        cnts.append(0)
+    # don't do this as pycocotools also ignores this
+    # if len(cnts) % 2 != 0:
+    #     cnts.append(0)
 
     return RLE(h, w, len(cnts), Tensor(cnts))
