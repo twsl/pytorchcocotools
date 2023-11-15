@@ -98,10 +98,11 @@ int main()
   // Initialize h, w, and m if needed, here set to 0 as an example
   rle_instance->h = 25;
   rle_instance->w = 25;
-  rle_instance->m = 10;
+  rle_instance->m = 20;
 
   // Define the cnts data
-  uint cnts_data[] = {0, 5, 20, 5, 20, 5, 20, 5, 20, 5};
+  uint cnts_data[] = {260, 10, 15, 10, 15, 10, 15, 10, 15, 10, 15, 10,
+                      15, 10, 15, 10, 15, 10, 15, 10};
 
   // Allocate memory for cnts and copy the data
   size_t cnts_size = sizeof(cnts_data) / sizeof(cnts_data[0]);

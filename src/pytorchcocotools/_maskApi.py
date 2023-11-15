@@ -86,26 +86,25 @@ def rleEncode(mask: Mask, h: int, w: int, n: int) -> RLEs:  # noqa: N802
     Returns:
         _description_
     """
-    h, w, n = mask.shape
-    flattened_mask = torch.flatten(mask, start_dim=0, end_dim=-2)  # numpy default is hwn
-    zero_tensor = torch.zeros((1, n), device=mask.device)
-    # Find the indices where the mask transitions from 0 to 1 and from 1 to 0
-    transitions = torch.cat((zero_tensor, flattened_mask, zero_tensor))
-    transitions = transitions[:-1, :] != transitions[1:, :]
+    H, W, N = mask.shape
+    flattened_mask = torch.flatten(mask, start_dim=0, end_dim=-2)
+    start_sentinel = torch.zeros((1, N), dtype=flattened_mask.dtype, device=mask.device)
+    end = torch.ones((1, N), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0]
+    sentinel = torch.ones((1, N), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
+    flat_tensor_with_sentinels = torch.cat([start_sentinel, flattened_mask, sentinel])
+
+    transitions = flat_tensor_with_sentinels[:-1, :] != flat_tensor_with_sentinels[1:, :]
     transition_indices = transitions.nonzero()
 
-    # end = torch.ones((1,), device=mask.device) * flattened_mask.shape[0]
     unique_indices = torch.unique(transition_indices[:, 1])
-    start = torch.zeros((1,), device=mask.device)
+    zero = torch.zeros((1,), dtype=flattened_mask.dtype, device=mask.device)
 
     rles = []
     for index in unique_indices:
         values = transition_indices[torch.nonzero(transition_indices[:, 1] == index).squeeze(), 0]
-        # cat_ind_tensor = torch.cat((zero_tensor, transition_indices, end))
-        diff = torch.diff(values, prepend=start, dim=0)
-        # run_steps = diff[::2]
-        # run_lengths = torch.cat((diff[1::2], start))
-        # rle = torch.cat([run_steps, run_lengths])
+        # not adding append=end, because thats how pycocotools does it
+        # Results in the possibility of an uneven number of values
+        diff = torch.diff(values, prepend=zero, dim=0)
         rle = diff
         rles.append(RLE(h, w, len(rle), rle))
     return RLEs(rles)
@@ -202,7 +201,7 @@ def rleMerge(R: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     return RLE(h, w, len(cnts), cnts)
 
 
-def rleArea(R: RLEs, n: int) -> Tensor:  # noqa: N802, N803
+def rleArea(R: RLEs, n: int) -> list[int]:  # noqa: N802, N803
     """Compute area of encoded masks.
 
     Args:
@@ -212,10 +211,7 @@ def rleArea(R: RLEs, n: int) -> Tensor:  # noqa: N802, N803
     Returns:
         _description_
     """
-    a = [0] * n
-    for i in range(n):
-        for j in range(1, R[i].m, 2):
-            a[i] += R[i].cnts[j]
+    a = [int(torch.sum(R[i].cnts[1 : R[i].m : 2]).int()) for i in range(n)]
     return a
 
 
@@ -365,7 +361,7 @@ def rleToBbox(R: RLEs, n: int) -> BB:  # noqa: N802, N803
     Returns:
         _description_
     """
-    bb = [0] * (n * 4)
+    bb = torch.zeros((n, 4), dtype=torch.int32)
     for i in range(n):
         if R[i].m == 0:
             continue
@@ -381,9 +377,12 @@ def rleToBbox(R: RLEs, n: int) -> BB:  # noqa: N802, N803
                 xp = x
             else:
                 if xp < x:
-                    ys, ye = 0, h - 1
-            xs, xe = min(xs, x), max(xe, x)
-            ys, ye = min(ys, y), max(ye, y)
+                    ys = 0
+                    ye = h - 1
+            xs = min(xs, x)
+            xe = max(xe, x)
+            ys = min(ys, y)
+            ye = max(ye, y)
         bb[4 * i : 4 * i + 4] = [xs, ys, xe - xs + 1, ye - ys + 1]
     return bb
 

@@ -7,24 +7,24 @@ import torch
 
 @pytest.fixture
 def r() -> tmask.RleObj:
-    pass
+    return tmask.RleObj((100, 100), bytes(""))
 
 
 @pytest.mark.parametrize(
-    "min, max, area",
+    "min, max, h, w, area",
     [
-        (0, 5, 25),
+        (0, 5, 25, 25, 25),
+        (5, 10, 25, 25, 25),
     ],
 )
-def test_area(min: int, max: int, area: int):
+def test_area(min: int, max: int, h: int, w: int, area: int):
     # create a mask
-    pt_mask = torch.zeros((25, 25), dtype=torch.uint8)
+    pt_mask = torch.zeros((h, w), dtype=torch.uint8)
     pt_mask[min:max, min:max] = 1
     np_mask = np.asfortranarray(pt_mask.numpy())
     # compute the area
     rle1 = mask.encode(np_mask)
     rle2 = tmask.encode(pt_mask)
-
     area1 = mask.area(rle1)
     area2 = tmask.area(rle2)
     # compare the results
@@ -33,14 +33,14 @@ def test_area(min: int, max: int, area: int):
 
 
 @pytest.mark.parametrize(
-    "min, max, box",
+    "min, max, h, w, box",
     [
-        (10, 20, [10, 10, 10, 10]),
+        (10, 20, 25, 25, [10, 10, 10, 10]),
     ],
 )
-def test_toBbox(min, max, box):  # noqa: N802
+def test_toBbox(min: int, max: int, h: int, w: int, box: list[int]):  # noqa: N802
     # create a mask
-    pt_mask = torch.zeros((25, 25), dtype=torch.uint8)
+    pt_mask = torch.zeros((h, w), dtype=torch.uint8)
     pt_mask[min:max, min:max] = 1
     np_mask = np.asfortranarray(pt_mask.numpy())
     # compute the bounding box
@@ -54,15 +54,15 @@ def test_toBbox(min, max, box):  # noqa: N802
 
 
 @pytest.mark.parametrize(
-    "min1, max1, min2, max2, iou",
+    "min1, max1, min2, max2, h, w, iou",
     [
-        (10, 20, 15, 25, 0.25),
+        (10, 20, 15, 25, 100, 100, 0.25),
     ],
 )
-def test_iou(min1, max1, min2, max2, iou):
+def test_iou(min1: int, max1: int, min2: int, max2: int, h: int, w: int, iou: float):
     # create two masks
-    pt_mask1 = torch.zeros((100, 100), dtype=torch.uint8)
-    pt_mask2 = torch.zeros((100, 100), dtype=torch.uint8)
+    pt_mask1 = torch.zeros((h, w), dtype=torch.uint8)
+    pt_mask2 = torch.zeros((h, w), dtype=torch.uint8)
     pt_mask1[min:max, min:max] = 1
     pt_mask2[min:max, min:max] = 1
     np_mask1 = np.asfortranarray(pt_mask1.numpy())
@@ -86,7 +86,7 @@ def test_iou(min1, max1, min2, max2, iou):
         ([[10, 10, 20, 10, 20, 20, 21, 21, 10, 20]], 100, r),
     ],
 )
-def test_frPyObjects(poly, length, r):  # noqa: N802
+def test_frPyObjects(poly: list[int], length: int, r: tmask.RleObj):  # noqa: N802
     # convert the polygon to a mask
     mask1 = mask.frPyObjects(poly, length, length)
     mask2 = tmask.frPyObjects(poly, length, length)
@@ -101,14 +101,14 @@ def test_frPyObjects(poly, length, r):  # noqa: N802
 
 
 @pytest.mark.parametrize(
-    "min, max, length, r",
+    "min, max, h, w, r",
     [
-        (10, 20, 100, r),
+        (10, 20, 100, 100, r),
     ],
 )
-def test_decode(min, max, length, r):
+def test_decode(min: int, max: int, h: int, w: int, r):
     # create a mask
-    pt_mask = torch.zeros((length, length, 2), dtype=torch.uint8)
+    pt_mask = torch.zeros((h, w, 2), dtype=torch.uint8)
     pt_mask[min:max, min:max, :] = 1
     np_mask = np.asfortranarray(pt_mask.numpy())
     # encode the mask
@@ -123,14 +123,14 @@ def test_decode(min, max, length, r):
 
 
 @pytest.mark.parametrize(
-    "min, max, length, r",
+    "min, max, h, w, r",
     [
-        (10, 20, 100, r),
+        (10, 20, 100, 100, r),
     ],
 )
-def test_encode(min, max, length, r):
+def test_encode(min: int, max: int, h: int, w: int, r):
     # create a mask
-    pt_mask = torch.zeros((length, length, 2), dtype=torch.uint8)
+    pt_mask = torch.zeros((h, w, 2), dtype=torch.uint8)
     pt_mask[min:max, min:max, :] = 1
     np_mask = np.asfortranarray(pt_mask.numpy())
     # encode the mask
@@ -143,12 +143,12 @@ def test_encode(min, max, length, r):
 
 
 @pytest.mark.parametrize(
-    "min1, max1, min2, max2, length, r",
+    "min1, max1, min2, max2, h, w, r",
     [
-        (10, 20, 15, 25, 100, r),
+        (10, 20, 15, 25, 100, 100, r),
     ],
 )
-def test_merge(min1, max1, min2, max2, length, r):
+def test_merge(min1: int, max1: int, min2: int, max2: int, h: int, w: int, r):
     # create two masks
     pt_mask1 = torch.zeros((100, 100), dtype=torch.uint8)
     pt_mask2 = torch.zeros((100, 100), dtype=torch.uint8)

@@ -104,14 +104,9 @@ def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
     return obj
 
 
-def area(rleObjs: RleObjs) -> Tensor:  # noqa: N803
+def area(rleObjs: RleObjs) -> list[int]:  # noqa: N803
     Rs: RLEs = _frString(rleObjs)
-    _a = rleArea(Rs, Rs.n)
-    # shape = [Rs.n]
-    # a = np.array((Rs.n, ), dtype=np.uint8)
-    # a = np.PyArray_SimpleNewFromData(1, shape, np.NPY_UINT32, _a)
-    # PyArray_ENABLEFLAGS(a, np.NPY_OWNDATA)
-    a = _a
+    a = rleArea(Rs, Rs.n)
     return a
 
 
@@ -188,12 +183,7 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
 def toBbox(rleObjs: RleObjs) -> BB:  # noqa: N803, N802
     Rs: RLEs = _frString(rleObjs)
     n = Rs.n
-    # _bb: BB = <BB> malloc(4*n* sizeof(double))
     bb = rleToBbox(Rs, n)
-    # shape = [4*n]
-    # bb = np.array((1,4*n), dtype=np.double)
-    # bb = np.PyArray_SimpleNewFromData(1, shape, np.NPY_DOUBLE, _bb).reshape((n, 4))
-    # PyArray_ENABLEFLAGS(bb, np.NPY_OWNDATA)
     return bb
 
 

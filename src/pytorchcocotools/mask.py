@@ -1,5 +1,5 @@
 from ctypes import ArgumentError
-from typing import Union
+from typing import Literal, Union
 
 import pytorchcocotools._mask as _mask
 from pytorchcocotools._maskApi import (
@@ -59,7 +59,7 @@ from torch import Tensor
 # Both poly and bbs are 0-indexed (bbox=[0 0 1 1] encloses first pixel).
 
 
-def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool]) -> Tensor:
+def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor:
     """Compute intersection over union between masks.
 
     Finally, a note about the intersection over union (iou) computation.
@@ -72,7 +72,7 @@ def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool]) -> Tensor:
     iou(gt,dt,iscrowd) = iou(gt',dt) = area(intersect(gt,dt)) / area(dt)
     For crowd gt regions we use this modified criteria above for the iou.
     """
-    return _mask.iou(dt, gt, pyiscrowd)
+    return _mask.iou(dt, gt, [bool(is_crowd) for is_crowd in pyiscrowd])
 
 
 def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
@@ -99,7 +99,7 @@ def decode(rleObjs: RleObj | RleObjs) -> Tensor:  # noqa: N803
     return _mask.decode(rleObjs) if isinstance(rleObjs, list) else _mask.decode([rleObjs])[:, :, 0]
 
 
-def area(rleObjs: RleObj | RleObjs) -> Tensor:  # noqa: N803
+def area(rleObjs: RleObj | RleObjs) -> list[int] | int:  # noqa: N803
     """Compute area of encoded masks."""
     return _mask.area(rleObjs) if isinstance(rleObjs, list) else _mask.area([rleObjs])[0]
 

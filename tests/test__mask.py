@@ -23,8 +23,8 @@ def test_frPoly():  # noqa: N802
     # create a polygon
     poly = [[10, 10, 20, 10, 20, 20, 10, 20]]
     # convert the polygon to a mask
-    mask1 = _mask._frPoly(poly, 100, 100)
-    mask2 = _tmask._frPoly(poly, 100, 100)
+    mask1 = _mask.frPoly(poly, 100, 100)
+    mask2 = _tmask.frPoly(poly, 100, 100)
     # compare the results
     assert mask1 == mask2
     assert mask1["counts"] == b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -32,15 +32,15 @@ def test_frPoly():  # noqa: N802
 
 
 # test the function frUncompressedRLE
-def xtest_frUncompressedRLE():  # noqa: N802
+def test_frUncompressedRLE():  # noqa: N802
     # create a mask
-    mask = np.zeros((100, 100), dtype=np.uint8)
-    mask[10:20, 10:20] = 1
+    mask = np.zeros((100, 100, 1), dtype=np.uint8, order="F")
+    mask[10:20, 10:20, :] = 1
     # encode the mask
-    encoded = _encode(mask)
+    encoded = _mask.encode(mask)
     # convert the mask to a polygon
-    poly1 = _frUncompressedRLE(encoded, 100, 100)
-    poly2 = frUncompressedRLE(encoded, 100, 100)
+    poly1 = _mask.frUncompressedRLE(encoded, 100, 100)
+    poly2 = _tmask.frUncompressedRLE(encoded, 100, 100)
     # compare the results
     assert poly1 == poly2
     assert poly1 == [[10, 10, 20, 10, 20, 20, 10, 20]]
