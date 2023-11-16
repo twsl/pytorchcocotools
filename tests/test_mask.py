@@ -93,13 +93,9 @@ def test_frPyObjects(poly: list[int], length: int, r: tmask.RleObj):  # noqa: N8
     mask1 = mask.frPyObjects(poly, length, length)
     mask2 = tmask.frPyObjects(poly, length, length)
 
-    data1 = np.asfortranarray(np.ones((length, length), dtype=np.uint8))
-    mask.encode(data1)
-
     # compare the results
-    assert mask1 == mask2
-    assert mask2["counts"] == r["counts"]
-    assert mask2["size"] == r["size"]
+    assert mask2[0]["counts"] == mask1[0]["counts"]
+    assert mask2[0]["size"] == mask1[0]["size"]
 
 
 @pytest.mark.parametrize(

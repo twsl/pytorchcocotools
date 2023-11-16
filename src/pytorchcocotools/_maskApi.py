@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 
 import torch
 from torch import Tensor
@@ -426,21 +427,68 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
         _description_
     """
     # upsample and get discrete points densely along entire boundary
-    scale = 5
-    x, y = [int(scale * xy[j * 2] + 0.5) for j in range(k)], [int(scale * xy[j * 2 + 1] + 0.5) for j in range(k)]
-    x.append(x[0])
-    y.append(y[0])
+    scale = 5.0
+    x = [int(scale * xy[j * 2] + 0.5) for j in range(k)] + [int(scale * xy[0] + 0.5)]
+    y = [int(scale * xy[j * 2 + 1] + 0.5) for j in range(k)] + [int(scale * xy[1] + 0.5)]
+    m = 0
+    for j in range(k):
+        m += max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1
 
-    # compute rle encoding given y-boundary points
-    a = sorted({x[i] * h + y[i] for i in range(k)})
+    u, v = [], []
+    for j in range(k):
+        xs, xe, ys, ye = x[j], x[j + 1], y[j], y[j + 1]
+        dx, dy = abs(xe - xs), abs(ys - ye)
+        flip = (dx >= dy and xs > xe) or (dx < dy and ys > ye)
+        if flip:
+            xs, xe, ys, ye = xe, xs, ye, ys
+        s = (ye - ys) / dx if dx >= dy else (xe - xs) / dy
+        for d in range(dx + 1 if dx >= dy else dy + 1):
+            t = dx - d if flip else d
+            if dx >= dy:
+                u.append(xs + t)
+                v.append(int(ys + s * t + 0.5))
+            else:
+                v.append(ys + t)
+                u.append(int(xs + s * t + 0.5))
+
+    # Downsample and compute RLE encoding
+    k = len(u)
+    x, y = [], []
+    for j in range(1, k):
+        if u[j] != u[j - 1]:
+            xd = u[j] if u[j] < u[j - 1] else u[j] - 1
+            xd = (xd + 0.5) / scale - 0.5
+            if not (0 <= xd < w):
+                continue
+            yd = v[j] if v[j] < v[j - 1] else v[j - 1]
+            yd = (yd + 0.5) / scale - 0.5
+            yd = max(0, min(yd, h))
+            x.append(int(xd))
+            y.append(int(math.ceil(yd)))
+
+    a = [x[j] * h + y[j] for j in range(len(x))]
     a.append(h * w)
-    b = [a[0]]
-    for i in range(1, len(a)):
-        if a[i] > a[i - 1]:
-            b.append(a[i] - a[i - 1])
+    a.sort()
+    p = 0
+    for j in range(len(a)):
+        t = a[j]
+        a[j] -= p
+        p = t
+
+    b, j, m = [], 0, 0
+    while j < len(a):
+        if a[j] > 0:
+            b.append(a[j])
+            m += 1
+            j += 1
+        else:
+            j += 1
+            if j < len(a):
+                b[m - 1] += a[j]
+                j += 1
 
     # Initialize RLE with the counts
-    R = RLE(h=h, w=w, m=len(b), cnts=b)
+    R = RLE(h=h, w=w, m=len(b), cnts=torch.tensor(b, dtype=torch.int))
     return R
 
 
@@ -448,13 +496,13 @@ def rleToString(R: RLE) -> bytes:  # noqa: N803, N802
     """Get compressed string representation of encoded mask.
 
     Args:
-        R: _description_
+        R: Run length encoded string mask.
 
     Note:
         Similar to LEB128 but using 6 bits/char and ascii chars 48-111.
 
     Returns:
-        _description_
+        Byte string of run length encoded mask.
     """
     s = bytearray()
     cnts = R.cnts
@@ -483,12 +531,12 @@ def rleFrString(s: bytes, h: int, w: int) -> RLE:  # noqa: N802
     """Convert from compressed string representation of encoded mask.
 
     Args:
-        s: _description_
-        h: _description_
-        w: _description_
+        s: Byte string of run length encoded mask.
+        h: Height of the encoded mask.
+        w: Width of the encoded mask.
 
     Returns:
-        _description_
+        Run length encoded mask.
     """
     m = 0
     p = 0
