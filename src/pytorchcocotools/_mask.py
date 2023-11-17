@@ -197,7 +197,7 @@ def frBbox(bb: BB, h: int, w: int) -> RleObjs:  # noqa: N802
 def frPoly(poly: list[list[float]] | Tensor, h: int, w: int) -> RleObjs:  # noqa: N802
     Rs = []  # RLEs(n)
     for p in poly:
-        np_poly = torch.tensor(p, dtype=torch.int)
+        np_poly = p if isinstance(p, Tensor) else torch.tensor(p, dtype=torch.int)
         Rs.append(rleFrPoly(np_poly, int(len(p) / 2), h, w))
     objs = _toString(RLEs(Rs))
     return RleObjs(objs)
@@ -215,7 +215,9 @@ def frUncompressedRLE(ucRles: list[dict], h: int, w: int) -> RleObjs:  # noqa: N
 
 def frPyObjects(pyobj, h: int, w: int) -> RleObjs:  # noqa: N802
     # encode rle from a list of python objects
-    if isinstance(pyobj, Tensor) or (isinstance(pyobj, list) and len(pyobj[0]) == 4):
+    if isinstance(pyobj, Tensor):
+        return frBbox(pyobj, h, w)
+    elif isinstance(pyobj, list) and len(pyobj[0]) == 4:
         return frBbox(pyobj, h, w)
     elif isinstance(pyobj, list) and len(pyobj[0]) > 4:
         return frPoly(pyobj, h, w)

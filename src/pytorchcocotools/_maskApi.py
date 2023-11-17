@@ -150,7 +150,7 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     """Compute union or intersection of encoded masks.
 
     Args:
-        R: _description_
+        Rs: _description_
         n: _description_
         intersect: _description_
 
@@ -405,6 +405,18 @@ def rleFrBbox(bb: BB, h: int, w: int, n: int) -> RLEs:  # noqa: N802
     Returns:
         _description_
     """
+    # Precompute the xy coordinates for all bounding boxes
+    xs = bb[0 : n * 4 : 4]
+    ys = bb[1 : n * 4 : 4]
+    xe = xs + bb[2 : n * 4 : 4]
+    ye = ys + bb[3 : n * 4 : 4]
+
+    # Stack and reshape to get the xy tensor for all bounding boxes
+    xy = torch.stack([xs, ys, xs, ye, xe, ye, xe, ys], dim=1).view(n, 8)
+
+    # Apply rleFrPoly (assumed to be vectorized) to each bounding box
+    R = [rleFrPoly(xy[i], 4, h, w) for i in range(n)]
+
     R = [None] * n
     for i in range(n):
         xs, xe = bb[4 * i], bb[4 * i] + bb[4 * i + 2]

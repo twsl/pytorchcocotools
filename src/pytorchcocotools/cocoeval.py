@@ -2,12 +2,12 @@ from collections import defaultdict
 import copy
 import datetime
 import time
+from typing import Literal
 
+from pytorchcocotools import mask, utils
 from pytorchcocotools.coco import COCO
 import torch
 from torch import Tensor
-
-from . import mask as maskUtils
 
 
 class COCOeval:
@@ -60,14 +60,21 @@ class COCOeval:
     # Data, paper, and tutorials available at:  http://mscoco.org/
     # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
     # Licensed under the Simplified BSD License [see coco/license.txt]
-    def __init__(self, cocoGt: COCO = None, cocoDt: COCO = None, iouType: str = "segm"):
-        """Initialize CocoEval using coco APIs for gt and dt
-        :param cocoGt: coco object with ground truth annotations
-        :param cocoDt: coco object with detection results
-        :return: None.
+    def __init__(
+        self,
+        cocoGt: COCO = None,  # noqa: N803
+        cocoDt: COCO = None,  # noqa: N803
+        iouType: Literal["segm", "bbox", "keypoints"] = "segm",  # noqa: N803
+    ):
+        """Initialize CocoEval using coco APIs for gt and dt.
+
+        Args:
+            cocoGt: COCO object with ground truth annotations. Defaults to None.
+            cocoDt: COCO object with detection results. Defaults to None.
+            iouType: _description_. Defaults to "segm".
         """
         if not iouType:
-            print("iouType not specified. use default iouType segm")
+            self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt  # ground truth COCO API
         self.cocoDt = cocoDt  # detections COCO API
         self.evalImgs = defaultdict(list)  # per-image per-category evaluation results [KxAxI] elements
@@ -82,12 +89,13 @@ class COCOeval:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
 
-    def _prepare(self) -> None:
-        """Prepare ._gts and ._dts for evaluation based on params
-        :return: None.
-        """
+        self.logger = utils.get_logger(__name__)
 
-        def _toMask(anns, coco: COCO):
+    @staticmethod
+    def _prepare(self) -> None:
+        """Prepare ._gts and ._dts for evaluation based on params."""
+
+        def _toMask(anns, coco: COCO):  # noqa: N802
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
@@ -121,17 +129,15 @@ class COCOeval:
         self.eval = {}  # accumulated evaluation results
 
     def evaluate(self) -> None:
-        """Run per image evaluation on given images and store results (a list of dict) in self.evalImgs
-        :return: None.
-        """
+        """Run per image evaluation on given images and store results (a list of dict) in self.evalImgs."""
         tic = time.time()
-        print("Running per image evaluation...")
+        self.logger.info("Running per image evaluation...")
         p = self.params
         # add backward compatibility if useSegm is specified in params
         if p.useSegm is not None:
             p.iouType = "segm" if p.useSegm == 1 else "bbox"
-            print(f"useSegm (deprecated) is not None. Running {p.iouType} evaluation")
-        print(f"Evaluate annotation type *{p.iouType}*")
+            self.logger.info(f"useSegm (deprecated) is not None. Running {p.iouType} evaluation")
+        self.logger.info(f"Evaluate annotation type *{p.iouType}*")
         p.imgIds = list(torch.unique(p.imgIds))
         if p.useCats:
             p.catIds = list(torch.unique(p.catIds))
@@ -158,9 +164,9 @@ class COCOeval:
         ]
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
-        print(f"DONE (t={toc - tic:0.2f}s).")
+        self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
 
-    def computeIoU(self, imgId: int, catId: int) -> Tensor:
+    def computeIoU(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         p = self.params
         if p.useCats:
             gt = self._gts[imgId, catId]
@@ -182,14 +188,14 @@ class COCOeval:
             g = [g["bbox"] for g in gt]
             d = [d["bbox"] for d in dt]
         else:
-            raise Exception("unknown iouType for iou computation")
+            raise Exception("Unknown iouType for iou computation")  # noqa: TRY002
 
         # compute iou between each dt and gt region
         iscrowd = [int(o["iscrowd"]) for o in gt]
-        ious = maskUtils.iou(d, g, iscrowd)
+        ious = mask.iou(d, g, iscrowd)
         return ious
 
-    def computeOks(self, imgId: int, catId: int) -> Tensor:
+    def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         p = self.params
         # dimention here should be Nxm
         gts = self._gts[imgId, catId]
@@ -237,9 +243,17 @@ class COCOeval:
                 ious[i, j] = torch.sum(torch.exp(-e)) / e.shape[0]
         return ious
 
-    def evaluateImg(self, imgId: int, catId: int, aRng: list, maxDet: int) -> dict:
-        """Perform evaluation for single category and image
-        :return: dict (single image results).
+    def evaluateImg(self, imgId: int, catId: int, aRng: list, maxDet: int) -> dict:  # noqa: N803, N802
+        """Perform evaluation for single category and image.
+
+        Args:
+            imgId: _description_
+            catId: _description_
+            aRng: _description_
+            maxDet: _description_
+
+        Returns:
+            _description_
         """
         p = self.params
         if p.useCats:
@@ -317,14 +331,15 @@ class COCOeval:
         }
 
     def accumulate(self, p: "Params" = None) -> None:
-        """Accumulate per image evaluation results and store the result in self.eval
-        :param p: input params for evaluation
-        :return: None.
+        """Accumulate per image evaluation results and store the result in self.eval.
+
+        Args:
+            p: Input params for evaluation. Defaults to None.
         """
-        print("Accumulating evaluation results...")
+        self.logger.info("Accumulating evaluation results...")
         tic = time.time()
         if not self.evalImgs:
-            print("Please run evaluate() first")
+            self.logger.info("Please run evaluate() first")
         # allows input customized parameters
         if p is None:
             p = self.params
@@ -421,7 +436,7 @@ class COCOeval:
             "scores": scores,
         }
         toc = time.time()
-        print(f"DONE (t={toc - tic:0.2f}s).")
+        self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
 
     def summarize(self):
         """Compute and display summary metrics for evaluation results.
@@ -453,7 +468,7 @@ class COCOeval:
                     s = s[t]
                 s = s[:, :, aind, mind]
             mean_s = -1 if len(s[s > -1]) == 0 else torch.mean(s[s > -1])
-            print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
+            self.logger.info(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
             return mean_s
 
         def _summarizeDets():

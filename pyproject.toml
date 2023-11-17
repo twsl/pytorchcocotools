@@ -45,6 +45,7 @@ ipykernel = "^6.22.0"
 ipywidgets = "^8.0.6"
 scikit-image = "^0.20.0"
 pytest-benchmark = "^4.0.0"
+pytest-cases = "^3.8.1"
 
 [tool.poetry.group.debug]
 optional = true
