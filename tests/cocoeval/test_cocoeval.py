@@ -35,7 +35,7 @@ def coco_eval():
     return COCOeval(cocoGt, cocoDt, "keypoints")
 
 
-def test_computeIoU(coco_eval):
+def test_computeIoU(coco_eval: COCOeval):  # noqa: N802
     # test iou computation for keypoints
     ious = coco_eval.computeIoU(1, 1)
     expected_ious = torch.tensor([0.0, 0.0])

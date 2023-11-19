@@ -1,13 +1,78 @@
 from collections import defaultdict
 import copy
 import datetime
+from logging import Logger
 import time
 from typing import Literal
 
 from pytorchcocotools import mask, utils
-from pytorchcocotools.coco import COCO
+from pytorchcocotools.coco import tCOCO
 import torch
 from torch import Tensor
+
+
+class Params:
+    """Params for coco evaluation api."""
+
+    def setDetParams(self):  # noqa: N802
+        self.imgIds = []
+        self.catIds = []
+        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
+        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
+        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
+        self.maxDets = [1, 10, 100]
+        self.areaRng = [
+            [0**2, 1e5**2],
+            [0**2, 32**2],
+            [32**2, 96**2],
+            [96**2, 1e5**2],
+        ]
+        self.areaRngLbl = ["all", "small", "medium", "large"]
+        self.useCats = 1
+
+    def setKpParams(self):  # noqa: N802
+        self.imgIds = []
+        self.catIds = []
+        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
+        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
+        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
+        self.maxDets = [20]
+        self.areaRng = [[0**2, 1e5**2], [32**2, 96**2], [96**2, 1e5**2]]
+        self.areaRngLbl = ["all", "medium", "large"]
+        self.useCats = 1
+        self.kpt_oks_sigmas = (
+            torch.array(
+                [
+                    0.26,
+                    0.25,
+                    0.25,
+                    0.35,
+                    0.35,
+                    0.79,
+                    0.79,
+                    0.72,
+                    0.72,
+                    0.62,
+                    0.62,
+                    1.07,
+                    1.07,
+                    0.87,
+                    0.87,
+                    0.89,
+                    0.89,
+                ]
+            )
+            / 10.0
+        )
+
+    def __init__(self, iouType: Literal["segm", "bbox", "keypoints"] = "segm"):  # noqa: N803
+        if iouType == "segm" or iouType == "bbox":
+            self.setDetParams()
+        elif iouType == "keypoints":
+            self.setKpParams()
+        else:
+            raise Exception("iouType not supported")  # noqa: TRY002
+        self.iouType = iouType
 
 
 class COCOeval:
@@ -53,17 +118,16 @@ class COCOeval:
     #  precision  - [TxRxKxAxM] precision for every evaluation setting
     #  recall     - [TxKxAxM] max recall for every evaluation setting
     # Note: precision and recall==-1 for settings with no gt objects.
-    #
-    # See also coco, mask, pycocoDemo, pycocoEvalDemo
-    #
-    # Microsoft COCO Toolbox.      version 2.0
-    # Data, paper, and tutorials available at:  http://mscoco.org/
-    # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
-    # Licensed under the Simplified BSD License [see coco/license.txt]
+
+    cocoGt: tCOCO  # noqa: N815
+    cocoDt: tCOCO  # noqa: N815
+    logger: Logger
+    params: Params
+
     def __init__(
         self,
-        cocoGt: COCO = None,  # noqa: N803
-        cocoDt: COCO = None,  # noqa: N803
+        cocoGt: tCOCO = None,  # noqa: N803
+        cocoDt: tCOCO = None,  # noqa: N803
         iouType: Literal["segm", "bbox", "keypoints"] = "segm",  # noqa: N803
     ):
         """Initialize CocoEval using coco APIs for gt and dt.
@@ -81,7 +145,7 @@ class COCOeval:
         self.eval = {}  # accumulated evaluation results
         self._gts = defaultdict(list)  # gt for evaluation
         self._dts = defaultdict(list)  # dt for evaluation
-        self.params = Params(iouType=iouType)  # parameters
+        self.params: Params = Params(iouType=iouType)  # parameters
         self._paramsEval = {}  # parameters for evaluation
         self.stats = []  # result summarization
         self.ious = {}  # ious between all gts and dts
@@ -95,7 +159,7 @@ class COCOeval:
     def _prepare(self) -> None:
         """Prepare ._gts and ._dts for evaluation based on params."""
 
-        def _toMask(anns, coco: COCO):  # noqa: N802
+        def _toMask(anns, coco: tCOCO):  # noqa: N802
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
@@ -133,10 +197,6 @@ class COCOeval:
         tic = time.time()
         self.logger.info("Running per image evaluation...")
         p = self.params
-        # add backward compatibility if useSegm is specified in params
-        if p.useSegm is not None:
-            p.iouType = "segm" if p.useSegm == 1 else "bbox"
-            self.logger.info(f"useSegm (deprecated) is not None. Running {p.iouType} evaluation")
         self.logger.info(f"Evaluate annotation type *{p.iouType}*")
         p.imgIds = list(torch.unique(p.imgIds))
         if p.useCats:
@@ -512,69 +572,3 @@ class COCOeval:
 
     def __str__(self):
         self.summarize()
-
-
-class Params:
-    """Params for coco evaluation api."""
-
-    def setDetParams(self):
-        self.imgIds = []
-        self.catIds = []
-        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
-        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
-        self.maxDets = [1, 10, 100]
-        self.areaRng = [
-            [0**2, 1e5**2],
-            [0**2, 32**2],
-            [32**2, 96**2],
-            [96**2, 1e5**2],
-        ]
-        self.areaRngLbl = ["all", "small", "medium", "large"]
-        self.useCats = 1
-
-    def setKpParams(self):
-        self.imgIds = []
-        self.catIds = []
-        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
-        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
-        self.maxDets = [20]
-        self.areaRng = [[0**2, 1e5**2], [32**2, 96**2], [96**2, 1e5**2]]
-        self.areaRngLbl = ["all", "medium", "large"]
-        self.useCats = 1
-        self.kpt_oks_sigmas = (
-            torch.array(
-                [
-                    0.26,
-                    0.25,
-                    0.25,
-                    0.35,
-                    0.35,
-                    0.79,
-                    0.79,
-                    0.72,
-                    0.72,
-                    0.62,
-                    0.62,
-                    1.07,
-                    1.07,
-                    0.87,
-                    0.87,
-                    0.89,
-                    0.89,
-                ]
-            )
-            / 10.0
-        )
-
-    def __init__(self, iouType="segm"):
-        if iouType == "segm" or iouType == "bbox":
-            self.setDetParams()
-        elif iouType == "keypoints":
-            self.setKpParams()
-        else:
-            raise Exception("iouType not supported")
-        self.iouType = iouType
-        # useSegm is deprecated
-        self.useSegm = None

@@ -1,7 +1,7 @@
 import numpy as np
-from pycocotools.coco import COCO as _COCO
+from pycocotools.coco import COCO as COCO
 import pytest
-from pytorchcocotools.coco import COCO
+from pytorchcocotools.coco import tCOCO
 import torch
 
 # write unit tests after loading the file from data/examples.json to test the coco class
@@ -14,22 +14,22 @@ def path() -> str:
 
 
 @pytest.fixture
-def coco1(path: str) -> _COCO:
-    return _COCO(path)
-
-
-@pytest.fixture
-def coco2(path: str) -> COCO:
+def coco1(path: str) -> COCO:
     return COCO(path)
 
 
-def test_COCO_load(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+@pytest.fixture
+def coco2(path: str) -> tCOCO:
+    return tCOCO(path)
+
+
+def test_COCO_load(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     assert coco1 is not None
     assert coco2 is not None
 
 
 # test the function getAnnIds for the coco class and the _coco class and compare results
-def test_getAnnIds(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_getAnnIds(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # get the annotation ids for the image with id 397133
     annIds1 = coco1.getAnnIds(imgIds=397133)
     annIds2 = coco2.getAnnIds(imgIds=397133)
@@ -39,7 +39,7 @@ def test_getAnnIds(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function getCatIds for the coco class and the _coco class and compare results
-def test_getCatIds(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_getCatIds(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # get the category ids for the image with id 397133
     catIds1 = coco1.getCatIds(catIds=1)
     catIds2 = coco2.getCatIds(catIds=1)
@@ -49,7 +49,7 @@ def test_getCatIds(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function getImgIds for the coco class and the _coco class and compare results
-def test_getImgIds(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_getImgIds(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # get the image ids for the category with id 1
     imgIds1 = coco1.getImgIds(catIds=1)
     imgIds2 = coco2.getImgIds(catIds=1)
@@ -59,7 +59,7 @@ def test_getImgIds(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function loadAnns for the coco class and the _coco class and compare results
-def test_loadAnns(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_loadAnns(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # get the annotations with id 2096753
     ann1 = coco1.loadAnns(2096753)
     ann2 = coco2.loadAnns(2096753)
@@ -68,7 +68,7 @@ def test_loadAnns(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function loadCats for the coco class and the _coco class and compare results
-def test_loadCats(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_loadCats(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # get the category with id 1
     cat1 = coco1.loadCats(1)
     cat2 = coco2.loadCats(1)
@@ -78,7 +78,7 @@ def test_loadCats(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function loadImgs for the coco class and the _coco class and compare results
-def test_loadImgs(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_loadImgs(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # get the image with id 397133
     img1 = coco1.loadImgs(397133)
     img2 = coco2.loadImgs(397133)
@@ -99,7 +99,7 @@ def test_loadImgs(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function loadPyTorchAnnotations for the coco class and compare with the function loadNumpyAnnotations for the _coco class
-def test_loadPyTorchAnnotations(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_loadPyTorchAnnotations(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with a numpy array and a tensor [Nx7] where each row contains {imageID,x1,y1,w,h,score,class}
     data2 = torch.Tensor([[397133, 48.51, 240.91, 247.03, 184.81, 0.999, 1]])
     data1 = data2.numpy()
@@ -112,7 +112,7 @@ def test_loadPyTorchAnnotations(coco1: _COCO, coco2: COCO) -> None:  # noqa: N80
 
 
 # test the function annToRLE for the coco class and the _coco class and compare results
-def test_annToRLE(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_annToRLE(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with an annotation dict object
     ann1 = coco1.loadAnns(2096753)
     ann2 = coco2.loadAnns(2096753)
@@ -124,7 +124,7 @@ def test_annToRLE(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
 
 
 # test the function annToMask for the coco class and the _coco class and compare results
-def test_annToMask(coco1: _COCO, coco2: COCO) -> None:  # noqa: N802
+def test_annToMask(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with an annotation dict object
     ann1 = coco1.loadAnns(2096753)
     ann2 = coco2.loadAnns(2096753)
