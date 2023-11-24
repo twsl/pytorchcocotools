@@ -72,11 +72,8 @@ class tCOCO:
         """Constructor of Microsoft COCO helper class for reading and visualizing annotations.
 
         Args:
-            annotation_file: _description_. Defaults to None.
+            annotation_file: The location of annotation file. Defaults to None.
         """
-        # :param annotation_file (str): location of annotation file
-        # :param image_folder (str): location to the folder that hosts images.
-
         self.dataset, self.anns, self.cats, self.imgs = {}, {}, {}, {}
         self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
         self.logger = utils.get_logger(__name__)
@@ -86,7 +83,7 @@ class tCOCO:
             path = Path(annotation_file)
             with path.open("r") as file:
                 dataset = json.load(file)
-            assert type(dataset) == dict, f"annotation file format {type(dataset)} not supported"
+            assert isinstance(dataset, dict), f"annotation file format {type(dataset)} not supported"
             self.logger.info(f"Done (t={time.time() - tic:0.2f}s)")
             self.dataset = dataset
             self.createIndex()
@@ -127,11 +124,11 @@ class tCOCO:
         for key, value in self.dataset["info"].items():
             print(f"{key}: {value}")
 
-    def getAnnIds(
+    def getAnnIds(  # noqa: N802
         self,
-        imgIds: list[int] = [],
-        catIds: list[int] = [],
-        areaRng: list[float] = [],
+        imgIds: list[int] = [],  # noqa: N803
+        catIds: list[int] = [],  # noqa: N803
+        areaRng: list[float] = [],  # noqa: N803
         iscrowd: bool = None,
     ) -> list[int]:
         """Get ann ids that satisfy given filter conditions. default skips that filter.
@@ -188,9 +185,9 @@ class tCOCO:
 
         if catIds is None:
             catIds = []
-        catNms = catNms if _isArrayLike(catNms) else [catNms]  # noqa: N806
-        supNms = supNms if _isArrayLike(supNms) else [supNms]  # noqa: N806
-        catIds = catIds if _isArrayLike(catIds) else [catIds]  # noqa: N806
+        catNms = catNms if _isArrayLike(catNms) else [catNms] if catNms else []  # noqa: N806
+        supNms = supNms if _isArrayLike(supNms) else [supNms] if supNms else []  # noqa: N806
+        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
 
         cats = self.dataset["categories"]
         if not len(catNms) == len(supNms) == len(catIds) == 0:

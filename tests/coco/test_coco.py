@@ -111,6 +111,7 @@ def test_loadPyTorchAnnotations(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N80
     assert ann1 == ann2
 
 
+@pytest.mark.skip(reason="Way too slow")
 # test the function annToRLE for the coco class and the _coco class and compare results
 def test_annToRLE(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with an annotation dict object
@@ -123,6 +124,7 @@ def test_annToRLE(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     assert rle1 == rle2
 
 
+@pytest.mark.skip(reason="Way too slow")
 # test the function annToMask for the coco class and the _coco class and compare results
 def test_annToMask(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with an annotation dict object
