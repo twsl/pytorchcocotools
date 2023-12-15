@@ -119,11 +119,6 @@ class COCOeval:
     #  recall     - [TxKxAxM] max recall for every evaluation setting
     # Note: precision and recall==-1 for settings with no gt objects.
 
-    cocoGt: tCOCO  # noqa: N815
-    cocoDt: tCOCO  # noqa: N815
-    logger: Logger
-    params: Params
-
     def __init__(
         self,
         cocoGt: tCOCO = None,  # noqa: N803
@@ -155,7 +150,6 @@ class COCOeval:
 
         self.logger = utils.get_logger(__name__)
 
-    @staticmethod
     def _prepare(self) -> None:
         """Prepare ._gts and ._dts for evaluation based on params."""
 
@@ -498,12 +492,14 @@ class COCOeval:
         toc = time.time()
         self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
 
-    def summarize(self):
+    def summarize(self) -> None:
         """Compute and display summary metrics for evaluation results.
-        Note this functin can *only* be applied on the default parameter setting.
+
+        Note:
+            This functin can *only* be applied on the default parameter setting.
         """
 
-        def _summarize(ap=1, iouThr=None, areaRng="all", maxDets=100):
+        def _summarize(ap=1, iouThr: float = None, areaRng: str = "all", maxDets: int = 100) -> int | Tensor:  # noqa: N803
             p = self.params
             iStr = " {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}"
             titleStr = "Average Precision" if ap == 1 else "Average Recall"
@@ -531,7 +527,7 @@ class COCOeval:
             self.logger.info(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
             return mean_s
 
-        def _summarizeDets():
+        def _summarizeDets() -> Tensor:  # noqa: N802
             stats = torch.zeros((12,))
             stats[0] = _summarize(1)
             stats[1] = _summarize(1, iouThr=0.5, maxDets=self.params.maxDets[2])
@@ -547,7 +543,7 @@ class COCOeval:
             stats[11] = _summarize(0, areaRng="large", maxDets=self.params.maxDets[2])
             return stats
 
-        def _summarizeKps():
+        def _summarizeKps() -> Tensor:  # noqa: N802
             stats = torch.zeros((10,))
             stats[0] = _summarize(1, maxDets=20)
             stats[1] = _summarize(1, maxDets=20, iouThr=0.5)

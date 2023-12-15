@@ -25,8 +25,8 @@ class AreaCases:
 
 
 @pytest.mark.benchmark(group="area", warmup=True)
-@parametrize_with_cases("min, max, h, w, area", cases=AreaCases)
-def test_area_pt(benchmark, min: int, max: int, h: int, w: int, area: int):
+@parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
+def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int):
     # create a mask
     mask_pt = torch.zeros((h, w), dtype=torch.uint8)
     mask_pt[min:max, min:max] = 1
@@ -34,12 +34,12 @@ def test_area_pt(benchmark, min: int, max: int, h: int, w: int, area: int):
     rle_pt = tmask.encode(mask_pt)
     result_pt = benchmark(tmask.area, rle_pt)
     # compare the results
-    assert result_pt == area
+    assert result_pt == result
 
 
 @pytest.mark.benchmark(group="area", warmup=True)
-@parametrize_with_cases("min, max, h, w, area", cases=AreaCases)
-def test_area_np(benchmark, min: int, max: int, h: int, w: int, area: int):
+@parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
+def test_area_np(benchmark, min: int, max: int, h: int, w: int, result: int):
     # create a mask
     mask_np = np.zeros((h, w), dtype=np.uint8, order="F")
     mask_np[min:max, min:max] = 1
@@ -47,11 +47,11 @@ def test_area_np(benchmark, min: int, max: int, h: int, w: int, area: int):
     rle_np = mask.encode(mask_np)
     result_np = benchmark(mask.area, rle_np)
     # compare the results
-    assert result_np == area
+    assert result_np == result
 
 
-@parametrize_with_cases("min, max, h, w, area", cases=AreaCases)
-def test_area(min: int, max: int, h: int, w: int, area: int):
+@parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
+def test_area(min: int, max: int, h: int, w: int, result: int):
     # create a mask
     mask_pt = torch.zeros((h, w), dtype=torch.uint8)
     mask_pt[min:max, min:max] = 1
@@ -63,4 +63,4 @@ def test_area(min: int, max: int, h: int, w: int, area: int):
     result_pt = tmask.area(rle_pt)
     # compare the results
     assert result_np == result_pt
-    assert result_np == area
+    assert result_np == result

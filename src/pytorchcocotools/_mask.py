@@ -149,9 +149,7 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
             return obj.shape[0]
         return 0
 
-    # convert iscrowd to numpy array
     iscrowd = Tensor(pyiscrowd, dtype=torch.uint8)
-    # simple type checking
     m, n = 0
     dt = _preproc(dt)
     gt = _preproc(gt)
@@ -161,20 +159,10 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
         return []
     if not type(dt) == type(gt):
         raise Exception("The dt and gt should have the same data type, either RLEs, list or np.ndarray")  # noqa: TRY002
-
-    # define local variables
-    _iou: list[float] = []
-    # shape = [0]
     _iouFun = rleIou if isinstance(dt, RLEs) else bbIou if isinstance(dt, Tensor) else None  # noqa: N806
-    # check type and assign iou function
     if _iouFun is None:
         raise Exception("input data type not allowed.")  # noqa: TRY002
 
-    # _iou = <double*> malloc(m*n* sizeof(double))
-    # iou = np.zeros((m*n, ), dtype=np.double)
-    # shape[0] = <np.npy_intp> m*n
-    # iou = np.PyArray_SimpleNewFromData(1, shape, np.NPY_DOUBLE, _iou)
-    # PyArray_ENABLEFLAGS(iou, np.NPY_OWNDATA)
     iou = _iouFun(dt, gt, iscrowd, m, n)
     # return iou.reshape((m, n), order="F")
     return iou
@@ -213,19 +201,19 @@ def frUncompressedRLE(ucRles: list[dict], h: int, w: int) -> RleObjs:  # noqa: N
     return RleObjs(objs)
 
 
-def frPyObjects(pyobj, h: int, w: int) -> RleObjs:  # noqa: N802
+def frPyObjects(pyobj: Tensor | list[list[int]] | list[dict] | dict, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
     # encode rle from a list of python objects
     if isinstance(pyobj, Tensor):
         return frBbox(pyobj, h, w)
-    elif isinstance(pyobj, list) and len(pyobj[0]) == 4:
-        return frBbox(pyobj, h, w)
+    elif isinstance(pyobj, list) and len(pyobj[0]) == 4:  # not working in pycocotools
+        return frBbox(Tensor(pyobj), h, w)
     elif isinstance(pyobj, list) and len(pyobj[0]) > 4:
         return frPoly(pyobj, h, w)
     elif isinstance(pyobj, list) and isinstance(pyobj[0], dict) and "counts" in pyobj[0] and "size" in pyobj[0]:
         return frUncompressedRLE(pyobj, h, w)
     # encode rle from single python object
-    elif isinstance(pyobj, list) and len(pyobj) == 4:
-        return frBbox([pyobj], h, w)[0]
+    elif isinstance(pyobj, list) and len(pyobj) == 4:  # not working in pycocotools
+        return frBbox(Tensor([pyobj]), h, w)[0]
     elif isinstance(pyobj, list) and len(pyobj) > 4:
         return frPoly([pyobj], h, w)[0]
     elif isinstance(pyobj, dict) and "counts" in pyobj and "size" in pyobj:

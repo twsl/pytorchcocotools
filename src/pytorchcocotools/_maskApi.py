@@ -10,15 +10,7 @@ class BB(Tensor):
 
 
 class RLE:
-    def __init__(self, h: int = 0, w: int = 0, m: int = 0, cnts: Tensor = None):
-        """Internal run length encoded representation.
-
-        Args:
-            h: The mask height. Defaults to 0.
-            w: The mask width. Defaults to 0.
-            m: The number of rle entries. Defaults to 0.
-            cnts: The rle entries. Defaults to None.
-        """
+    def __init__(self, h: int = 0, w: int = 0, m: int = 0, cnts: torch.Tensor = None):
         self.h = h
         self.w = w
         self.m = m
@@ -50,7 +42,7 @@ class Masks(list[Mask]):
 
 
 @dataclass
-class RleObj:
+class RleObj(dict):
     size: tuple[int, int]
     counts: bytes
 
@@ -276,6 +268,7 @@ def rleIou(dt: RLEs, gt: RLEs, m: int, n: int, iscrowd: list[bool]) -> Tensor:  
                 o[g * m + d] = i / u
 
 
+# TODO: Note used in python api
 def rleNms(dt: RLE, n: int, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding masks.
 
@@ -302,36 +295,40 @@ def bbIou(dt: BB, gt: BB, m: int, n: int, iscrowd: list[bool]) -> Tensor:  # noq
     """Compute intersection over union between bounding boxes.
 
     Args:
-        dt: _description_
-        gt: _description_
-        m: _description_
-        n: _description_
-        iscrowd: _description_
+        dt: Detection bounding boxes (shape: [m, 4]).
+        gt: Ground truth bounding boxes (shape: [n, 4]).
+        m: Number of detection bounding boxes.
+        n: Number of ground truth bounding boxes.
+        iscrowd: List indicating if a ground truth bounding box is a crowd.
 
     Returns:
-        _description_
+        IoU values for each detection and ground truth pair (shape: [m, n]).
     """
-    o = torch.zeros((m * n,), dtype=torch.float32)
-    for g in range(n):
-        G = gt[g * 4 : (g + 1) * 4]
-        ga = G[2] * G[3]
-        crowd = iscrowd is not None and iscrowd[g]
-        for d in range(m):
-            D = dt[d * 4 : (d + 1) * 4]
-            da = D[2] * D[3]
-            o[g * m + d] = 0
-            w = min(D[2] + D[0], G[2] + G[0]) - max(D[0], G[0])
-            if w <= 0:
-                continue
-            h = min(D[3] + D[1], G[3] + G[1]) - max(D[1], G[1])
-            if h <= 0:
-                continue
-            i = w * h
-            u = da if crowd else da + ga - i
-            o[g * m + d] = i / u
-    return o
+    # Convert the bounding boxes from [x1, y1, width, height] to [x1, y1, x2, y2]
+    dt = torch.cat((dt[:, :2], dt[:, :2] + dt[:, 2:]), dim=1)
+    gt = torch.cat((gt[:, :2], gt[:, :2] + gt[:, 2:]), dim=1)
+
+    # Calculate area for detection and ground truth boxes
+    dt_area = (dt[:, 2] - dt[:, 0]) * (dt[:, 3] - dt[:, 1])
+    gt_area = (gt[:, 2] - gt[:, 0]) * (gt[:, 3] - gt[:, 1])
+
+    # Compute intersection
+    intersect_min = torch.max(dt[:, None, :2], gt[:, :2])  # [m, n, 2]
+    intersect_max = torch.min(dt[:, None, 2:], gt[:, 2:])  # [m, n, 2]
+    intersect_wh = torch.clamp(intersect_max - intersect_min, min=0)  # [m, n, 2]
+    intersect_area = intersect_wh[:, :, 0] * intersect_wh[:, :, 1]  # [m, n]
+
+    # Compute union
+    union_area = dt_area[:, None] + gt_area - intersect_area
+    union_area[torch.tensor(iscrowd)] = dt_area[:, None]  # Adjust for crowd
+
+    # Compute IoU
+    iou = intersect_area / union_area
+
+    return iou
 
 
+# TODO: Note used in python api
 def bbNms(dt: BB, n: int, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding boxes.
 
@@ -348,7 +345,7 @@ def bbNms(dt: BB, n: int, thr: float) -> list[bool]:  # noqa: N802
         if keep[i]:
             for j in range(i + 1, n):
                 if keep[j]:
-                    u = bbIou(dt[i * 4 : (i + 1) * 4], dt[j * 4 : (j + 1) * 4], 1, 1, None)
+                    u = bbIou(dt[i], dt[j], 1, 1, None)
                     if u[0].float() > thr:
                         keep[j] = False
     return keep
@@ -393,6 +390,7 @@ def rleToBbox(R: RLEs, n: int) -> BB:  # noqa: N802, N803
     return bb
 
 
+# TODO: fix input tensor form
 def rleFrBbox(bb: BB, h: int, w: int, n: int) -> RLEs:  # noqa: N802
     """Convert bounding boxes to encoded masks.
 
@@ -406,23 +404,16 @@ def rleFrBbox(bb: BB, h: int, w: int, n: int) -> RLEs:  # noqa: N802
         _description_
     """
     # Precompute the xy coordinates for all bounding boxes
-    xs = bb[0 : n * 4 : 4]
-    ys = bb[1 : n * 4 : 4]
-    xe = xs + bb[2 : n * 4 : 4]
-    ye = ys + bb[3 : n * 4 : 4]
+    xs = bb[:, 0]
+    ys = bb[:, 1]
+    xe = xs + bb[:, 2]
+    ye = ys + bb[:, 3]
 
     # Stack and reshape to get the xy tensor for all bounding boxes
     xy = torch.stack([xs, ys, xs, ye, xe, ye, xe, ys], dim=1).view(n, 8)
 
     # Apply rleFrPoly (assumed to be vectorized) to each bounding box
     R = [rleFrPoly(xy[i], 4, h, w) for i in range(n)]
-
-    R = [None] * n
-    for i in range(n):
-        xs, xe = bb[4 * i], bb[4 * i] + bb[4 * i + 2]
-        ys, ye = bb[4 * i + 1], bb[4 * i + 1] + bb[4 * i + 3]
-        xy = [xs, ys, xs, ye, xe, ye, xe, ys]
-        R[i] = rleFrPoly(xy, 4, h, w)
     return R
 
 
@@ -440,11 +431,26 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
     """
     # upsample and get discrete points densely along entire boundary
     scale = 5.0
-    x = [int(scale * xy[j * 2] + 0.5) for j in range(k)] + [int(scale * xy[0] + 0.5)]
-    y = [int(scale * xy[j * 2 + 1] + 0.5) for j in range(k)] + [int(scale * xy[1] + 0.5)]
-    m = 0
-    for j in range(k):
-        m += max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1
+    x = ((scale * xy[0::2]) + 0.5).int()
+    x = torch.cat((x, x[0:1]))
+    y = ((scale * xy[1::2]) + 0.5).int()
+    y = torch.cat((y, y[0:1]))
+    max_diff = torch.maximum(torch.abs(torch.diff(x)), torch.abs(torch.diff(y))) + 1
+    m = torch.sum(max_diff).int()
+
+    xs, xe = x[:-1], x[1:]
+    ys, ye = y[:-1], y[1:]
+    dx, dy = torch.abs(xe - xs), torch.abs(ys - ye)
+    flip = ((dx >= dy) & (xs > xe)) | ((dx < dy) & (ys > ye))
+    xs = torch.where(flip, xe, xs)
+    xe = torch.where(flip, xs, xe)
+    ys = torch.where(flip, ye, ys)
+    ye = torch.where(flip, ys, ye)
+    s = torch.where(dx >= dy, (ye - ys) / dx, (xe - xs) / dy)
+    d = torch.arange(dx + 1) if dx >= dy else torch.arange(dy + 1)
+    t = dx - d if flip else d
+    u = torch.where(dx >= dy, xs + t, int(xs + s * t + 0.5))
+    v = torch.where(dx >= dy, int(ys + s * t + 0.5), ys + t)
 
     u, v = [], []
     for j in range(k):
