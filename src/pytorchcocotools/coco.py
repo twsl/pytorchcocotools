@@ -32,16 +32,6 @@
 # Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
 # Help on each functions can be accessed by: "help COCO>function".
 
-# See also COCO>decodeMask,
-# COCO>encodeMask, COCO>getAnnIds, COCO>getCatIds,
-# COCO>getImgIds, COCO>loadAnns, COCO>loadCats,
-# COCO>loadImgs, COCO>annToMask, COCO>showAnns
-
-# Microsoft COCO Toolbox.      version 2.0
-# Data, paper, and tutorials available at:  http://mscoco.org/
-# Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
-# Licensed under the Simplified BSD License [see bsd.txt]
-
 from collections import defaultdict
 import copy
 import itertools
@@ -65,7 +55,7 @@ def _isArrayLike(obj):  # noqa: N802
     return hasattr(obj, "__iter__") and hasattr(obj, "__len__")
 
 
-class tCOCO:
+class COCO:
     logger: Logger
 
     def __init__(self, annotation_file: str = None) -> None:
@@ -93,18 +83,15 @@ class tCOCO:
         anns, cats, imgs = {}, {}, {}
         imgToAnns = defaultdict(list)  # noqa: N806
         catToImgs = defaultdict(list)  # noqa: N806
-        if "annotations" in self.dataset:
-            for ann in self.dataset["annotations"]:
-                imgToAnns[ann["image_id"]].append(ann)
-                anns[ann["id"]] = ann
+        for ann in self.dataset.get("annotations", []):
+            imgToAnns[ann["image_id"]].append(ann)
+            anns[ann["id"]] = ann
 
-        if "images" in self.dataset:
-            for img in self.dataset["images"]:
-                imgs[img["id"]] = img
+        for img in self.dataset.get("images", []):
+            imgs[img["id"]] = img
 
-        if "categories" in self.dataset:
-            for cat in self.dataset["categories"]:
-                cats[cat["id"]] = cat
+        for cat in self.dataset.get("categories", []):
+            cats[cat["id"]] = cat
 
         if "annotations" in self.dataset and "categories" in self.dataset:
             for ann in self.dataset["annotations"]:
@@ -378,19 +365,16 @@ class tCOCO:
             for ann in anns:
                 print(ann["caption"])
 
-    def loadRes(self, resFile: str | Tensor) -> "tCOCO":  # noqa: N802, N803
+    def loadRes(self, resFile: str | Tensor) -> "COCO":  # noqa: N802, N803
         """Load result file and return a result api object.
 
         Args:
-            resFile: _description_
+            resFile: File name of result file.
 
         Returns:
-            _description_
+            The result api object.
         """
-        # :param   resFile (str)     : file name of result file
-        # :return: res (obj)         : result api object.
-
-        res = tCOCO()
+        res = COCO()
         res.dataset["images"] = list(self.dataset["images"])
 
         print("Loading and preparing results...")

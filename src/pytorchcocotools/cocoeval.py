@@ -6,7 +6,7 @@ import time
 from typing import Literal
 
 from pytorchcocotools import mask, utils
-from pytorchcocotools.coco import tCOCO
+from pytorchcocotools.coco import COCO
 import torch
 from torch import Tensor
 
@@ -121,8 +121,8 @@ class COCOeval:
 
     def __init__(
         self,
-        cocoGt: tCOCO = None,  # noqa: N803
-        cocoDt: tCOCO = None,  # noqa: N803
+        cocoGt: COCO = None,  # noqa: N803
+        cocoDt: COCO = None,  # noqa: N803
         iouType: Literal["segm", "bbox", "keypoints"] = "segm",  # noqa: N803
     ):
         """Initialize CocoEval using coco APIs for gt and dt.
@@ -153,7 +153,7 @@ class COCOeval:
     def _prepare(self) -> None:
         """Prepare ._gts and ._dts for evaluation based on params."""
 
-        def _toMask(anns, coco: tCOCO):  # noqa: N802
+        def _toMask(anns, coco: COCO):  # noqa: N802
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
@@ -558,7 +558,7 @@ class COCOeval:
             return stats
 
         if not self.eval:
-            raise Exception("Please run accumulate() first")
+            raise Exception("Please run accumulate() first")  # noqa: TRY002
         iouType = self.params.iouType
         if iouType == "segm" or iouType == "bbox":
             summarize = _summarizeDets

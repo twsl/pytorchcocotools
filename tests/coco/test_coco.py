@@ -1,7 +1,7 @@
 import numpy as np
 from pycocotools.coco import COCO as COCO
 import pytest
-from pytorchcocotools.coco import tCOCO
+from pytorchcocotools.coco import COCO as tCOCO  # noqa: N811
 import torch
 
 # write unit tests after loading the file from data/examples.json to test the coco class
