@@ -111,13 +111,15 @@ def area(rleObjs: RleObjs) -> list[int]:  # noqa: N803
 
 
 # iou computation. support function overload (RLEs-RLEs and bbox-bbox).
-def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd: list[bool]) -> Tensor:
+def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd: list[bool | int]) -> Tensor:
     def _preproc(objs):
         if len(objs) == 0:
             return objs
         if isinstance(objs, Tensor):
             if len(objs.shape) == 1:
-                objs = objs.reshape((objs[0], 1))
+                # TODO: figure out, why pycocotools didn't use the shape, propably just another error?
+                # objs = objs.reshape((objs[0], 1))
+                objs = objs.reshape((objs.shape[0], 1))
             # check if it's Nx4 bbox
             if not len(objs.shape) == 2 or not objs.shape[1] == 4:
                 raise Exception("Tensor input is only for *bounding boxes* and should have Nx4 dimension")  # noqa: TRY002
@@ -149,21 +151,20 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
             return obj.shape[0]
         return 0
 
-    iscrowd = Tensor(pyiscrowd, dtype=torch.uint8)
-    m, n = 0
+    iscrowd = [bool(c) for c in pyiscrowd]
     dt = _preproc(dt)
     gt = _preproc(gt)
     m = _len(dt)
     n = _len(gt)
     if m == 0 or n == 0:
-        return []
+        return []  # TODO: fix return type to be consistent
     if not type(dt) == type(gt):
-        raise Exception("The dt and gt should have the same data type, either RLEs, list or np.ndarray")  # noqa: TRY002
+        raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
     _iouFun = rleIou if isinstance(dt, RLEs) else bbIou if isinstance(dt, Tensor) else None  # noqa: N806
     if _iouFun is None:
         raise Exception("input data type not allowed.")  # noqa: TRY002
 
-    iou = _iouFun(dt, gt, iscrowd, m, n)
+    iou = _iouFun(dt, gt, m, n, iscrowd)
     # return iou.reshape((m, n), order="F")
     return iou
 

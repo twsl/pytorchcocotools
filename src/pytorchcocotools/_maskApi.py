@@ -3,6 +3,7 @@ import math
 
 import torch
 from torch import Tensor
+import torch.nested as n
 
 
 class BB(Tensor):
@@ -158,11 +159,11 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     h, w, m = Rs[0].h, Rs[0].w, Rs[0].m
     cnts = Rs[0].cnts
     for i in range(1, n):
-        B = Rs[i]
+        B = Rs[i]  # noqa: N806
         if B.h != h or B.w != w:
             return RLE()  # Return an empty RLE if dimensions don't match
 
-        A = RLE(h, w, m, cnts)
+        A = RLE(h, w, m, cnts)  # noqa: N806
         ca, cb = A.cnts[0], B.cnts[0]
         v = va = vb = 0
         m = a = b = 0
@@ -170,7 +171,7 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
         ct = 1
         cnts = []
         while ct > 0:
-            c = min(ca, cb)
+            c = min(ca, cb).clone()
             cc += c
             ct = 0
             ca -= c
@@ -223,27 +224,29 @@ def rleIou(dt: RLEs, gt: RLEs, m: int, n: int, iscrowd: list[bool]) -> Tensor:  
     Returns:
         _description_
     """
-    o = torch.zeros((m * n,), dtype=torch.float32)
-    db = [None] * (m * 4)
-    gb = [None] * (n * 4)
     db = rleToBbox(dt, m)
     gb = rleToBbox(gt, n)
     o = bbIou(db, gb, m, n, iscrowd)
     for g in range(n):
         for d in range(m):
-            if o[g * m + d] > 0:
+            if o[d, g] > 0:
                 crowd = iscrowd is not None and iscrowd[g]
                 if dt[d].h != gt[g].h or dt[d].w != gt[g].w:
-                    o[g * m + d] = -1
+                    o[d, g] = -1
                     continue
-                ka, kb = dt[d].m, gt[g].m
-                ca, cb = dt[d].cnts[0], gt[g].cnts[0]
-                va, vb = 0, 0
-                a, b = 1, 1
-                u = i = 0
+                ka = dt[d].m
+                kb = gt[g].m
+                ca = dt[d].cnts[0]
+                cb = gt[g].cnts[0]
+                va = False
+                vb = False
+                a = 1
+                b = 1
+                u = 0
+                i = 0
                 ct = 1
                 while ct > 0:
-                    c = min(ca, cb)
+                    c = min(ca, cb).clone()
                     if va or vb:
                         u += c
                         if va and vb:
@@ -265,7 +268,8 @@ def rleIou(dt: RLEs, gt: RLEs, m: int, n: int, iscrowd: list[bool]) -> Tensor:  
                     u = 1
                 elif crowd:
                     u = rleArea(dt[d], 1)[0]
-                o[g * m + d] = i / u
+                o[d, g] = i / u
+    return o
 
 
 # TODO: Note used in python api
@@ -447,10 +451,37 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
     ys = torch.where(flip, ye, ys)
     ye = torch.where(flip, ys, ye)
     s = torch.where(dx >= dy, (ye - ys) / dx, (xe - xs) / dy)
-    d = torch.arange(dx + 1) if dx >= dy else torch.arange(dy + 1)
-    t = dx - d if flip else d
-    u = torch.where(dx >= dy, xs + t, int(xs + s * t + 0.5))
-    v = torch.where(dx >= dy, int(ys + s * t + 0.5), ys + t)
+    d = torch.where(dx >= dy, dx, dy).unsqueeze(1)
+
+    # dr = n.nested_tensor([torch.arange(td.int()) for td in d.squeeze(1)])
+    # t = torch.arange(d.max()).expand(len(d), d.max())
+    # t = torch.where(flip.unsqueeze(1), dx.unsqueeze(1) - t, t)
+    # t = torch.clamp(t, 0, d)
+
+    # u = torch.where(dx.unsqueeze(1) >= dy.unsqueeze(1), xs.unsqueeze(1) + t, xs.unsqueeze(1))
+    # v = torch.where(dx.unsqueeze(1) >= dy.unsqueeze(1), ys.unsqueeze(1) + s.unsqueeze(1) * t, ys.unsqueeze(1) + t)
+
+    # u = u.flatten()
+    # v = v.flatten()
+
+    # # Downsample and compute RLE encoding
+    # changes = u[1:] != u[:-1]
+    # xd = torch.where(u[1:] < u[:-1], u[1:], u[1:] - 1)
+    # xd = (xd + 0.5) / scale - 0.5
+    # xd = xd[changes]
+    # xd = torch.clamp(xd, 0, w)
+
+    # yd = torch.where(v[1:] < v[:-1], v[1:], v[:-1])
+    # yd = (yd + 0.5) / scale - 0.5
+    # yd = torch.clamp(yd, 0, h)
+    # yd = yd[changes]
+
+    # a = (xd * h + torch.ceil(yd)).int()
+    # a = torch.cat((a, torch.tensor([h * w]))).sort().values
+    # a = torch.diff(a, prepend=torch.tensor([0]))
+
+    # b = torch.where(a > 0, a, torch.tensor(0))
+    # return b[b.nonzero(as_tuple=True)].squeeze(1).tolist()
 
     u, v = [], []
     for j in range(k):
