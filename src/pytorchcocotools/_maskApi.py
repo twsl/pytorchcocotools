@@ -194,7 +194,7 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
                 cnts.append(cc)
                 cc = 0
 
-    return RLE(h, w, len(cnts), cnts)
+    return RLEs([RLE(h, w, len(cnts), torch.stack(cnts))])
 
 
 def rleArea(R: RLEs, n: int) -> list[int]:  # noqa: N802, N803

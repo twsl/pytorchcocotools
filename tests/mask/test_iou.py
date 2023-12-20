@@ -8,7 +8,7 @@ from pytorchcocotools._maskApi import (
 )
 import pytorchcocotools.mask as tmask
 import torch
-from torch import Tensor, dtype
+from torch import Tensor
 
 
 class IoUCases:

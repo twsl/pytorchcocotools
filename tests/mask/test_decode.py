@@ -80,7 +80,6 @@ def test_decode(min: int, max: int, h: int, w: int, result: Tensor):  # noqa: N8
     result_np = mask.decode(rle_np)
     result_pt = tmask.decode(rle_pt)
     # compare the results
-    # compare the results
     assert np.array_equal(result_np, mask_np)
     assert np.array_equal(result_np, mask_pt.numpy())
     assert np.array_equal(result_np, result_pt.numpy())

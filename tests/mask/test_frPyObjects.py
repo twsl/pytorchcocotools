@@ -134,3 +134,5 @@ def test_frPyObjects(h: int, w: int, obj: list[int] | list[list[int]] | list[dic
     # compare the results
     assert mask_pt[0]["counts"] == mask_np[0]["counts"]
     assert mask_pt[0]["size"] == mask_np[0]["size"]
+    assert mask_np[0]["counts"] == result[0]["counts"]
+    assert mask_np[0]["size"] == result[0]["size"]

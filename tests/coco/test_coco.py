@@ -111,27 +111,29 @@ def test_loadPyTorchAnnotations(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N80
     assert ann1 == ann2
 
 
-@pytest.mark.skip(reason="Way too slow")
 # test the function annToRLE for the coco class and the _coco class and compare results
 def test_annToRLE(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with an annotation dict object
     ann1 = coco1.loadAnns(2096753)
     ann2 = coco2.loadAnns(2096753)
     # get the RLE for the annotation
-    rle1 = coco1.annToRLE(ann1[0])
-    rle2 = coco2.annToRLE(ann2[0])
+    rle_np = coco1.annToRLE(ann1[0])
+    rle_pt = coco2.annToRLE(ann2[0])
     # compare the results
-    assert rle1 == rle2
+    assert rle_np == rle_pt
+    assert rle_np["counts"] == rle_pt["counts"]
+    assert rle_np["size"] == rle_pt["size"]
 
 
 # @pytest.mark.skip(reason="Way too slow")
 # test the function annToMask for the coco class and the _coco class and compare results
 def test_annToMask(coco1: COCO, coco2: tCOCO) -> None:  # noqa: N802
     # test with an annotation dict object
-    ann1 = coco1.loadAnns(2096753)
-    ann2 = coco2.loadAnns(2096753)
+    ann_np = coco1.loadAnns(2096753)
+    ann_pt = coco2.loadAnns(2096753)
     # get the mask for the annotation
-    mask1 = coco1.annToMask(ann1[0])
-    mask2 = coco2.annToMask(ann2[0])
+    mask_np = coco1.annToMask(ann_np[0])
+    mask_pt = coco2.annToMask(ann_pt[0])
     # compare the results
-    assert mask1 == mask2
+    # np.nonzero(mask_np)
+    assert np.array_equal(mask_np, mask_pt.numpy())
