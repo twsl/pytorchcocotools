@@ -1,5 +1,5 @@
-from pycocotools.cocoeval import COCOeval
 import pytest
+from pytorchcocotools.cocoeval import COCOeval
 import torch
 
 

@@ -1,19 +1,3 @@
-from ctypes import ArgumentError
-from typing import Literal, Union
-
-import pytorchcocotools._mask as _mask
-from pytorchcocotools._maskApi import (
-    BB,
-    RLE,
-    Mask,
-    Masks,
-    RleObj,
-    RleObjs,
-    RLEs,
-)
-import torch
-from torch import Tensor
-
 # Interface for manipulating masks stored in RLE format.
 #
 # RLE is a simple yet efficient format for storing binary masks. RLE
@@ -57,6 +41,23 @@ from torch import Tensor
 #  poly    - Polygon stored as [[x1 y1 x2 y2...],[x1 y1 ...],...] (2D list)
 #  dt,gt   - May be either bounding boxes or encoded masks
 # Both poly and bbs are 0-indexed (bbox=[0 0 1 1] encloses first pixel).
+
+
+from ctypes import ArgumentError
+from typing import Literal, Union
+
+import pytorchcocotools._mask as _mask
+from pytorchcocotools._maskApi import (
+    BB,
+    RLE,
+    Mask,
+    Masks,
+    RleObj,
+    RleObjs,
+    RLEs,
+)
+import torch
+from torch import Tensor
 
 
 def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor:
