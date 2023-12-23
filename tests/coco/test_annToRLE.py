@@ -6,12 +6,12 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class AnnToRLECases:
-    def case_test(self, coco1: COCO, coco2: COCOpt) -> tuple:
-        return (coco1, coco2, 2096753, None)
+    def case_test(self) -> tuple:
+        return (2096753, None)
 
 
 @pytest.mark.benchmark(group="annToRLE", warmup=True)
-@parametrize_with_cases("img_id, result", cases=AnnToRLECases)
+@parametrize_with_cases("ann_id, result", cases=AnnToRLECases)
 def test_annToRLE_pt(benchmark, coco_pt: COCOpt, ann_id: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_pt = coco_pt.loadAnns(ann_id)
@@ -23,7 +23,7 @@ def test_annToRLE_pt(benchmark, coco_pt: COCOpt, ann_id: int, result) -> None:  
 
 
 @pytest.mark.benchmark(group="annToRLE", warmup=True)
-@parametrize_with_cases("img_id, result", cases=AnnToRLECases)
+@parametrize_with_cases("ann_id, result", cases=AnnToRLECases)
 def test_annToRLE_np(benchmark, coco_np: COCO, ann_id: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(ann_id)
@@ -34,7 +34,7 @@ def test_annToRLE_np(benchmark, coco_np: COCO, ann_id: int, result) -> None:  # 
     assert rle_np["size"] == result["size"]
 
 
-@parametrize_with_cases("img_id, result", cases=AnnToRLECases)
+@parametrize_with_cases("ann_id, result", cases=AnnToRLECases)
 def test_annToRLE(coco_np: COCO, coco_pt: COCOpt, ann_id: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(ann_id)
