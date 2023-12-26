@@ -433,101 +433,85 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
     Returns:
         _description_
     """
+    device = xy.device
     # upsample and get discrete points densely along entire boundary
     scale = 5.0
     x = ((scale * xy[0::2]) + 0.5).int()
     x = torch.cat((x, x[0:1]))
     y = ((scale * xy[1::2]) + 0.5).int()
     y = torch.cat((y, y[0:1]))
+
     max_diff = torch.maximum(torch.abs(torch.diff(x)), torch.abs(torch.diff(y))) + 1
     m = torch.sum(max_diff).int()
 
-    xs, xe = x[:-1], x[1:]
-    ys, ye = y[:-1], y[1:]
-    dx, dy = torch.abs(xe - xs), torch.abs(ys - ye)
+    xs = x[:-1]
+    xe = x[1:]
+    ys = y[:-1]
+    ye = y[1:]
+    dx = torch.abs(xe - xs)
+    dy = torch.abs(ys - ye)
     flip = ((dx >= dy) & (xs > xe)) | ((dx < dy) & (ys > ye))
-    xs = torch.where(flip, xe, xs)
-    xe = torch.where(flip, xs, xe)
-    ys = torch.where(flip, ye, ys)
-    ye = torch.where(flip, ys, ye)
-    s = torch.where(dx >= dy, (ye - ys) / dx, (xe - xs) / dy)
-    d = torch.where(dx >= dy, dx, dy).unsqueeze(1)
+    _xs = torch.where(flip, xe, xs)
+    _xe = torch.where(flip, xs, xe)
+    _ys = torch.where(flip, ye, ys)
+    _ye = torch.where(flip, ys, ye)
+    xs = _xs
+    xe = _xe
+    ys = _ys
+    ye = _ye
+    xy_cond = dx >= dy
+    s = torch.where(xy_cond, (ye - ys).to(dtype=torch.float64) / dx, (xe - xs).to(dtype=torch.float64) / dy)  # double
+    seq_lens = torch.where(xy_cond, dx, dy).unsqueeze(-1)
+    # dr = n.nested_tensor([torch.arange(td.int()) for td in seq_lens.squeeze(1)])
+    max_len = torch.max(seq_lens)
+    d = torch.arange(0, max_len + 1, device=device).unsqueeze(0)
+    d = d.expand(seq_lens.size(0), d.size(1))
+    d_mask = d <= seq_lens
 
-    # dr = n.nested_tensor([torch.arange(td.int()) for td in d.squeeze(1)])
-    # t = torch.arange(d.max()).expand(len(d), d.max())
-    # t = torch.where(flip.unsqueeze(1), dx.unsqueeze(1) - t, t)
+    dxy = torch.where(xy_cond, dx, dy)
+    t = torch.where(flip.unsqueeze(1), dxy.unsqueeze(1) - d, d)
     # t = torch.clamp(t, 0, d)
 
-    # u = torch.where(dx.unsqueeze(1) >= dy.unsqueeze(1), xs.unsqueeze(1) + t, xs.unsqueeze(1))
-    # v = torch.where(dx.unsqueeze(1) >= dy.unsqueeze(1), ys.unsqueeze(1) + s.unsqueeze(1) * t, ys.unsqueeze(1) + t)
+    u = torch.where(xy_cond.unsqueeze(1), t + xs.unsqueeze(1), (xs.unsqueeze(1) + s.unsqueeze(1) * t + 0.5).int())
+    v = torch.where(xy_cond.unsqueeze(1), (ys.unsqueeze(1) + s.unsqueeze(1) * t + 0.5).int(), t + ys.unsqueeze(1))
 
-    # u = u.flatten()
-    # v = v.flatten()
+    u = u[d_mask]
+    v = v[d_mask]
+    # assert u.size(0) == m  # noqa: S101
 
-    # # Downsample and compute RLE encoding
-    # changes = u[1:] != u[:-1]
-    # xd = torch.where(u[1:] < u[:-1], u[1:], u[1:] - 1)
-    # xd = (xd + 0.5) / scale - 0.5
-    # xd = xd[changes]
-    # xd = torch.clamp(xd, 0, w)
+    # get points along y-boundary and downsample
+    changed = u[1:] != u[:-1]
+    xd = torch.where(u[1:] < u[:-1], u[1:], u[1:] - 1)
+    xd = (xd + 0.5) / scale - 0.5
 
-    # yd = torch.where(v[1:] < v[:-1], v[1:], v[:-1])
-    # yd = (yd + 0.5) / scale - 0.5
-    # yd = torch.clamp(yd, 0, h)
-    # yd = yd[changes]
+    fl_mask = torch.floor(xd) != xd
+    sm_mask = xd < 0
+    lg_mask = xd > w - 1
+    or_mask = torch.logical_or(fl_mask, torch.logical_or(sm_mask, lg_mask))
+    cont_mask = torch.logical_not(or_mask)
 
-    # a = (xd * h + torch.ceil(yd)).int()
-    # a = torch.cat((a, torch.tensor([h * w]))).sort().values
-    # a = torch.diff(a, prepend=torch.tensor([0]))
+    full_mask = torch.logical_and(cont_mask, changed)
 
-    # b = torch.where(a > 0, a, torch.tensor(0))
-    # return b[b.nonzero(as_tuple=True)].squeeze(1).tolist()
+    yd = torch.where(v[1:] < v[:-1], v[1:], v[:-1])
+    yd = (yd + 0.5) / scale - 0.5
+    yd = torch.clamp(yd, 0, h)
+    yd = torch.ceil(yd)
 
-    u, v = [], []
-    for j in range(k):
-        xs, xe, ys, ye = x[j], x[j + 1], y[j], y[j + 1]
-        dx, dy = abs(xe - xs), abs(ys - ye)
-        flip = (dx >= dy and xs > xe) or (dx < dy and ys > ye)
-        if flip:
-            xs, xe, ys, ye = xe, xs, ye, ys
-        s = (ye - ys) / dx if dx >= dy else (xe - xs) / dy
-        for d in range(dx + 1 if dx >= dy else dy + 1):
-            t = dx - d if flip else d
-            if dx >= dy:
-                u.append(xs + t)
-                v.append(int(ys + s * t + 0.5))
-            else:
-                v.append(ys + t)
-                u.append(int(xs + s * t + 0.5))
+    xd = xd[full_mask]
+    yd = yd[full_mask]
+    # compute rle encoding given y-boundary points
+    a = xd * h + yd
+    a = torch.cat((a, torch.tensor([h * w], device=device)))
 
-    # Downsample and compute RLE encoding
-    k = len(u)
-    x, y = [], []
-    for j in range(1, k):
-        if u[j] != u[j - 1]:
-            xd = u[j] if u[j] < u[j - 1] else u[j] - 1
-            xd = (xd + 0.5) / scale - 0.5
-            if not (0 <= xd < w):
-                continue
-            yd = v[j] if v[j] < v[j - 1] else v[j - 1]
-            yd = (yd + 0.5) / scale - 0.5
-            yd = max(0, min(yd, h))
-            x.append(int(xd))
-            y.append(int(math.ceil(yd)))
+    sorted, _ = torch.sort(a)
 
-    a = [x[j] * h + y[j] for j in range(len(x))]
-    a.append(h * w)
-    a.sort()
-    p = 0
-    for j in range(len(a)):
-        t = a[j]
-        a[j] -= p
-        p = t
+    a = torch.diff(sorted, prepend=torch.tensor([0], device=device)).to(dtype=torch.int)
 
-    b, j, m = [], 0, 0
+    b = torch.zeros_like(a, device=device)
+    j, m = 0, 0
     while j < len(a):
         if a[j] > 0:
-            b.append(a[j])
+            b[m] = a[j]
             m += 1
             j += 1
         else:
@@ -536,8 +520,10 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
                 b[m - 1] += a[j]
                 j += 1
 
+    b = b[:m]
+
     # Initialize RLE with the counts
-    R = RLE(h=h, w=w, m=len(b), cnts=torch.tensor(b, dtype=torch.int))
+    R = RLE(h=h, w=w, m=len(b), cnts=b)
     return R
 
 

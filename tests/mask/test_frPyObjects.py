@@ -129,7 +129,7 @@ class PyObjectsCases:
             [
                 {
                     "size": [427, 640],
-                    "counts": b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
+                    "counts": b"\\`_3;j<6B@nCc0Q<@kCc0S<;01N10001O001O00001O001O0000O1L4K6K4L4B]COh<O<O001O0O2Omk^4",
                 },
                 {"size": [427, 640], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"},
             ],
@@ -195,7 +195,8 @@ def test_frPyObjects(h: int, w: int, obj: list[int] | list[list[int]] | list[dic
         result = [result]
 
     # compare the results
-    assert mask_pt[0]["counts"] == mask_np[0]["counts"]
-    assert mask_pt[0]["size"] == mask_np[0]["size"]
-    assert mask_np[0]["counts"] == result[0]["counts"]
-    assert mask_np[0]["size"] == result[0]["size"]
+    for i in range(len(mask_np)):
+        assert mask_pt[i]["counts"] == mask_np[i]["counts"]
+        assert mask_pt[i]["size"] == mask_np[i]["size"]
+        assert mask_np[i]["counts"] == result[i]["counts"]
+        assert mask_np[i]["size"] == result[i]["size"]

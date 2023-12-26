@@ -186,7 +186,7 @@ def frBbox(bb: BB, h: int, w: int) -> RleObjs:  # noqa: N802
 def frPoly(poly: list[list[float]] | Tensor, h: int, w: int) -> RleObjs:  # noqa: N802
     Rs = []  # RLEs(n)
     for p in poly:
-        np_poly = p if isinstance(p, Tensor) else torch.tensor(p, dtype=torch.int)
+        np_poly = p.to(dtype=torch.float64) if isinstance(p, Tensor) else torch.tensor(p, dtype=torch.float64)
         Rs.append(rleFrPoly(np_poly, int(len(p) / 2), h, w))
     objs = _toString(RLEs(Rs))
     return RleObjs(objs)

@@ -34,10 +34,10 @@
             "name": "Debug C Program",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/${fileBasenameNoExtension}", // Replace 'a.out' with your executable name
+            "program": "${fileDirname}/${fileBasenameNoExtension}.out", // Replace 'a.out' with your executable name
             "args": [], // Add any command line arguments you need
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb", // Use "lldb" for macOS or "gdb" for Linux and Windows
@@ -48,6 +48,7 @@
                     "ignoreFailures": true
                 }
             ],
+            "showDisplayString": true,
             "preLaunchTask": "build", // This should match the label of a task in tasks.json that builds your code
             "miDebuggerPath": "/usr/bin/gdb" // Replace with the path to gdb on your system
         }
