@@ -462,7 +462,7 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
     xy_cond = dx >= dy
     s = torch.where(xy_cond, (ye - ys).to(dtype=torch.float64) / dx, (xe - xs).to(dtype=torch.float64) / dy)  # double
     seq_lens = torch.where(xy_cond, dx, dy).unsqueeze(-1)
-    # dr = n.nested_tensor([torch.arange(td.int()) for td in seq_lens.squeeze(1)])
+
     max_len = torch.max(seq_lens)
     d = torch.arange(0, max_len + 1, device=device).unsqueeze(0)
     d = d.expand(seq_lens.size(0), d.size(1))
