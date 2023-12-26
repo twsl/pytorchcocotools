@@ -29,7 +29,7 @@ class LoadImgsCases:
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
 def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids, result) -> None:  # noqa: N802
     # get the image with id
-    cat_pt = benchmark(coco_pt.loadImgs(img_ids))
+    cat_pt = benchmark(coco_pt.loadImgs, img_ids)
     # compare the results
     assert cat_pt == result
 
@@ -38,7 +38,7 @@ def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids, result) -> None:  # no
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
 def test_loadImgs_np(benchmark, coco_np: COCO, img_ids, result) -> None:  # noqa: N802
     # get the image with id
-    cat_np = benchmark(coco_np.loadImgs(img_ids))
+    cat_np = benchmark(coco_np.loadImgs, img_ids)
     # compare the results
     assert cat_np == result
 

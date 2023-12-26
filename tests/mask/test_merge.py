@@ -21,7 +21,6 @@ class MergeCases:
         mask_pt1[min1:max1, min1:max1] = 1
         return mask_pt1
 
-    # @parametrize(who=('you', 'there'))
     def case_start_area_same(self) -> tuple:
         return (
             self._build_mask(0, 5),
@@ -81,7 +80,7 @@ class MergeCases:
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
+def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
     # encode
     rle_pt1 = tmask.encode(obj1)
     rle_pt2 = tmask.encode(obj2)
@@ -94,7 +93,7 @@ def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: 
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
+def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
     obj1 = np.asfortranarray(obj1.numpy())
     obj2 = np.asfortranarray(obj2.numpy())
     # encode

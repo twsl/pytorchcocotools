@@ -19,11 +19,11 @@ class AnnToMaskCases:
 
 @pytest.mark.benchmark(group="annToMask", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=AnnToMaskCases)
-def test_annToMask_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], result) -> None:  # noqa: N802
+def test_annToMask_pt(benchmark, coco_pt: COCOpt, img_ids: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_pt = coco_pt.loadAnns(img_ids)
     # get the mask for the annotation
-    mask_pt = benchmark(coco_pt.annToMask(ann_pt[0]))
+    mask_pt = benchmark(coco_pt.annToMask, ann_pt[0])
     # compare the results
     # np.nonzero(mask_np)
     assert np.array_equal(result, mask_pt.numpy())
@@ -31,17 +31,17 @@ def test_annToMask_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], resu
 
 @pytest.mark.benchmark(group="annToMask", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=AnnToMaskCases)
-def test_annToMask_np(benchmark, coco_np: COCO, img_ids: int | list[int], result) -> None:  # noqa: N802
+def test_annToMask_np(benchmark, coco_np: COCO, img_ids: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(img_ids)
     # get the mask for the annotation
-    mask_np = benchmark(coco_np.annToMask(ann_np[0]))
+    mask_np = benchmark(coco_np.annToMask, ann_np[0])
     # compare the results
     assert np.array_equal(mask_np, result)
 
 
 @parametrize_with_cases("img_ids, result", cases=AnnToMaskCases)
-def test_annToMask(coco_np: COCO, coco_pt: COCOpt, img_ids: int | list[int], result) -> None:  # noqa: N802
+def test_annToMask(coco_np: COCO, coco_pt: COCOpt, img_ids: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(img_ids)
     ann_pt = coco_pt.loadAnns(img_ids)

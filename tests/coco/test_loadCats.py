@@ -15,7 +15,7 @@ class LoadCatsCases:
 @parametrize_with_cases("cat_ids, result", cases=LoadCatsCases)
 def test_loadCats_pt(benchmark, coco_pt: COCOpt, cat_ids, result) -> None:  # noqa: N802
     # get the category ids for the image with id
-    cat_pt = benchmark(coco_pt.loadCats(cat_ids))
+    cat_pt = benchmark(coco_pt.loadCats, cat_ids)
     # compare the results
     assert cat_pt == result
 
@@ -24,7 +24,7 @@ def test_loadCats_pt(benchmark, coco_pt: COCOpt, cat_ids, result) -> None:  # no
 @parametrize_with_cases("cat_ids, result", cases=LoadCatsCases)
 def test_loadCats_np(benchmark, coco_np: COCO, cat_ids, result) -> None:  # noqa: N802
     # get the category ids for the image with id
-    cat_np = benchmark(coco_np.loadCats(cat_ids))
+    cat_np = benchmark(coco_np.loadCats, cat_ids)
     # compare the results
     assert cat_np == result
 
