@@ -81,7 +81,8 @@ def rleEncode(mask: Mask, h: int, w: int, n: int) -> RLEs:  # noqa: N802
         _description_
     """
     H, W, N = mask.shape
-    flattened_mask = torch.flatten(mask, start_dim=0, end_dim=-2)
+    mask_p = mask.permute(2, 1, 0)
+    flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
     start_sentinel = torch.zeros((1, N), dtype=flattened_mask.dtype, device=mask.device)
     end = torch.ones((1, N), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0]
     sentinel = torch.ones((1, N), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
@@ -150,23 +151,55 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     Returns:
         _description_
     """
-    if not Rs:
-        return RLE()
+    if not Rs or len({r.w for r in Rs}) != 1 or len({r.w for r in Rs}) != 1:
+        return RLE()  # Return an empty RLE if empty or dimensions don't match
     n = len(Rs)
     if n == 1:
         return Rs[0]
 
+    device = Rs[0].cnts.device
+    h, w = Rs[0].h, Rs[0].w
+
+    # se_inds = torch.cat([torch.cumsum(r.cnts[:-1], 0).reshape(-1, 2) for r in Rs])
+    # seq_lens = (se_inds[:, 1] - se_inds[:, 0]).unsqueeze(-1)
+    # max_len = torch.max(seq_lens)
+    # d = torch.arange(0, max_len, device=device).unsqueeze(0)  # +1 maxlen?
+    # d = d.expand(seq_lens.size(0), d.size(1))
+    # d_mask = d <= seq_lens
+
+    # inds = d + se_inds[:, 0].unsqueeze(1)
+    # selected_inds = inds[d_mask]
+    # unq_inds, counts = torch.unique(selected_inds, sorted=True, return_counts=True)
+    # id_mask = counts >= (n if intersect else 1)
+    # merged_ids = unq_inds[id_mask]
+
+    # zero = torch.zeros((1,), device=device)
+    # rle_max = torch.tensor([h * w], device=device)
+    # diffs = torch.diff(merged_ids, prepend=zero, append=rle_max)
+
+    # run_ends = torch.nonzero(diffs != 1, as_tuple=True)[0] + 1
+
+    # # Create tensors to store run lengths and values
+    # run_lengths = torch.cat([run_ends.new_tensor([run_ends[0]]), run_ends[1:] - run_ends[:-1]])
+    # run_values = merged_ids[run_ends - 1]
+
+    # return run_values, run_lengths
+
     h, w, m = Rs[0].h, Rs[0].w, Rs[0].m
-    cnts = Rs[0].cnts
+    cnts = Rs[0].cnts.clone()
     for i in range(1, n):
         B = Rs[i]  # noqa: N806
         if B.h != h or B.w != w:
             return RLE()  # Return an empty RLE if dimensions don't match
 
         A = RLE(h, w, m, cnts)  # noqa: N806
-        ca, cb = A.cnts[0], B.cnts[0]
-        v = va = vb = 0
-        m = a = b = 0
+        ca = A.cnts[0].clone()
+        cb = B.cnts[0].clone()
+        v = False
+        va = False
+        vb = False
+        a = 1
+        b = 1
         cc = 0
         ct = 1
         cnts = []
@@ -175,19 +208,17 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
             cc += c
             ct = 0
             ca -= c
-            if not ca and a < len(A.cnts) - 1:
+            if not ca and a < A.m:
+                ca = A.cnts[a].clone()
                 a += 1
-                ca = A.cnts[a]
                 va = not va
             ct += ca
-
             cb -= c
-            if not cb and b < len(B.cnts) - 1:
+            if not cb and b < B.m:
+                cb = B.cnts[b].clone()
                 b += 1
-                cb = B.cnts[b]
                 vb = not vb
             ct += cb
-
             vp = v
             v = va and vb if intersect else va or vb
             if v != vp or ct == 0:
