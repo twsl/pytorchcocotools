@@ -569,6 +569,8 @@ int main()
     RLE *rle1_res = (RLE *)malloc(sizeof(RLE));
     rleEncode(rle1_res, mask, h, w, n);
 
+    char *s_res = rleToString(rle1_res);
+
     rleArray[0] = *rle1;
     rleArray[1] = *rle2;
 

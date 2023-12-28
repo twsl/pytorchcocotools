@@ -135,7 +135,7 @@ def rleDecode(R: RLEs, n: int) -> Mask:  # noqa: N802, N803
         # Set the corresponding pixels in the mask to 1 using vectorized indexing
         mask_tensor[torch.cat(indices_list)] = 1
         # Reshape the 1D tensor into a 2D binary mask tensor
-        mask_tensor = mask_tensor.reshape(size[0], size[1])
+        mask_tensor = mask_tensor.view(w, h).t()
         objs.append(mask_tensor)
     return torch.stack(objs, dim=-1)
 

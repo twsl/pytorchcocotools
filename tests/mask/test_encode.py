@@ -22,7 +22,7 @@ class EncodeCases(BaseCases):
     def case_full_area(self):
         return (self._build_mask(0, 25), {"size": [self.h, self.w], "counts": b"0ac0"})
 
-    def case_complex_1(self) -> tuple:
+    def case_complex_1_np(self) -> tuple:
         h = 427
         w = 640
         data = {
@@ -31,18 +31,38 @@ class EncodeCases(BaseCases):
         }
         return (
             torch.from_numpy(nmask.decode(data)),
-            # tmask.decode(data),
             data,
         )
 
-    def case_complex_2(self) -> tuple:
+    def case_complex_1_pt(self) -> tuple:
+        h = 427
+        w = 640
+        data = {
+            "size": [h, w],
+            "counts": b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
+        }
+        return (
+            tmask.decode(data),
+            data,
+        )
+
+    def case_complex_2_np(self) -> tuple:
         h = 427
         w = 640
         data = {"size": [h, w], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"}
 
         return (
             torch.from_numpy(nmask.decode(data)),
-            # tmask.decode(data),
+            data,
+        )
+
+    def case_complex_2_pt(self) -> tuple:
+        h = 427
+        w = 640
+        data = {"size": [h, w], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"}
+
+        return (
+            tmask.decode(data),
             data,
         )
 
