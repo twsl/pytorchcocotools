@@ -1,36 +1,57 @@
 import numpy as np
-import pycocotools.mask as mask
+import pycocotools.mask as nmask
 import pytest
 from pytest_cases import case, parametrize_with_cases
 import pytorchcocotools.mask as tmask
 import torch
 from torch import Tensor
 
+from .base_cases import BaseCases
 
-class EncodeCases:
-    h = 25
-    w = 25
 
-    # @case(id="start_area")
+class EncodeCases(BaseCases):
     def case_start_area(self):
-        return (0, 5, self.h, self.w, {"size": [self.h, self.w], "counts": b"05d00000000d?"})
+        return (self._build_mask(0, 5), {"size": [self.h, self.w], "counts": b"05d00000000d?"})
 
     def case_center_area(self):
-        return (5, 10, self.h, self.w, {"size": [self.h, self.w], "counts": b"R45d00000000b;"})
+        return (self._build_mask(5, 10), {"size": [self.h, self.w], "counts": b"R45d00000000b;"})
 
     def case_end_area(self):
-        return (20, 25, self.h, self.w, {"size": [self.h, self.w], "counts": b"X`05d00000000"})
+        return (self._build_mask(20, 25), {"size": [self.h, self.w], "counts": b"X`05d00000000"})
 
     def case_full_area(self):
-        return (0, 25, self.h, self.w, {"size": [self.h, self.w], "counts": b"0ac0"})
+        return (self._build_mask(0, 25), {"size": [self.h, self.w], "counts": b"0ac0"})
+
+    def case_complex_1(self) -> tuple:
+        h = 427
+        w = 640
+        data = {
+            "size": [h, w],
+            "counts": b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
+        }
+        return (
+            torch.from_numpy(nmask.decode(data)),
+            # tmask.decode(data),
+            data,
+        )
+
+    def case_complex_2(self) -> tuple:
+        h = 427
+        w = 640
+        data = {"size": [h, w], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"}
+
+        return (
+            torch.from_numpy(nmask.decode(data)),
+            # tmask.decode(data),
+            data,
+        )
 
 
 @pytest.mark.benchmark(group="encode", warmup=True)
-@parametrize_with_cases("min, max, h, w, result", cases=EncodeCases)
-def test_encode_pt(benchmark, min: int, max: int, h: int, w: int, result: dict):  # noqa: N802
+@parametrize_with_cases("mask, result", cases=EncodeCases)
+def test_encode_pt(benchmark, mask: Tensor, result: dict):  # noqa: N802
     # create a mask
-    mask_pt = torch.zeros((h, w), dtype=torch.uint8)
-    mask_pt[min:max, min:max] = 1
+    mask_pt = mask
     # encode the mask
     result_pt: Tensor = benchmark(tmask.encode, mask_pt)
     # compare the results
@@ -38,25 +59,23 @@ def test_encode_pt(benchmark, min: int, max: int, h: int, w: int, result: dict):
 
 
 @pytest.mark.benchmark(group="encode", warmup=True)
-@parametrize_with_cases("min, max, h, w, result", cases=EncodeCases)
-def test_encode_np(benchmark, min: int, max: int, h: int, w: int, result: dict):  # noqa: N802
+@parametrize_with_cases("mask, result", cases=EncodeCases)
+def test_encode_np(benchmark, mask: Tensor, result: dict):  # noqa: N802
     # create a mask
-    mask_np = np.zeros((h, w), dtype=np.uint8, order="F")
-    mask_np[min:max, min:max] = 1
+    mask_np = np.asfortranarray(mask.numpy())
     # encode the mask
-    result_np = benchmark(mask.encode, mask_np)
+    result_np = benchmark(nmask.encode, mask_np)
     # compare the results
     assert result_np == result
 
 
-@parametrize_with_cases("min, max, h, w, result", cases=EncodeCases)
-def test_encode(min: int, max: int, h: int, w: int, result: dict):  # noqa: N802
+@parametrize_with_cases("mask, result", cases=EncodeCases)
+def test_encode(mask: Tensor, result: dict):  # noqa: N802
     # create a mask
-    mask_pt = torch.zeros((h, w), dtype=torch.uint8)
-    mask_pt[min:max, min:max] = 1
+    mask_pt = mask
     mask_np = np.asfortranarray(mask_pt.numpy())
     # encode the mask
-    result_np = mask.encode(mask_np)
+    result_np = nmask.encode(mask_np)
     result_pt = tmask.encode(mask_pt)
     # compare the results
     assert result_np["counts"] == result_pt["counts"]
