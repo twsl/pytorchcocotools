@@ -156,6 +156,8 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
     gt = _preproc(gt)
     m = _len(dt)
     n = _len(gt)
+    crowd_length = len(iscrowd)
+    assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101
     if m == 0 or n == 0:
         return []  # TODO: fix return type to be consistent
     if not type(dt) == type(gt):
