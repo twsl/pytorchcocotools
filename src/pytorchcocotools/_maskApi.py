@@ -3,7 +3,6 @@ import math
 
 import torch
 from torch import Tensor
-import torch.nested as n
 
 
 class BB(Tensor):
@@ -177,11 +176,24 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     # rle_max = torch.tensor([h * w], device=device)
     # diffs = torch.diff(merged_ids, prepend=zero, append=rle_max)
 
+    # one_indices = torch.nonzero(diffs == 1).view(-1)
+    # one_ind_diffs = torch.diff(one_indices)
+
+    # start_indices = one_indices[:-1][torch.diff(one_indices) > 1]
+    # end_indices = one_indices[1:][torch.diff(one_indices) > 1] - 1
+
+    # # Handle the case when the last element is 1
+    # if diffs[-1] == 1:
+    #     start_indices = torch.cat([start_indices, one_indices[-1].unsqueeze(0)])
+    #     end_indices = torch.cat([end_indices, one_indices[-1].unsqueeze(0)])
+
     # run_ends = torch.nonzero(diffs != 1, as_tuple=True)[0] + 1
 
     # # Create tensors to store run lengths and values
     # run_lengths = torch.cat([run_ends.new_tensor([run_ends[0]]), run_ends[1:] - run_ends[:-1]])
-    # run_values = merged_ids[run_ends - 1]
+    # run_values = merged_ids[run_ends]
+
+    # [skip,used,skip,used,skip]
 
     # return run_values, run_lengths
 

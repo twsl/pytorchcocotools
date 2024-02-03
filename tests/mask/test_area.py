@@ -11,16 +11,16 @@ class AreaCases:
     w = 25
 
     # @case(id="start_area")
-    def case_start_area(self):
+    def case_start_area(self) -> tuple:
         return (0, 5, self.h, self.w, 25)
 
-    def case_center_area(self):
+    def case_center_area(self) -> tuple:
         return (5, 10, self.h, self.w, 25)
 
-    def case_end_area(self):
+    def case_end_area(self) -> tuple:
         return (20, 25, self.h, self.w, 25)
 
-    def case_full_area(self):
+    def case_full_area(self) -> tuple:
         return (0, 25, self.h, self.w, 625)
 
 
