@@ -71,7 +71,7 @@
 				},
 				"testExplorer.codeLens": true,
 				"testExplorer.gutterDecoration": true,
-				"autoDocstring.docstringFormat": "google",
+				"autoDocstring.docstringFormat": "google-notypes",
 				"autoDocstring.guessTypes": true,
 				"autoDocstring.generateDocstringOnEnter": true,
 				"autoDocstring.startOnNewLine": true,

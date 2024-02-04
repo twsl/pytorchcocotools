@@ -30,7 +30,7 @@ torchvision = "^0.17.0"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
+pytest = "^7.0.0"
 pytest-cov = "^4.1.0"
 ruff = "^0.2.0"
 safety = "^3.0.1"
@@ -137,6 +137,9 @@ extend-immutable-calls = [
     "typer.Option",
 ]
 
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
+
 [tool.ruff.pydocstyle]
 convention = "google"
 
@@ -162,9 +165,12 @@ staticmethod-decorators = [
     "pydantic.root_validator",
 ]
 
-[tool.ruff.isort]
-known-first-party = ["whos_there"]
+[tool.ruff.lint.isort]
 force-sort-within-sections = true
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
 
 [tool.black]
 line-length = 120

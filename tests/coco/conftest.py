@@ -6,7 +6,7 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 @fixture(scope="session")
 def path() -> str:
-    path = "../data/example.json"
+    path = "./data/example.json"
     return path
 
 

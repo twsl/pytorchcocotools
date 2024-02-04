@@ -8,7 +8,7 @@ import torch
 
 class GetImgIdsCases:
     def case_test(self) -> tuple:
-        return (None, 1, [397133])
+        return ([], 1, [397133])
 
 
 @pytest.mark.benchmark(group="getImgIds", warmup=True)
