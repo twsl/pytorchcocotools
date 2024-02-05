@@ -130,7 +130,7 @@ ignore = [
 ]
 line-length = 120  # Must agree with Black
 
-[tool.ruff.flake8-bugbear]
+[tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
     "chr",
     "typer.Argument",
@@ -140,10 +140,10 @@ extend-immutable-calls = [
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
     "D100",
     "D101",
@@ -159,7 +159,7 @@ convention = "google"
     "PGH001",  # use of "eval"
 ]
 
-[tool.ruff.pep8-naming]
+[tool.ruff.lint.pep8-naming]
 staticmethod-decorators = [
     "pydantic.validator",
     "pydantic.root_validator",
