@@ -26,11 +26,11 @@ keywords = [
 [tool.poetry.dependencies]
 python = "^3.10"
 torch = "^2.2.0"
-torchvision = "^0.17.0"
+torchvision = "^0.17.1"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.0.0"
+pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
 ruff = "^0.2.0"
 safety = "^3.0.1"
@@ -81,7 +81,7 @@ exclude_lines = [
 
 [tool.ruff]
 target-version = 'py310'
-select = [
+lint.select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "D",  # pydocstyle
@@ -112,7 +112,7 @@ exclude = [
     ".venv",
 ]
 
-ignore = [
+lint.ignore = [
     "D100",
     "D101",
     "D102",
@@ -125,7 +125,6 @@ ignore = [
     "D401",
     "E402",
     "E501",
-    "F401",
     "TRY003",  # Avoid specifying messages outside exception class; overly strict, especially for ValueError
 ]
 line-length = 120  # Must agree with Black

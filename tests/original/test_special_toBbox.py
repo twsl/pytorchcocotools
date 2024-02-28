@@ -1,5 +1,3 @@
-import numpy as np
-import pytest
 import pytorchcocotools.mask as mask_util
 import torch
 from torch import Tensor

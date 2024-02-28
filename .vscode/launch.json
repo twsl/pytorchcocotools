@@ -1,12 +1,9 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -14,7 +11,7 @@
         },
         {
             "name": "Python: Debug Tests",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "purpose": [
@@ -24,23 +21,16 @@
             "justMyCode": false
         },
         {
-            "name": "Python C++ Debug",
-            "type": "pythoncpp",
-            "request": "launch",
-            "pythonConfig": "default",
-            "cppConfig": "default (gdb) Attach",
-        },
-        {
             "name": "Debug C Program",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}/${fileBasenameNoExtension}.out", // Replace 'a.out' with your executable name
-            "args": [], // Add any command line arguments you need
+            "program": "${fileDirname}/${fileBasenameNoExtension}.out",
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": false,
-            "MIMode": "gdb", // Use "lldb" for macOS or "gdb" for Linux and Windows
+            "MIMode": "gdb",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -49,8 +39,8 @@
                 }
             ],
             "showDisplayString": true,
-            "preLaunchTask": "build", // This should match the label of a task in tasks.json that builds your code
-            "miDebuggerPath": "/usr/bin/gdb" // Replace with the path to gdb on your system
+            "preLaunchTask": "build",
+            "miDebuggerPath": "/usr/bin/gdb"
         }
     ]
 }

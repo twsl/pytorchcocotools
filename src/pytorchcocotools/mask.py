@@ -43,18 +43,12 @@
 # Both poly and bbs are 0-indexed (bbox=[0 0 1 1] encloses first pixel).
 
 
-from ctypes import ArgumentError
-from typing import Literal, Union
+from typing import Literal
 
 import pytorchcocotools._mask as _mask
 from pytorchcocotools._maskApi import (
-    BB,
-    RLE,
-    Mask,
-    Masks,
     RleObj,
     RleObjs,
-    RLEs,
 )
 import torch
 from torch import Tensor

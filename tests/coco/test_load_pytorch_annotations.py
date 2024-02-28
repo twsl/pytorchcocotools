@@ -1,4 +1,3 @@
-import numpy as np
 from pycocotools.coco import COCO as COCO
 import pytest
 from pytest_cases import parametrize_with_cases

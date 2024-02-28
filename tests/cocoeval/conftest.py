@@ -1,9 +1,6 @@
 from pycocotools.coco import COCO as COCO
-from pycocotools.cocoeval import COCOeval
-import pytest
 from pytest_cases import fixture
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
-from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
 
 @fixture(scope="session")

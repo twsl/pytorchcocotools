@@ -174,7 +174,7 @@ class COCOeval:
             _toMask(dts, self.cocoDt)
         # set ignore flag
         for gt in gts:
-            gt["ignore"] = gt["ignore"] if "ignore" in gt else 0
+            gt["ignore"] = gt.get("ignore", 0)
             gt["ignore"] = "iscrowd" in gt and gt["iscrowd"]
             if p.iouType == "keypoints":
                 gt["ignore"] = (gt["num_keypoints"] == 0) or gt["ignore"]
@@ -335,20 +335,20 @@ class COCOeval:
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
-        T = len(p.iouThrs)
-        G = len(gt)
-        D = len(dt)
-        gtm = torch.zeros((T, G))
-        dtm = torch.zeros((T, D))
+        num_iou_thrs = len(p.iouThrs)  # T
+        num_gt = len(gt)  # G
+        num_dt = len(dt)  # D
+        gtm = torch.zeros((num_iou_thrs, num_gt))
+        dtm = torch.zeros((num_iou_thrs, num_dt))
         gt_ig = torch.Tensor([g["_ignore"] for g in gt])
-        dt_ig = torch.zeros((T, D))
+        dt_ig = torch.zeros((num_iou_thrs, num_dt))
         if len(ious) != 0:
             for tind, t in enumerate(p.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
                     iou = min([t, 1 - torch.eps])
                     m = -1
-                    for gind, g in enumerate(gt):
+                    for gind, g in enumerate(gt):  # noqa: B007
                         # if this gt already matched, and not a crowd, continue
                         if gtm[tind, gind] > 0 and not iscrowd[gind]:
                             continue
@@ -369,7 +369,7 @@ class COCOeval:
                     gtm[tind, m] = d["id"]
         # set unmatched detections outside of area range to ignore
         a = torch.Tensor([d["area"] < aRng[0] or d["area"] > aRng[1] for d in dt]).reshape((1, len(dt)))
-        dt_ig = torch.logical_or(dt_ig, torch.logical_and(dtm == 0, torch.repeat(a, T, 0)))
+        dt_ig = torch.logical_or(dt_ig, torch.logical_and(dtm == 0, torch.repeat(a, num_iou_thrs, 0)))
         # store results for given image and category
         return {
             "image_id": imgId,
@@ -399,49 +399,51 @@ class COCOeval:
         if p is None:
             p = self.params
         p.catIds = p.catIds if p.useCats == 1 else [-1]
-        T = len(p.iouThrs)
-        R = len(p.recThrs)
-        K = len(p.catIds) if p.useCats else 1
-        A = len(p.areaRng)
-        M = len(p.maxDets)
-        precision = -torch.ones((T, R, K, A, M))  # -1 for the precision of absent categories
-        recall = -torch.ones((T, K, A, M))
-        scores = -torch.ones((T, R, K, A, M))
+        num_iou_thrs = len(p.iouThrs)  # T
+        num_rec_thrs = len(p.recThrs)  # R
+        num_cat_ids = len(p.catIds) if p.useCats else 1  # K
+        num_area_rng = len(p.areaRng)  # A
+        num_max_dets = len(p.maxDets)  # M
+        precision = -torch.ones(
+            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets)
+        )  # -1 for the precision of absent categories
+        recall = -torch.ones((num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets))
+        scores = -torch.ones((num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets))
 
         # create dictionary for future indexing
         _pe = self._paramsEval
         cat_ids = _pe.catIds if _pe.useCats else [-1]
-        setK = set(cat_ids)
-        setA = set(map(tuple, _pe.areaRng))
-        setM = set(_pe.maxDets)
-        setI = set(_pe.imgIds)
+        set_k = set(cat_ids)
+        set_a = set(map(tuple, _pe.areaRng))
+        set_m = set(_pe.maxDets)
+        set_i = set(_pe.imgIds)
         # get inds to evaluate
-        k_list = [n for n, k in enumerate(p.catIds) if k in setK]
-        m_list = [m for n, m in enumerate(p.maxDets) if m in setM]
-        a_list = [n for n, a in enumerate(tuple(x) for x in p.areaRng) if a in setA]
-        i_list = [n for n, i in enumerate(p.imgIds) if i in setI]
-        I0 = len(_pe.imgIds)
-        A0 = len(_pe.areaRng)
+        k_list = [n for n, k in enumerate(p.catIds) if k in set_k]
+        m_list = [m for n, m in enumerate(p.maxDets) if m in set_m]
+        a_list = [n for n, a in enumerate(tuple(x) for x in p.areaRng) if a in set_a]
+        i_list = [n for n, i in enumerate(p.imgIds) if i in set_i]
+        i_0 = len(_pe.imgIds)
+        a_0 = len(_pe.areaRng)
         # retrieve E at each category, area range, and max number of detections
         for k, k0 in enumerate(k_list):
-            Nk = k0 * A0 * I0
+            num_k = k0 * a_0 * i_0
             for a, a0 in enumerate(a_list):
-                Na = a0 * I0
-                for m, maxDet in enumerate(m_list):
-                    E = [self.eval_imgs[Nk + Na + i] for i in i_list]
-                    E = [e for e in E if e is not None]
-                    if len(E) == 0:
+                num_a = a0 * i_0
+                for m, max_det in enumerate(m_list):
+                    e = [self.eval_imgs[num_k + num_a + i] for i in i_list]
+                    e = [e for e in e if e is not None]
+                    if len(e) == 0:
                         continue
-                    dt_scores = torch.concatenate([e["dtScores"][0:maxDet] for e in E])
+                    dt_scores = torch.concatenate([e["dtScores"][0:max_det] for e in e])
 
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
                     inds = torch.argsort(-dt_scores, kind="mergesort")
                     dt_scores_sorted = dt_scores[inds]
 
-                    dt_matches = torch.concatenate([e["dtMatches"][:, 0:maxDet] for e in E], axis=1)[:, inds]
-                    dt_ig = torch.concatenate([e["dtIgnore"][:, 0:maxDet] for e in E], axis=1)[:, inds]
-                    gt_ig = torch.concatenate([e["gtIgnore"] for e in E])
+                    dt_matches = torch.concatenate([e["dtMatches"][:, 0:max_det] for e in e], axis=1)[:, inds]
+                    dt_ig = torch.concatenate([e["dtIgnore"][:, 0:max_det] for e in e], axis=1)[:, inds]
+                    gt_ig = torch.concatenate([e["gtIgnore"] for e in e])
                     npig = torch.count_nonzero(gt_ig == 0)
                     if npig == 0:
                         continue
@@ -456,8 +458,8 @@ class COCOeval:
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp + tp + torch.spacing(1))
-                        q = torch.zeros((R,))
-                        ss = torch.zeros((R,))
+                        q = torch.zeros((num_rec_thrs,))
+                        ss = torch.zeros((num_rec_thrs,))
 
                         if nd:
                             recall[t, k, a, m] = rc[-1]
@@ -484,7 +486,7 @@ class COCOeval:
                         scores[t, :, k, a, m] = torch.Tensor(ss)
         self.eval = {
             "params": p,
-            "counts": [T, R, K, A, M],
+            "counts": [num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
             "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "precision": precision,
             "recall": recall,

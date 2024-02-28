@@ -1,7 +1,6 @@
-import numpy as np
 from pycocotools.coco import COCO as COCO
 import pytest
-from pytest_cases import case, fixture, parametrize, parametrize_with_cases
+from pytest_cases import parametrize_with_cases
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 

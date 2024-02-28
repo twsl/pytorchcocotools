@@ -37,10 +37,8 @@ import copy
 import itertools
 import json
 from logging import Logger
-import os
 from pathlib import Path
 import time
-from typing import Union
 from urllib.request import urlretrieve
 
 from matplotlib.collections import PatchCollection
@@ -428,15 +426,15 @@ class COCO:
             self.logger.info("Please specify target directory")
             return -1
         imgs = self.imgs.values() if len(imgIds) == 0 else self.loadImgs(imgIds)
-        N = len(imgs)
+        num_imgs = len(imgs)  # N
         if not Path.exists(tarDir):
             Path.mkdir(tarDir, parents=True)
         for i, img in enumerate(imgs):
             tic = time.time()
-            fname = os.path.join(tarDir, img["file_name"])
+            fname = Path(tarDir) / img["file_name"]
             if not Path.exists(fname):
-                urlretrieve(img["coco_url"], fname)
-            self.logger.info(f"downloaded {i}/{N} images (t={time.time() - tic:0.1f}s)")
+                urlretrieve(img["coco_url"], fname)  # noqa: S310
+            self.logger.info(f"downloaded {i}/{num_imgs} images (t={time.time() - tic:0.1f}s)")
 
     def loadPyTorchAnnotations(self, data: torch.Tensor) -> list[list[dict]]:  # noqa: N802
         """Convert result data from a torch Tensor [Nx7] where each row contains {imageID,x1,y1,w,h,score,class}.

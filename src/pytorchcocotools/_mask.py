@@ -2,7 +2,6 @@ from pytorchcocotools._maskApi import (
     BB,
     RLE,
     Mask,
-    Masks,
     RleObj,
     RleObjs,
     RLEs,
@@ -33,9 +32,9 @@ def _toString(Rs: RLEs) -> RleObjs:  # noqa: N802, N803
     """
     py_string: bytes = None
     objs = []
-    for R in Rs:
-        py_string = rleToString(R)
-        objs.append({"size": [R.h, R.w], "counts": py_string})
+    for r in Rs:
+        py_string = rleToString(r)
+        objs.append({"size": [r.h, r.w], "counts": py_string})
     return objs
 
 
@@ -82,9 +81,9 @@ def decode(rleObjs: RleObjs) -> Mask:  # noqa: N803
     Returns:
         _description_
     """
-    Rs = _frString(rleObjs)
-    h, w, n = Rs[0].h, Rs[0].w, Rs.n
-    masks = rleDecode(Rs, n)
+    rs = _frString(rleObjs)
+    _h, _w, n = rs[0].h, rs[0].w, rs.n
+    masks = rleDecode(rs, n)
     return masks
 
 
@@ -98,15 +97,15 @@ def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
     Returns:
         _description_
     """
-    Rs = _frString(rleObjs)
-    R: RLEs = rleMerge(Rs, Rs.n, intersect)
-    obj = _toString(R)[0]
+    rs = _frString(rleObjs)
+    r = rleMerge(rs, rs.n, intersect)
+    obj = _toString(r)[0]
     return obj
 
 
 def area(rleObjs: RleObjs) -> list[int]:  # noqa: N803
-    Rs: RLEs = _frString(rleObjs)
-    a = rleArea(Rs, Rs.n)
+    rs = _frString(rleObjs)
+    a = rleArea(rs, rs.n)
     return a
 
 
@@ -172,25 +171,25 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
 
 
 def toBbox(rleObjs: RleObjs) -> BB:  # noqa: N803, N802
-    Rs: RLEs = _frString(rleObjs)
-    n = Rs.n
-    bb = rleToBbox(Rs, n)
+    rs = _frString(rleObjs)
+    n = rs.n
+    bb = rleToBbox(rs, n)
     return bb
 
 
 def frBbox(bb: BB, h: int, w: int) -> RleObjs:  # noqa: N802
     n = bb.shape[0]
-    Rs: RLEs = rleFrBbox(bb, h, w, n)
-    objs = _toString(Rs)
+    rs = rleFrBbox(bb, h, w, n)
+    objs = _toString(rs)
     return objs
 
 
 def frPoly(poly: list[list[float]] | Tensor, h: int, w: int) -> RleObjs:  # noqa: N802
-    Rs = []  # RLEs(n)
+    rs = []  # RLEs(n)
     for p in poly:
         np_poly = p.to(dtype=torch.float64) if isinstance(p, Tensor) else torch.tensor(p, dtype=torch.float64)
-        Rs.append(rleFrPoly(np_poly, int(len(p) / 2), h, w))
-    objs = _toString(RLEs(Rs))
+        rs.append(rleFrPoly(np_poly, int(len(p) / 2), h, w))
+    objs = _toString(RLEs(rs))
     return RleObjs(objs)
 
 
@@ -199,8 +198,8 @@ def frUncompressedRLE(ucRles: list[dict], h: int, w: int) -> RleObjs:  # noqa: N
     objs = []
     for i in range(n):
         cnts = torch.tensor(ucRles[i]["counts"], dtype=torch.int)
-        R = RLE(ucRles[i]["size"][0], ucRles[i]["size"][1], len(cnts), cnts)
-        objs.append(_toString(RLEs([R]))[0])
+        r = RLE(ucRles[i]["size"][0], ucRles[i]["size"][1], len(cnts), cnts)
+        objs.append(_toString(RLEs([r]))[0])
     return RleObjs(objs)
 
 

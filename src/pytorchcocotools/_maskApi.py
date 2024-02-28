@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import math
 
 import torch
 from torch import Tensor
@@ -79,12 +78,12 @@ def rleEncode(mask: Mask, h: int, w: int, n: int) -> RLEs:  # noqa: N802
     Returns:
         _description_
     """
-    H, W, N = mask.shape
+    h, w, n = mask.shape
     mask_p = mask.permute(2, 1, 0)
     flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
-    start_sentinel = torch.zeros((1, N), dtype=flattened_mask.dtype, device=mask.device)
-    end = torch.ones((1, N), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0]
-    sentinel = torch.ones((1, N), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
+    start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask.device)
+    torch.ones((1, n), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0]
+    sentinel = torch.ones((1, n), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
     flat_tensor_with_sentinels = torch.cat([start_sentinel, flattened_mask, sentinel])
 
     transitions = flat_tensor_with_sentinels[:-1, :] != flat_tensor_with_sentinels[1:, :]
@@ -156,7 +155,7 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
     if n == 1:
         return Rs[0]
 
-    device = Rs[0].cnts.device
+    # Rs[0].cnts.device
     h, w = Rs[0].h, Rs[0].w
 
     # se_inds = torch.cat([torch.cumsum(r.cnts[:-1], 0).reshape(-1, 2) for r in Rs])
@@ -413,7 +412,7 @@ def rleToBbox(R: RLEs, n: int) -> BB:  # noqa: N802, N803
     for i in range(n):
         if R[i].m == 0:
             continue
-        h, w, m = R[i].h, R[i].w, R[i].m
+        h, _w, m = R[i].h, R[i].w, R[i].m
         m = (m // 2) * 2
 
         cc = torch.cumsum(R[i].cnts[:m], dim=0)
@@ -460,8 +459,8 @@ def rleFrBbox(bb: BB, h: int, w: int, n: int) -> RLEs:  # noqa: N802
     xy = torch.stack([xs, ys, xs, ye, xe, ye, xe, ys], dim=1).view(n, 8)
 
     # Apply rleFrPoly (assumed to be vectorized) to each bounding box
-    R = [rleFrPoly(xy[i], 4, h, w) for i in range(n)]
-    return R
+    r = [rleFrPoly(xy[i], 4, h, w) for i in range(n)]
+    return r
 
 
 def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
@@ -566,8 +565,8 @@ def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
     b = b[:m]
 
     # Initialize RLE with the counts
-    R = RLE(h=h, w=w, m=len(b), cnts=b)
-    return R
+    r = RLE(h=h, w=w, m=len(b), cnts=b)
+    return r
 
 
 def rleToString(R: RLE) -> bytes:  # noqa: N803, N802

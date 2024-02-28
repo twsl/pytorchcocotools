@@ -1,10 +1,9 @@
 import numpy as np
 import pycocotools.mask as mask
 import pytest
-from pytest_cases import case, parametrize_with_cases
+from pytest_cases import parametrize_with_cases
 from pytorchcocotools._maskApi import (
     RleObj,
-    RleObjs,
 )
 import pytorchcocotools.mask as tmask
 import torch
@@ -201,8 +200,8 @@ def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
     # compare the results
     from pytorchcocotools._mask import _frString
 
-    rle = _frString([merged_np])
-    rle = _frString([merged_pt])
+    _frString([merged_np])
+    _frString([merged_pt])
     assert merged_np == merged_pt
     assert merged_pt["counts"] == merged_np["counts"]
     assert merged_pt["size"] == merged_np["size"]

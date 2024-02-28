@@ -1,9 +1,7 @@
-import numpy as np
 from pycocotools.coco import COCO as COCO
 import pytest
 from pytest_cases import parametrize_with_cases
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811  # noqa: N811  # noqa: N811
-import torch
 
 
 class GetCatIdsCases:

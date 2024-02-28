@@ -1,5 +1,4 @@
 from pycocotools.coco import COCO as COCO
-import pytest
 from pytest_cases import fixture
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
