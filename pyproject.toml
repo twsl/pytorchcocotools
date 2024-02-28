@@ -26,7 +26,8 @@ keywords = [
 [tool.poetry.dependencies]
 python = "^3.10"
 torch = "^2.2.0"
-torchvision = "^0.17.1"
+torchvision = "^0.17.0"
+litdata = "^0.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -51,6 +52,13 @@ optional = true
 [tool.poetry.group.debug.dependencies]
 ipdb = "^0.13.9"
 line_profiler = "^4.0.3"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "--benchmark-disable"
+testpaths = [
+    "tests",
+]
 
 [tool.coverage.run]
 branch = true
