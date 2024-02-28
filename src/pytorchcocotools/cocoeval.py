@@ -1,13 +1,78 @@
 from collections import defaultdict
 import copy
 import datetime
+from logging import Logger
 import time
+from typing import Literal
 
+from pytorchcocotools import mask, utils
 from pytorchcocotools.coco import COCO
 import torch
 from torch import Tensor
 
-from . import mask as maskUtils
+
+class Params:
+    """Params for coco evaluation api."""
+
+    def setDetParams(self):  # noqa: N802
+        self.imgIds = []
+        self.catIds = []
+        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
+        self.iouThrs = torch.linspace(0.5, 0.95, int(round((0.95 - 0.5) / 0.05)) + 1)
+        self.recThrs = torch.linspace(0.0, 1.00, int(round((1.00 - 0.0) / 0.01)) + 1)
+        self.maxDets = [1, 10, 100]
+        self.areaRng = [
+            [0**2, 1e5**2],
+            [0**2, 32**2],
+            [32**2, 96**2],
+            [96**2, 1e5**2],
+        ]
+        self.areaRngLbl = ["all", "small", "medium", "large"]
+        self.useCats = 1
+
+    def setKpParams(self):  # noqa: N802
+        self.imgIds = []
+        self.catIds = []
+        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
+        self.iouThrs = torch.linspace(0.5, 0.95, int(round((0.95 - 0.5) / 0.05)) + 1)
+        self.recThrs = torch.linspace(0.0, 1.00, int(round((1.00 - 0.0) / 0.01)) + 1)
+        self.maxDets = [20]
+        self.areaRng = [[0**2, 1e5**2], [32**2, 96**2], [96**2, 1e5**2]]
+        self.areaRngLbl = ["all", "medium", "large"]
+        self.useCats = 1
+        self.kpt_oks_sigmas = (
+            torch.Tensor(
+                [
+                    0.26,
+                    0.25,
+                    0.25,
+                    0.35,
+                    0.35,
+                    0.79,
+                    0.79,
+                    0.72,
+                    0.72,
+                    0.62,
+                    0.62,
+                    1.07,
+                    1.07,
+                    0.87,
+                    0.87,
+                    0.89,
+                    0.89,
+                ]
+            )
+            / 10.0
+        )
+
+    def __init__(self, iouType: Literal["segm", "bbox", "keypoints"] = "segm"):  # noqa: N803
+        if iouType == "segm" or iouType == "bbox":
+            self.setDetParams()
+        elif iouType == "keypoints":
+            self.setKpParams()
+        else:
+            raise Exception("iouType not supported")  # noqa: TRY002
+        self.iouType = iouType
 
 
 class COCOeval:
@@ -53,28 +118,32 @@ class COCOeval:
     #  precision  - [TxRxKxAxM] precision for every evaluation setting
     #  recall     - [TxKxAxM] max recall for every evaluation setting
     # Note: precision and recall==-1 for settings with no gt objects.
-    #
-    # See also coco, mask, pycocoDemo, pycocoEvalDemo
-    #
-    # Microsoft COCO Toolbox.      version 2.0
-    # Data, paper, and tutorials available at:  http://mscoco.org/
-    # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
-    # Licensed under the Simplified BSD License [see coco/license.txt]
-    def __init__(self, cocoGt: COCO = None, cocoDt: COCO = None, iouType: str = "segm"):
-        """Initialize CocoEval using coco APIs for gt and dt
-        :param cocoGt: coco object with ground truth annotations
-        :param cocoDt: coco object with detection results
-        :return: None.
+
+    logger: Logger
+
+    def __init__(
+        self,
+        cocoGt: COCO = None,  # noqa: N803
+        cocoDt: COCO = None,  # noqa: N803
+        iouType: Literal["segm", "bbox", "keypoints"] = "segm",  # noqa: N803
+    ):
+        """Initialize CocoEval using coco APIs for gt and dt.
+
+        Args:
+            cocoGt: COCO object with ground truth annotations. Defaults to None.
+            cocoDt: COCO object with detection results. Defaults to None.
+            iouType: _description_. Defaults to "segm".
         """
+        self.logger = utils.get_logger(__name__)
         if not iouType:
-            print("iouType not specified. use default iouType segm")
+            self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt  # ground truth COCO API
         self.cocoDt = cocoDt  # detections COCO API
-        self.evalImgs = defaultdict(list)  # per-image per-category evaluation results [KxAxI] elements
+        self.eval_imgs = defaultdict(list)  # per-image per-category evaluation results [KxAxI] elements
         self.eval = {}  # accumulated evaluation results
         self._gts = defaultdict(list)  # gt for evaluation
         self._dts = defaultdict(list)  # dt for evaluation
-        self.params = Params(iouType=iouType)  # parameters
+        self.params: Params = Params(iouType=iouType)  # parameters
         self._paramsEval = {}  # parameters for evaluation
         self.stats = []  # result summarization
         self.ious = {}  # ious between all gts and dts
@@ -83,11 +152,9 @@ class COCOeval:
             self.params.catIds = sorted(cocoGt.getCatIds())
 
     def _prepare(self) -> None:
-        """Prepare ._gts and ._dts for evaluation based on params
-        :return: None.
-        """
+        """Prepare ._gts and ._dts for evaluation based on params."""
 
-        def _toMask(anns, coco: COCO):
+        def _toMask(anns, coco: COCO):  # noqa: N802
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
@@ -107,7 +174,7 @@ class COCOeval:
             _toMask(dts, self.cocoDt)
         # set ignore flag
         for gt in gts:
-            gt["ignore"] = gt["ignore"] if "ignore" in gt else 0
+            gt["ignore"] = gt.get("ignore", 0)
             gt["ignore"] = "iscrowd" in gt and gt["iscrowd"]
             if p.iouType == "keypoints":
                 gt["ignore"] = (gt["num_keypoints"] == 0) or gt["ignore"]
@@ -117,21 +184,15 @@ class COCOeval:
             self._gts[gt["image_id"], gt["category_id"]].append(gt)
         for dt in dts:
             self._dts[dt["image_id"], dt["category_id"]].append(dt)
-        self.evalImgs = defaultdict(list)  # per-image per-category evaluation results
+        self.eval_imgs = defaultdict(list)  # per-image per-category evaluation results
         self.eval = {}  # accumulated evaluation results
 
     def evaluate(self) -> None:
-        """Run per image evaluation on given images and store results (a list of dict) in self.evalImgs
-        :return: None.
-        """
+        """Run per image evaluation on given images and store results (a list of dict) in self.evalImgs."""
         tic = time.time()
-        print("Running per image evaluation...")
+        self.logger.info("Running per image evaluation...")
         p = self.params
-        # add backward compatibility if useSegm is specified in params
-        if p.useSegm is not None:
-            p.iouType = "segm" if p.useSegm == 1 else "bbox"
-            print(f"useSegm (deprecated) is not None. Running {p.iouType} evaluation")
-        print(f"Evaluate annotation type *{p.iouType}*")
+        self.logger.info(f"Evaluate annotation type *{p.iouType}*")
         p.imgIds = list(torch.unique(p.imgIds))
         if p.useCats:
             p.catIds = list(torch.unique(p.catIds))
@@ -140,27 +201,27 @@ class COCOeval:
 
         self._prepare()
         # loop through images, area range, max detection number
-        catIds = p.catIds if p.useCats else [-1]
+        cat_ids = p.catIds if p.useCats else [-1]
 
         if p.iouType == "segm" or p.iouType == "bbox":
-            computeIoU = self.computeIoU
+            compute_iou = self.computeIoU
         elif p.iouType == "keypoints":
-            computeIoU = self.computeOks
-        self.ious = {(imgId, catId): computeIoU(imgId, catId) for imgId in p.imgIds for catId in catIds}
+            compute_iou = self.computeOks
+        self.ious = {(imgId, catId): compute_iou(imgId, catId) for imgId in p.imgIds for catId in cat_ids}
 
-        evaluateImg = self.evaluateImg
-        maxDet = p.maxDets[-1]
-        self.evalImgs = [
-            evaluateImg(imgId, catId, areaRng, maxDet)
-            for catId in catIds
+        evaluate_img = self.evaluateImg
+        max_det = p.maxDets[-1]
+        self.eval_imgs = [
+            evaluate_img(imgId, catId, areaRng, max_det)
+            for catId in cat_ids
             for areaRng in p.areaRng
             for imgId in p.imgIds
         ]
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
-        print(f"DONE (t={toc - tic:0.2f}s).")
+        self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
 
-    def computeIoU(self, imgId: int, catId: int) -> Tensor:
+    def computeIoU(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         p = self.params
         if p.useCats:
             gt = self._gts[imgId, catId]
@@ -182,14 +243,14 @@ class COCOeval:
             g = [g["bbox"] for g in gt]
             d = [d["bbox"] for d in dt]
         else:
-            raise Exception("unknown iouType for iou computation")
+            raise Exception("Unknown iouType for iou computation")  # noqa: TRY002
 
         # compute iou between each dt and gt region
         iscrowd = [int(o["iscrowd"]) for o in gt]
-        ious = maskUtils.iou(d, g, iscrowd)
+        ious = mask.iou(d, g, iscrowd)
         return ious
 
-    def computeOks(self, imgId: int, catId: int) -> Tensor:
+    def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         p = self.params
         # dimention here should be Nxm
         gts = self._gts[imgId, catId]
@@ -237,9 +298,17 @@ class COCOeval:
                 ious[i, j] = torch.sum(torch.exp(-e)) / e.shape[0]
         return ious
 
-    def evaluateImg(self, imgId: int, catId: int, aRng: list, maxDet: int) -> dict:
-        """Perform evaluation for single category and image
-        :return: dict (single image results).
+    def evaluateImg(self, imgId: int, catId: int, aRng: list, maxDet: int) -> dict:  # noqa: N803, N802
+        """Perform evaluation for single category and image.
+
+        Args:
+            imgId: _description_
+            catId: _description_
+            aRng: _description_
+            maxDet: _description_
+
+        Returns:
+            _description_
         """
         p = self.params
         if p.useCats:
@@ -266,25 +335,25 @@ class COCOeval:
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
-        T = len(p.iouThrs)
-        G = len(gt)
-        D = len(dt)
-        gtm = torch.zeros((T, G))
-        dtm = torch.zeros((T, D))
-        gtIg = torch.Tensor([g["_ignore"] for g in gt])
-        dtIg = torch.zeros((T, D))
+        num_iou_thrs = len(p.iouThrs)  # T
+        num_gt = len(gt)  # G
+        num_dt = len(dt)  # D
+        gtm = torch.zeros((num_iou_thrs, num_gt))
+        dtm = torch.zeros((num_iou_thrs, num_dt))
+        gt_ig = torch.Tensor([g["_ignore"] for g in gt])
+        dt_ig = torch.zeros((num_iou_thrs, num_dt))
         if len(ious) != 0:
             for tind, t in enumerate(p.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
                     iou = min([t, 1 - torch.eps])
                     m = -1
-                    for gind, g in enumerate(gt):
+                    for gind, g in enumerate(gt):  # noqa: B007
                         # if this gt already matched, and not a crowd, continue
                         if gtm[tind, gind] > 0 and not iscrowd[gind]:
                             continue
                         # if dt matched to reg gt, and on ignore gt, stop
-                        if m > -1 and gtIg[m] == 0 and gtIg[gind] == 1:
+                        if m > -1 and gt_ig[m] == 0 and gt_ig[gind] == 1:
                             break
                         # continue to next gt unless better match made
                         if ious[dind, gind] < iou:
@@ -295,12 +364,12 @@ class COCOeval:
                     # if match made store id of match for both dt and gt
                     if m == -1:
                         continue
-                    dtIg[tind, dind] = gtIg[m]
+                    dt_ig[tind, dind] = gt_ig[m]
                     dtm[tind, dind] = gt[m]["id"]
                     gtm[tind, m] = d["id"]
         # set unmatched detections outside of area range to ignore
         a = torch.Tensor([d["area"] < aRng[0] or d["area"] > aRng[1] for d in dt]).reshape((1, len(dt)))
-        dtIg = torch.logical_or(dtIg, torch.logical_and(dtm == 0, torch.repeat(a, T, 0)))
+        dt_ig = torch.logical_or(dt_ig, torch.logical_and(dtm == 0, torch.repeat(a, num_iou_thrs, 0)))
         # store results for given image and category
         return {
             "image_id": imgId,
@@ -312,82 +381,85 @@ class COCOeval:
             "dtMatches": dtm,
             "gtMatches": gtm,
             "dtScores": [d["score"] for d in dt],
-            "gtIgnore": gtIg,
-            "dtIgnore": dtIg,
+            "gtIgnore": gt_ig,
+            "dtIgnore": dt_ig,
         }
 
     def accumulate(self, p: "Params" = None) -> None:
-        """Accumulate per image evaluation results and store the result in self.eval
-        :param p: input params for evaluation
-        :return: None.
+        """Accumulate per image evaluation results and store the result in self.eval.
+
+        Args:
+            p: Input params for evaluation. Defaults to None.
         """
-        print("Accumulating evaluation results...")
+        self.logger.info("Accumulating evaluation results...")
         tic = time.time()
-        if not self.evalImgs:
-            print("Please run evaluate() first")
+        if not self.eval_imgs:
+            self.logger.info("Please run evaluate() first")
         # allows input customized parameters
         if p is None:
             p = self.params
         p.catIds = p.catIds if p.useCats == 1 else [-1]
-        T = len(p.iouThrs)
-        R = len(p.recThrs)
-        K = len(p.catIds) if p.useCats else 1
-        A = len(p.areaRng)
-        M = len(p.maxDets)
-        precision = -torch.ones((T, R, K, A, M))  # -1 for the precision of absent categories
-        recall = -torch.ones((T, K, A, M))
-        scores = -torch.ones((T, R, K, A, M))
+        num_iou_thrs = len(p.iouThrs)  # T
+        num_rec_thrs = len(p.recThrs)  # R
+        num_cat_ids = len(p.catIds) if p.useCats else 1  # K
+        num_area_rng = len(p.areaRng)  # A
+        num_max_dets = len(p.maxDets)  # M
+        precision = -torch.ones(
+            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets)
+        )  # -1 for the precision of absent categories
+        recall = -torch.ones((num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets))
+        scores = -torch.ones((num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets))
 
         # create dictionary for future indexing
         _pe = self._paramsEval
-        catIds = _pe.catIds if _pe.useCats else [-1]
-        setK = set(catIds)
-        setA = set(map(tuple, _pe.areaRng))
-        setM = set(_pe.maxDets)
-        setI = set(_pe.imgIds)
+        cat_ids = _pe.catIds if _pe.useCats else [-1]
+        set_k = set(cat_ids)
+        set_a = set(map(tuple, _pe.areaRng))
+        set_m = set(_pe.maxDets)
+        set_i = set(_pe.imgIds)
         # get inds to evaluate
-        k_list = [n for n, k in enumerate(p.catIds) if k in setK]
-        m_list = [m for n, m in enumerate(p.maxDets) if m in setM]
-        a_list = [n for n, a in enumerate(tuple(x) for x in p.areaRng) if a in setA]
-        i_list = [n for n, i in enumerate(p.imgIds) if i in setI]
-        I0 = len(_pe.imgIds)
-        A0 = len(_pe.areaRng)
+        k_list = [n for n, k in enumerate(p.catIds) if k in set_k]
+        m_list = [m for n, m in enumerate(p.maxDets) if m in set_m]
+        a_list = [n for n, a in enumerate(tuple(x) for x in p.areaRng) if a in set_a]
+        i_list = [n for n, i in enumerate(p.imgIds) if i in set_i]
+        i_0 = len(_pe.imgIds)
+        a_0 = len(_pe.areaRng)
         # retrieve E at each category, area range, and max number of detections
         for k, k0 in enumerate(k_list):
-            Nk = k0 * A0 * I0
+            num_k = k0 * a_0 * i_0
             for a, a0 in enumerate(a_list):
-                Na = a0 * I0
-                for m, maxDet in enumerate(m_list):
-                    E = [self.evalImgs[Nk + Na + i] for i in i_list]
-                    E = [e for e in E if e is not None]
-                    if len(E) == 0:
+                num_a = a0 * i_0
+                for m, max_det in enumerate(m_list):
+                    e = [self.eval_imgs[num_k + num_a + i] for i in i_list]
+                    e = [e for e in e if e is not None]
+                    if len(e) == 0:
                         continue
-                    dtScores = torch.concatenate([e["dtScores"][0:maxDet] for e in E])
+                    dt_scores = torch.concatenate([e["dtScores"][0:max_det] for e in e])
 
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
-                    inds = torch.argsort(-dtScores, kind="mergesort")
-                    dtScoresSorted = dtScores[inds]
+                    inds = torch.argsort(-dt_scores, kind="mergesort")
+                    dt_scores_sorted = dt_scores[inds]
 
-                    dtm = torch.concatenate([e["dtMatches"][:, 0:maxDet] for e in E], axis=1)[:, inds]
-                    dtIg = torch.concatenate([e["dtIgnore"][:, 0:maxDet] for e in E], axis=1)[:, inds]
-                    gtIg = torch.concatenate([e["gtIgnore"] for e in E])
-                    npig = torch.count_nonzero(gtIg == 0)
+                    dt_matches = torch.concatenate([e["dtMatches"][:, 0:max_det] for e in e], axis=1)[:, inds]
+                    dt_ig = torch.concatenate([e["dtIgnore"][:, 0:max_det] for e in e], axis=1)[:, inds]
+                    gt_ig = torch.concatenate([e["gtIgnore"] for e in e])
+                    npig = torch.count_nonzero(gt_ig == 0)
                     if npig == 0:
                         continue
-                    tps = torch.logical_and(dtm, torch.logical_not(dtIg))
-                    fps = torch.logical_and(torch.logical_not(dtm), torch.logical_not(dtIg))
+                    tps = torch.logical_and(dt_matches, torch.logical_not(dt_ig))
+                    fps = torch.logical_and(torch.logical_not(dt_matches), torch.logical_not(dt_ig))
 
                     tp_sum = torch.cumsum(tps, axis=1).to(dtype=torch.float)
                     fp_sum = torch.cumsum(fps, axis=1).to(dtype=torch.float)
-                    for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
+                    for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum, strict=False)):
                         tp = torch.Tensor(tp)
                         fp = torch.Tensor(fp)
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp + tp + torch.spacing(1))
-                        q = torch.zeros((R,))
-                        ss = torch.zeros((R,))
+                        q = torch.zeros((num_rec_thrs,))
+                        ss = torch.zeros((num_rec_thrs,))
 
                         if nd:
                             recall[t, k, a, m] = rc[-1]
@@ -407,33 +479,35 @@ class COCOeval:
                         try:
                             for ri, pi in enumerate(inds):
                                 q[ri] = pr[pi]
-                                ss[ri] = dtScoresSorted[pi]
-                        except:
+                                ss[ri] = dt_scores_sorted[pi]
+                        except:  # noqa: S110, E722
                             pass
                         precision[t, :, k, a, m] = torch.Tensor(q)
                         scores[t, :, k, a, m] = torch.Tensor(ss)
         self.eval = {
             "params": p,
-            "counts": [T, R, K, A, M],
+            "counts": [num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
             "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "precision": precision,
             "recall": recall,
             "scores": scores,
         }
         toc = time.time()
-        print(f"DONE (t={toc - tic:0.2f}s).")
+        self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
 
-    def summarize(self):
+    def summarize(self) -> None:
         """Compute and display summary metrics for evaluation results.
-        Note this functin can *only* be applied on the default parameter setting.
+
+        Note:
+            This functin can *only* be applied on the default parameter setting.
         """
 
-        def _summarize(ap=1, iouThr=None, areaRng="all", maxDets=100):
+        def _summarize(ap=1, iouThr: float = None, areaRng: str = "all", maxDets: int = 100) -> int | Tensor:  # noqa: N803
             p = self.params
-            iStr = " {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}"
-            titleStr = "Average Precision" if ap == 1 else "Average Recall"
-            typeStr = "(AP)" if ap == 1 else "(AR)"
-            iouStr = f"{p.iouThrs[0]:0.2f}:{p.iouThrs[-1]:0.2f}" if iouThr is None else f"{iouThr:0.2f}"
+            template = " {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}"
+            title = "Average Precision" if ap == 1 else "Average Recall"
+            type_abbrv = "(AP)" if ap == 1 else "(AR)"
+            iou = f"{p.iouThrs[0]:0.2f}:{p.iouThrs[-1]:0.2f}" if iouThr is None else f"{iouThr:0.2f}"
 
             aind = [i for i, aRng in enumerate(p.areaRngLbl) if aRng == areaRng]
             mind = [i for i, mDet in enumerate(p.maxDets) if mDet == maxDets]
@@ -453,10 +527,10 @@ class COCOeval:
                     s = s[t]
                 s = s[:, :, aind, mind]
             mean_s = -1 if len(s[s > -1]) == 0 else torch.mean(s[s > -1])
-            print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
+            self.logger.info(template.format(title, type_abbrv, iou, areaRng, maxDets, mean_s))
             return mean_s
 
-        def _summarizeDets():
+        def _summarizeDets() -> Tensor:  # noqa: N802
             stats = torch.zeros((12,))
             stats[0] = _summarize(1)
             stats[1] = _summarize(1, iouThr=0.5, maxDets=self.params.maxDets[2])
@@ -472,7 +546,7 @@ class COCOeval:
             stats[11] = _summarize(0, areaRng="large", maxDets=self.params.maxDets[2])
             return stats
 
-        def _summarizeKps():
+        def _summarizeKps() -> Tensor:  # noqa: N802
             stats = torch.zeros((10,))
             stats[0] = _summarize(1, maxDets=20)
             stats[1] = _summarize(1, maxDets=20, iouThr=0.5)
@@ -487,79 +561,13 @@ class COCOeval:
             return stats
 
         if not self.eval:
-            raise Exception("Please run accumulate() first")
-        iouType = self.params.iouType
-        if iouType == "segm" or iouType == "bbox":
+            raise Exception("Please run accumulate() first")  # noqa: TRY002
+        iou_type = self.params.iouType
+        if iou_type == "segm" or iou_type == "bbox":
             summarize = _summarizeDets
-        elif iouType == "keypoints":
+        elif iou_type == "keypoints":
             summarize = _summarizeKps
         self.stats = summarize()
 
     def __str__(self):
         self.summarize()
-
-
-class Params:
-    """Params for coco evaluation api."""
-
-    def setDetParams(self):
-        self.imgIds = []
-        self.catIds = []
-        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
-        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
-        self.maxDets = [1, 10, 100]
-        self.areaRng = [
-            [0**2, 1e5**2],
-            [0**2, 32**2],
-            [32**2, 96**2],
-            [96**2, 1e5**2],
-        ]
-        self.areaRngLbl = ["all", "small", "medium", "large"]
-        self.useCats = 1
-
-    def setKpParams(self):
-        self.imgIds = []
-        self.catIds = []
-        # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
-        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
-        self.maxDets = [20]
-        self.areaRng = [[0**2, 1e5**2], [32**2, 96**2], [96**2, 1e5**2]]
-        self.areaRngLbl = ["all", "medium", "large"]
-        self.useCats = 1
-        self.kpt_oks_sigmas = (
-            torch.array(
-                [
-                    0.26,
-                    0.25,
-                    0.25,
-                    0.35,
-                    0.35,
-                    0.79,
-                    0.79,
-                    0.72,
-                    0.72,
-                    0.62,
-                    0.62,
-                    1.07,
-                    1.07,
-                    0.87,
-                    0.87,
-                    0.89,
-                    0.89,
-                ]
-            )
-            / 10.0
-        )
-
-    def __init__(self, iouType="segm"):
-        if iouType == "segm" or iouType == "bbox":
-            self.setDetParams()
-        elif iouType == "keypoints":
-            self.setKpParams()
-        else:
-            raise Exception("iouType not supported")
-        self.iouType = iouType
-        # useSegm is deprecated
-        self.useSegm = None

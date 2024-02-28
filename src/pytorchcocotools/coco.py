@@ -32,80 +32,70 @@
 # Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
 # Help on each functions can be accessed by: "help COCO>function".
 
-# See also COCO>decodeMask,
-# COCO>encodeMask, COCO>getAnnIds, COCO>getCatIds,
-# COCO>getImgIds, COCO>loadAnns, COCO>loadCats,
-# COCO>loadImgs, COCO>annToMask, COCO>showAnns
-
-# Microsoft COCO Toolbox.      version 2.0
-# Data, paper, and tutorials available at:  http://mscoco.org/
-# Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
-# Licensed under the Simplified BSD License [see bsd.txt]
-
 from collections import defaultdict
 import copy
 import itertools
 import json
-import os
+from logging import Logger
+from pathlib import Path
 import time
-from typing import Union
 from urllib.request import urlretrieve
 
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import matplotlib.pyplot as plt
+from pytorchcocotools import mask, utils
 import torch
 from torch import Tensor
 
-from . import mask as maskUtils
 
-
-def _isArrayLike(obj):
+def _isArrayLike(obj):  # noqa: N802
     return hasattr(obj, "__iter__") and hasattr(obj, "__len__")
 
 
 class COCO:
-    def __init__(self, annotation_file: str = None):
+    logger: Logger
+
+    def __init__(self, annotation_file: str = None) -> None:
         """Constructor of Microsoft COCO helper class for reading and visualizing annotations.
-        :param annotation_file (str): location of annotation file
-        :param image_folder (str): location to the folder that hosts images.
-        :return:
+
+        Args:
+            annotation_file: The location of annotation file. Defaults to None.
         """
-        # load dataset
         self.dataset, self.anns, self.cats, self.imgs = {}, {}, {}, {}
         self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
+        self.logger = utils.get_logger(__name__)
         if annotation_file is not None:
-            print("loading annotations into memory...")
+            self.logger.info("loading annotations into memory...")
             tic = time.time()
-            dataset = json.load(open(annotation_file))
-            assert type(dataset) == dict, f"annotation file format {type(dataset)} not supported"
-            print(f"Done (t={time.time() - tic:0.2f}s)")
+            path = Path(annotation_file)
+            with path.open("r") as file:
+                dataset = json.load(file)
+            assert isinstance(dataset, dict), f"annotation file format {type(dataset)} not supported"  # noqa: S101
+            self.logger.info(f"Done (t={time.time() - tic:0.2f}s)")
             self.dataset = dataset
             self.createIndex()
 
-    def createIndex(self) -> None:
-        # create index
-        print("creating index...")
+    def createIndex(self) -> None:  # noqa: N802
+        self.logger.info("creating index...")
         anns, cats, imgs = {}, {}, {}
-        imgToAnns, catToImgs = defaultdict(list), defaultdict(list)
-        if "annotations" in self.dataset:
-            for ann in self.dataset["annotations"]:
-                imgToAnns[ann["image_id"]].append(ann)
-                anns[ann["id"]] = ann
+        imgToAnns = defaultdict(list)  # noqa: N806
+        catToImgs = defaultdict(list)  # noqa: N806
+        for ann in self.dataset.get("annotations", []):
+            imgToAnns[ann["image_id"]].append(ann)
+            anns[ann["id"]] = ann
 
-        if "images" in self.dataset:
-            for img in self.dataset["images"]:
-                imgs[img["id"]] = img
+        for img in self.dataset.get("images", []):
+            imgs[img["id"]] = img
 
-        if "categories" in self.dataset:
-            for cat in self.dataset["categories"]:
-                cats[cat["id"]] = cat
+        for cat in self.dataset.get("categories", []):
+            cats[cat["id"]] = cat
 
         if "annotations" in self.dataset and "categories" in self.dataset:
             for ann in self.dataset["annotations"]:
                 catToImgs[ann["category_id"]].append(ann["image_id"])
 
-        print("index created!")
+        self.logger.info("index created!")
 
         # create class members
         self.anns = anns
@@ -115,28 +105,31 @@ class COCO:
         self.cats = cats
 
     def info(self) -> None:
-        """Print information about the annotation file.
-        :return:
-        """
+        """Print information about the annotation file."""
         for key, value in self.dataset["info"].items():
-            print(f"{key}: {value}")
+            self.logger.info(f"{key}: {value}")
 
-    def getAnnIds(
+    def getAnnIds(  # noqa: N802
         self,
-        imgIds: list[int] = [],
-        catIds: list[int] = [],
-        areaRng: list[float] = [],
+        imgIds: int | list[int] = None,  # noqa: N803
+        catIds: int | list[int] = None,  # noqa: N803
+        areaRng: float | list[float] = None,  # noqa: N803
         iscrowd: bool = None,
     ) -> list[int]:
-        """Get ann ids that satisfy given filter conditions. default skips that filter
-        :param imgIds  (int array)     : get anns for given imgs
-               catIds  (int array)     : get anns for given cats
-               areaRng (float array)   : get anns for given area range (e.g. [0 inf])
-               iscrowd (boolean)       : get anns for given crowd label (False or True)
-        :return: ids (int array)       : integer array of ann ids.
+        """Get ann ids that satisfy given filter conditions. default skips that filter.
+
+        Args:
+            imgIds: Get anns for given imgs.
+            catIds: Get anns for given cats.
+            areaRng: get anns for given area range (e.g. [0 inf]).
+            iscrowd: get anns for given crowd label (False or True).
+
+        Returns:
+            Integer array of ann ids.
         """
-        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
-        catIds = catIds if _isArrayLike(catIds) else [catIds]
+        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []  # noqa: N806
+        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
+        areaRng = areaRng if _isArrayLike(areaRng) else [areaRng] if areaRng else []  # noqa: N806
 
         if len(imgIds) == len(catIds) == len(areaRng) == 0:
             anns = self.dataset["annotations"]
@@ -154,16 +147,26 @@ class COCO:
             else [ann["id"] for ann in anns]
         )
 
-    def getCatIds(self, catNms: list[str] = [], supNms: list[str] = [], catIds: list[int] = []) -> list[int]:
+    def getCatIds(  # noqa: N803, N802
+        self,
+        catNms: str | list[str] = None,  # noqa: N803, N802
+        supNms: str | list[str] = None,  # noqa: N803, N802
+        catIds: int | list[int] = None,  # noqa: N803, N802
+    ) -> list[int]:  # noqa: N803, N802
         """Filtering parameters. default skips that filter.
-        :param catNms (str array)  : get cats for given cat names
-        :param supNms (str array)  : get cats for given supercategory names
-        :param catIds (int array)  : get cats for given cat ids
-        :return: ids (int array)   : integer array of cat ids.
+
+        Args:
+            catNms: Get cats for given cat names.
+            supNms: Get cats for given supercategory names.
+            catIds: Get cats for given cat ids.
+
+        Returns:
+            Integer array of cat ids.
         """
-        catNms = catNms if _isArrayLike(catNms) else [catNms]
-        supNms = supNms if _isArrayLike(supNms) else [supNms]
-        catIds = catIds if _isArrayLike(catIds) else [catIds]
+        catIds = catIds if catIds else []  # noqa: N806
+        catNms = catNms if _isArrayLike(catNms) else [catNms] if catNms else []  # noqa: N806
+        supNms = supNms if _isArrayLike(supNms) else [supNms] if supNms else []  # noqa: N806
+        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
 
         cats = self.dataset["categories"]
         if not len(catNms) == len(supNms) == len(catIds) == 0:
@@ -172,70 +175,97 @@ class COCO:
             cats = [cat for cat in cats if cat["id"] in catIds] if catIds else cats
         return [cat["id"] for cat in cats]
 
-    def getImgIds(self, imgIds: list[int] = [], catIds: list[int] = []) -> list[int]:
+    def getImgIds(self, imgIds: int | list[int] = None, catIds: int | list[int] = None) -> list[int]:  # noqa: N802, N803
         """Get img ids that satisfy given filter conditions.
-        :param imgIds (int array) : get imgs for given ids
-        :param catIds (int array) : get imgs with all given cats
-        :return: ids (int array)  : integer array of img ids.
+
+        Args:
+            imgIds: Get imgs for given ids.
+            catIds: Get imgs with all given cats.
+
+        Returns:
+            Integer array of img ids.
         """
-        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
-        catIds = catIds if _isArrayLike(catIds) else [catIds]
+        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []  # noqa: N806
+        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
 
         if len(imgIds) == len(catIds) == 0:
             ids = self.imgs.keys()
         else:
             ids = set(imgIds)
-            for i, catId in enumerate(catIds):
+            for i, catId in enumerate(catIds):  # noqa: N806
                 if i == 0 and len(ids) == 0:
                     ids = set(self.catToImgs[catId])
                 else:
                     ids &= set(self.catToImgs[catId])
         return list(ids)
 
-    def loadAnns(self, ids: list[int] = []) -> list:
+    def loadAnns(self, ids: int | list[int] = None) -> list:  # noqa: N802
         """Load anns with the specified ids.
-        :param ids (int array)       : integer ids specifying anns
-        :return: anns (object array) : loaded ann objects.
+
+        Args:
+            ids: Integer ids specifying anns.
+
+        Returns:
+            Loaded ann objects.
         """
+        ids = ids if ids else []
         if _isArrayLike(ids):
             return [self.anns[id] for id in ids]
-        elif type(ids) == int:
+        elif isinstance(ids, int):
             return [self.anns[ids]]
 
-    def loadCats(self, ids: list[int] = []) -> list:
+    def loadCats(self, ids: int | list[int] = None) -> list:  # noqa: N802
         """Load cats with the specified ids.
-        :param ids (int array)       : integer ids specifying cats
-        :return: cats (object array) : loaded cat objects.
+
+        Args:
+            ids: Integer ids specifying cats.
+
+        Returns:
+            Loaded cat objects.
         """
+        ids = ids if ids else []
         if _isArrayLike(ids):
             return [self.cats[id] for id in ids]
-        elif type(ids) == int:
+        elif isinstance(ids, int):
             return [self.cats[ids]]
 
-    def loadImgs(self, ids: list[int] = []) -> list:
+    def loadImgs(self, ids: int | list[int] = None) -> list:  # noqa: N802
         """Load anns with the specified ids.
-        :param ids (int array)       : integer ids specifying img
-        :return: imgs (object array) : loaded img objects.
+
+        Args:
+            ids: Integer ids specifying img
+
+        Returns:
+            Loaded img objects.
         """
+        ids = ids if ids else []
         if _isArrayLike(ids):
             return [self.imgs[id] for id in ids]
-        elif type(ids) == int:
+        elif isinstance(ids, int):
             return [self.imgs[ids]]
 
-    def showAnns(self, anns: list, draw_bbox: bool = False) -> None:
+    def showAnns(self, anns: list, draw_bbox: bool = False) -> None:  # noqa: N802
         """Display the specified annotations.
-        :param anns (array of object): annotations to display
-        :return: None.
+
+        Args:
+            anns: Annotations to display.
+            draw_bbox: Whether to draw the bounding boxes or not.
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _description_
         """
         if len(anns) == 0:
             return 0
         if "segmentation" in anns[0] or "keypoints" in anns[0]:
-            datasetType = "instances"
+            dataset_type = "instances"
         elif "caption" in anns[0]:
-            datasetType = "captions"
+            dataset_type = "captions"
         else:
-            raise Exception("datasetType not supported")
-        if datasetType == "instances":
+            raise Exception("datasetType not supported")  # noqa: TRY002
+        if dataset_type == "instances":
             ax = plt.gca()
             ax.set_autoscale_on(False)
             polygons = []
@@ -243,7 +273,7 @@ class COCO:
             for ann in anns:
                 c = (torch.rand((1, 3)) * 0.6 + 0.4).tolist()[0]
                 if "segmentation" in ann:
-                    if type(ann["segmentation"]) == list:
+                    if isinstance(ann["segmentation"], list):
                         # polygon
                         for seg in ann["segmentation"]:
                             poly = torch.Tensor(seg).reshape((int(len(seg) / 2), 2))
@@ -252,11 +282,11 @@ class COCO:
                     else:
                         # mask
                         t = self.imgs[ann["image_id"]]
-                        if type(ann["segmentation"]["counts"]) == list:
-                            rle = maskUtils.frPyObjects([ann["segmentation"]], t["height"], t["width"])
+                        if isinstance(ann["segmentation"]["counts"], list):
+                            rle = mask.frPyObjects([ann["segmentation"]], t["height"], t["width"])
                         else:
                             rle = [ann["segmentation"]]
-                        m = maskUtils.decode(rle)
+                        m = mask.decode(rle)
                         img = torch.ones((m.shape[0], m.shape[1], 3))
                         if ann["iscrowd"] == 1:
                             color_mask = torch.array([2.0, 166.0, 101.0]) / 255
@@ -265,7 +295,7 @@ class COCO:
                         for i in range(3):
                             img[:, :, i] = color_mask[i]
                         ax.imshow(torch.dstack((img, m * 0.5)))
-                if "keypoints" in ann and type(ann["keypoints"]) == list:
+                if "keypoints" in ann and isinstance(ann["keypoints"], list):
                     # turn skeleton into zero-based index
                     sks = torch.Tensor(self.loadCats(ann["category_id"])[0]["skeleton"]) - 1
                     kp = torch.Tensor(ann["keypoints"])
@@ -310,34 +340,40 @@ class COCO:
             ax.add_collection(p)
             p = PatchCollection(polygons, facecolor="none", edgecolors=color, linewidths=2)
             ax.add_collection(p)
-        elif datasetType == "captions":
+        elif dataset_type == "captions":
             for ann in anns:
-                print(ann["caption"])
+                self.logger.info(ann["caption"])
 
-    def loadRes(self, resFile: str | Tensor) -> "COCO":
+    def loadRes(self, resFile: str | Tensor) -> "COCO":  # noqa: N802, N803
         """Load result file and return a result api object.
-        :param   resFile (str)     : file name of result file
-        :return: res (obj)         : result api object.
+
+        Args:
+            resFile: File name of result file.
+
+        Returns:
+            The result api object.
         """
         res = COCO()
         res.dataset["images"] = list(self.dataset["images"])
 
-        print("Loading and preparing results...")
+        self.logger.info("Loading and preparing results...")
         tic = time.time()
-        if type(resFile) == str:
-            anns = json.load(open(resFile))
+        if isinstance(resFile, str):
+            path = Path(resFile)
+            with path.open("r") as file:
+                anns = json.load(file)
         elif type(resFile) == torch.Tensor:
             anns = self.loadPyTorchAnnotations(resFile)
         else:
             anns = resFile
-        assert type(anns) == list, "results in not an array of objects"
-        annsImgIds = [ann["image_id"] for ann in anns]
-        assert set(annsImgIds) == (
-            set(annsImgIds) & set(self.getImgIds())
+        assert isinstance(anns, list), "results in not an array of objects"  # noqa: S101
+        anns_img_ids = [ann["image_id"] for ann in anns]
+        assert set(anns_img_ids) == (  # noqa: S101
+            set(anns_img_ids) & set(self.getImgIds())
         ), "Results do not correspond to current coco set"
         if "caption" in anns[0]:
-            imgIds = {img["id"] for img in res.dataset["images"]} & {ann["image_id"] for ann in anns}
-            res.dataset["images"] = [img for img in res.dataset["images"] if img["id"] in imgIds]
+            img_ids = {img["id"] for img in res.dataset["images"]} & {ann["image_id"] for ann in anns}
+            res.dataset["images"] = [img for img in res.dataset["images"] if img["id"] in img_ids]
             for id, ann in enumerate(anns):
                 ann["id"] = id + 1
         elif "bbox" in anns[0] and anns[0]["bbox"] != []:
@@ -354,9 +390,9 @@ class COCO:
             res.dataset["categories"] = copy.deepcopy(self.dataset["categories"])
             for id, ann in enumerate(anns):
                 # now only support compressed RLE format as segmentation results
-                ann["area"] = maskUtils.area(ann["segmentation"])
+                ann["area"] = mask.area(ann["segmentation"])
                 if "bbox" not in ann:
-                    ann["bbox"] = maskUtils.toBbox(ann["segmentation"])
+                    ann["bbox"] = mask.toBbox(ann["segmentation"])
                 ann["id"] = id + 1
                 ann["iscrowd"] = 0
         elif "keypoints" in anns[0]:
@@ -369,46 +405,55 @@ class COCO:
                 ann["area"] = (x1 - x0) * (y1 - y0)
                 ann["id"] = id + 1
                 ann["bbox"] = [x0, y0, x1 - x0, y1 - y0]
-        print(f"DONE (t={time.time() - tic:0.2f}s)")
+        self.logger.info(f"DONE (t={time.time() - tic:0.2f}s)")
 
         res.dataset["annotations"] = anns
         res.createIndex()
         return res
 
-    def download(self, tarDir: str = None, imgIds: list[int] = []) -> None:
+    def download(self, tarDir: str = None, imgIds: list[int] = None) -> None:  # noqa: N803
         """Download COCO images from mscoco.org server.
-        :param tarDir (str): COCO results directory name
-               imgIds (list): images to be downloaded
-        :return:
+
+        Args:
+            tarDir: COCO results directory name.
+            imgIds: Images to be downloaded.
+
+        Returns:
+            _description_
         """
+        imgIds = imgIds if imgIds else []  # noqa: N806
         if tarDir is None:
-            print("Please specify target directory")
+            self.logger.info("Please specify target directory")
             return -1
         imgs = self.imgs.values() if len(imgIds) == 0 else self.loadImgs(imgIds)
-        N = len(imgs)
-        if not os.path.exists(tarDir):
-            os.makedirs(tarDir)
+        num_imgs = len(imgs)  # N
+        if not Path.exists(tarDir):
+            Path.mkdir(tarDir, parents=True)
         for i, img in enumerate(imgs):
             tic = time.time()
-            fname = os.path.join(tarDir, img["file_name"])
-            if not os.path.exists(fname):
-                urlretrieve(img["coco_url"], fname)
-            print(f"downloaded {i}/{N} images (t={time.time() - tic:0.1f}s)")
+            fname = Path(tarDir) / img["file_name"]
+            if not Path.exists(fname):
+                urlretrieve(img["coco_url"], fname)  # noqa: S310
+            self.logger.info(f"downloaded {i}/{num_imgs} images (t={time.time() - tic:0.1f}s)")
 
-    def loadPyTorchAnnotations(self, data: torch.Tensor) -> list[list[dict]]:
-        """Convert result data from a torch Tensor [Nx7] where each row contains {imageID,x1,y1,w,h,score,class}
-        :param  data (torch.Tensor)
-        :return: annotations (python nested list).
+    def loadPyTorchAnnotations(self, data: torch.Tensor) -> list[list[dict]]:  # noqa: N802
+        """Convert result data from a torch Tensor [Nx7] where each row contains {imageID,x1,y1,w,h,score,class}.
+
+        Args:
+            data: _description_
+
+        Returns:
+            _description_
         """
-        print("Converting ndarray to lists...")
-        assert type(data) == torch.Tensor
-        print(data.shape)
-        assert data.shape[1] == 7
-        N = data.shape[0]
+        self.logger.info("Converting ndarray to lists...")
+        assert type(data) == torch.Tensor  # noqa: S101
+        self.logger.info(data.shape)
+        assert data.shape[1] == 7  # noqa: S101
+        n = data.shape[0]
         ann = []
-        for i in range(N):
+        for i in range(n):
             if i % 1000000 == 0:
-                print(f"{i}/{N}")
+                self.logger.info(f"{i}/{n}")
             ann += [
                 {
                     "image_id": int(data[i, 0]),
@@ -419,27 +464,37 @@ class COCO:
             ]
         return ann
 
-    def annToRLE(self, ann: dict):  # return rle
+    def annToRLE(self, ann: dict) -> dict | list[dict]:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE to RLE.
-        :return: binary mask (numpy 2D array).
+
+        Args:
+            ann: _description_
+
+        Returns:
+            _description_
         """
         t = self.imgs[ann["image_id"]]
         h, w = t["height"], t["width"]
         segm = ann["segmentation"]
-        if type(segm) == list:
+        if isinstance(segm, list):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
-            rles = maskUtils.frPyObjects(segm, h, w)
-            return maskUtils.merge(rles)
-        elif type(segm["counts"]) == list:
+            rles = mask.frPyObjects(segm, h, w)
+            return mask.merge(rles)
+        elif isinstance(segm["counts"], list):
             # uncompressed RLE
-            return maskUtils.frPyObjects(segm, h, w)
+            return mask.frPyObjects(segm, h, w)
         else:
             return segm
 
-    def annToMask(self, ann) -> Tensor:
+    def annToMask(self, ann: dict) -> Tensor:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
-        :return: binary mask (numpy 2D array).
+
+        Args:
+            ann: _description_
+
+        Returns:
+            _description_
         """
         rle = self.annToRLE(ann)
-        return maskUtils.decode(rle)
+        return mask.decode(rle)

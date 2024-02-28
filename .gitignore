@@ -160,3 +160,9 @@ cython_debug/
 #.idea/
 
 .ruff_cache
+
+# C++
+*.out
+
+# pytest-benchmark
+.benchmarks

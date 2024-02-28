@@ -1,307 +1,224 @@
-# distutils: language = c
-# distutils: sources = ../common/maskApi.c
+from pytorchcocotools._maskApi import (
+    BB,
+    RLE,
+    Mask,
+    RleObj,
+    RleObjs,
+    RLEs,
+    bbIou,
+    rleArea,
+    rleDecode,
+    rleEncode,
+    rleFrBbox,
+    rleFrPoly,
+    rleFrString,
+    rleIou,
+    rleMerge,
+    rleToBbox,
+    rleToString,
+)
+import torch
+from torch import Tensor
 
-#**************************************************************************
-# Microsoft COCO Toolbox.      version 2.0
-# Data, paper, and tutorials available at:  http://mscoco.org/
-# Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
-# Licensed under the Simplified BSD License [see coco/license.txt]
-#**************************************************************************
 
-__author__ = "tsungyi"
+def _toString(Rs: RLEs) -> RleObjs:  # noqa: N802, N803
+    """Internal conversion from Python RLEs object to compressed RLE format.
 
-import sys
+    Args:
+        Rs: _description_
 
-PYTHON_VERSION = sys.version_info[0]
-
-# import both Python-level and C-level symbols of Numpy
-# the API uses Numpy to interface C and Python
-import numpy as np
-
-# intialized Numpy. must do.
-torch.import_array()
-
-# import numpy C function
-# we use PyArray_ENABLEFLAGS to make Numpy ndarray responsible to memoery management
-cdef extern from "numpy/arrayobject.h":
-    void PyArray_ENABLEFLAGS(torch.ndarray arr, int flags)
-
-# Declare the prototype of the C functions in MaskApi.h
-cdef extern from "maskApi.h":
-    ctypedef unsigned int uint
-    ctypedef unsigned long siz
-    ctypedef unsigned char byte
-    ctypedef double* BB
-    ctypedef struct RLE:
-        siz h,
-        siz w,
-        siz m,
-        uint* cnts,
-    void rlesInit( RLE **R, siz n )
-    void rleEncode( RLE *R, const byte *M, siz h, siz w, siz n )
-    void rleDecode( const RLE *R, byte *mask, siz n )
-    void rleMerge( const RLE *R, RLE *M, siz n, int intersect )
-    void rleArea( const RLE *R, siz n, uint *a )
-    void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o )
-    void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o )
-    void rleToBbox( const RLE *R, BB bb, siz n )
-    void rleFrBbox( RLE *R, const BB bb, siz h, siz w, siz n )
-    void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w )
-    char* rleToString( const RLE *R )
-    void rleFrString( RLE *R, char *s, siz h, siz w )
-
-# python class to wrap RLE array in C
-# the class handles the memory allocation and deallocation
-class RLEs:
-    RLE *_R
-    siz _n
-
-    def __cinit__(self, siz n =0):
-        rlesInit(&self._R, n)
-        self._n = n
-
-    # free the RLE array here
-    def __dealloc__(self):
-        if self._R is not NULL:
-            for i in range(self._n):
-                free(self._R[i].cnts)
-            free(self._R)
-    def __getattr__(self, key):
-        if key == "n":
-            return self._n
-        raise AttributeError(key)
-
-# python class to wrap Mask array in C
-# the class handles the memory allocation and deallocation
-cdef class Masks:
-    cdef byte *_mask
-    cdef siz _h
-    cdef siz _w
-    cdef siz _n
-
-    def __cinit__(self, h, w, n):
-        self._mask = <byte*> malloc(h*w*n* sizeof(byte))
-        self._h = h
-        self._w = w
-        self._n = n
-    # def __dealloc__(self):
-        # the memory management of _mask has been passed to torch.ndarray
-        # it doesn't need to be freed here
-
-    # called when passing into torch.array() and return an torch.ndarray in column-major order
-    def __array__(self):
-        cdef torch.npy_intp shape[1]
-        shape[0] = <torch.npy_intp> self._h*self._w*self._n
-        # Create a 1D array, and reshape it to fortran/Matlab column-major array
-        ndarray = torch.PyArray_SimpleNewFromData(1, shape, torch.NPY_UINT8, self._mask).reshape((self._h, self._w, self._n), order="F")
-        # The _mask allocated by Masks is now handled by ndarray
-        PyArray_ENABLEFLAGS(ndarray, torch.NPY_OWNDATA)
-        return ndarray
-
-# internal conversion from Python RLEs object to compressed RLE format
-def _toString(RLEs Rs):
-    cdef siz n = Rs.n
-    cdef bytes py_string
-    cdef char* c_string
+    Returns:
+        _description_
+    """
+    py_string: bytes = None
     objs = []
-    for i in range(n):
-        c_string = rleToString( <RLE*> &Rs._R[i] )
-        py_string = c_string
-        objs.append({
-            "size": [Rs._R[i].h, Rs._R[i].w],
-            "counts": py_string
-        })
-        free(c_string)
+    for r in Rs:
+        py_string = rleToString(r)
+        objs.append({"size": [r.h, r.w], "counts": py_string})
     return objs
 
-# internal conversion from compressed RLE format to Python RLEs object
-def _frString(rleObjs):
-    cdef siz n = len(rleObjs)
-    Rs = RLEs(n)
-    cdef bytes py_string
-    cdef char* c_string
-    for i, obj in enumerate(rleObjs):
-        if PYTHON_VERSION == 2:
-            py_string = str(obj["counts"]).encode("utf8")
-        elif PYTHON_VERSION == 3:
-            py_string = str.encode(obj["counts"]) if type(obj["counts"]) == str else obj["counts"]
-        else:
-            raise Exception("Python version must be 2 or 3")
-        c_string = py_string
-        rleFrString( <RLE*> &Rs._R[i], <char*> c_string, obj["size"][0], obj["size"][1] )
-    return Rs
 
-# encode mask to RLEs objects
-# list of RLE string can be generated by RLEs member function
-def encode(torch.ndarray[torch.uint8_t, ndim=3, mode="fortran"] mask):
+def _frString(rleObjs: RleObjs) -> RLEs:  # noqa: N802, N803
+    """Internal conversion from compressed RLE format to Python RLEs object.
+
+    Args:
+        rleObjs: List of rle encoded masks.
+
+    Returns:
+        _description_
+    """
+    n = len(rleObjs)
+    Rs = []  # noqa: N806
+    py_string: bytes = None
+    for obj in rleObjs:
+        py_string = str.encode(obj["counts"]) if isinstance(obj["counts"], str) else obj["counts"]
+        Rs.append(rleFrString(py_string, obj["size"][0], obj["size"][1]))
+    return RLEs(Rs, n)
+
+
+def encode(mask: Mask) -> RleObjs:
+    """Encode mask to RLEs objects, list of RLE string can be generated by RLEs member function.
+
+    Args:
+        mask: _description_
+
+    Returns:
+        _description_
+    """
+    # np.ndarray[np.uint8_t, ndim=3, mode='fortran']
     h, w, n = mask.shape[0], mask.shape[1], mask.shape[2]
-    cdef RLEs Rs = RLEs(n)
-    rleEncode(Rs._R,<byte*>mask.data,h,w,n)
+    Rs = rleEncode(mask, h, w, n)  # noqa: N806
     objs = _toString(Rs)
     return objs
 
-# decode mask from compressed list of RLE string or RLEs object
-def decode(rleObjs):
-    cdef RLEs Rs = _frString(rleObjs)
-    h, w, n = Rs._R[0].h, Rs._R[0].w, Rs._n
-    masks = Masks(h, w, n)
-    rleDecode(<RLE*>Rs._R, masks._mask, n)
-    return torch.array(masks)
 
-def merge(rleObjs, intersect=0):
-    cdef RLEs Rs = _frString(rleObjs)
-    cdef RLEs R = RLEs(1)
-    rleMerge(<RLE*>Rs._R, <RLE*> R._R, <siz> Rs._n, intersect)
-    obj = _toString(R)[0]
+def decode(rleObjs: RleObjs) -> Mask:  # noqa: N803
+    """Decode mask from compressed list of RLE string or RLEs object.
+
+    Args:
+        rleObjs: _description_
+
+    Returns:
+        _description_
+    """
+    rs = _frString(rleObjs)
+    _h, _w, n = rs[0].h, rs[0].w, rs.n
+    masks = rleDecode(rs, n)
+    return masks
+
+
+def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
+    """Merges multiple rles into one rle mask by taking union (OR) or intersection (AND).
+
+    Args:
+        rleObjs: _description_
+        intersect: _description_. Defaults to False.
+
+    Returns:
+        _description_
+    """
+    rs = _frString(rleObjs)
+    r = rleMerge(rs, rs.n, intersect)
+    obj = _toString(r)[0]
     return obj
 
-def area(rleObjs):
-    cdef RLEs Rs = _frString(rleObjs)
-    cdef uint* _a = <uint*> malloc(Rs._n* sizeof(uint))
-    rleArea(Rs._R, Rs._n, _a)
-    cdef torch.npy_intp shape[1]
-    shape[0] = <torch.npy_intp> Rs._n
-    a = torch.array((Rs._n, ), dtype=torch.uint8)
-    a = torch.PyArray_SimpleNewFromData(1, shape, torch.NPY_UINT32, _a)
-    PyArray_ENABLEFLAGS(a, torch.NPY_OWNDATA)
+
+def area(rleObjs: RleObjs) -> list[int]:  # noqa: N803
+    rs = _frString(rleObjs)
+    a = rleArea(rs, rs.n)
     return a
 
+
 # iou computation. support function overload (RLEs-RLEs and bbox-bbox).
-def iou( dt, gt, pyiscrowd ):
+def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd: list[bool | int]) -> Tensor:
     def _preproc(objs):
         if len(objs) == 0:
             return objs
-        if type(objs) == torch.ndarray:
+        if isinstance(objs, Tensor):
             if len(objs.shape) == 1:
-                objs = objs.reshape((objs[0], 1))
+                # TODO: figure out, why pycocotools didn't use the shape, propably just another error?
+                # objs = objs.reshape((objs[0], 1))
+                objs = objs.reshape((objs.shape[0], 1))
             # check if it's Nx4 bbox
             if not len(objs.shape) == 2 or not objs.shape[1] == 4:
-                raise Exception("numpy ndarray input is only for *bounding boxes* and should have Nx4 dimension")
-            objs = objs.astype(torch.double)
-        elif type(objs) == list:
-            # check if list is in box format and convert it to torch.ndarray
-            isbox = torch.all(torch.array([(len(obj)==4) and ((type(obj)==list) or (type(obj)==torch.ndarray)) for obj in objs]))
-            isrle = torch.all(torch.array([type(obj) == dict for obj in objs]))
+                raise Exception("Tensor input is only for *bounding boxes* and should have Nx4 dimension")  # noqa: TRY002
+            objs = objs.to(dtype=torch.double)
+        elif isinstance(objs, list):
+            # check if list is in box format and convert it to np.ndarray
+            isbox = torch.all(Tensor([(len(obj) == 4) and (isinstance(obj, list | Tensor)) for obj in objs]))
+            isrle = torch.all(Tensor([isinstance(obj, dict) for obj in objs]))
             if isbox:
-                objs = torch.array(objs, dtype=torch.double)
+                objs = Tensor(objs, dtype=float)
                 if len(objs.shape) == 1:
-                    objs = objs.reshape((1,objs.shape[0]))
+                    objs = objs.reshape((1, objs.shape[0]))
             elif isrle:
                 objs = _frString(objs)
             else:
-                raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")
+                raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")  # noqa: TRY002
         else:
-            raise Exception("unrecognized type.  The following type: RLEs (rle), torch.ndarray (box), and list (box) are supported.")
+            raise TypeError(
+                "Unrecognized type.  The following type: RLEs (rle), torch.Tensor (box), and list (box) are supported."
+            )
         return objs
-    def _rleIou(RLEs dt, RLEs gt, torch.ndarray[torch.uint8_t, ndim=1] iscrowd, siz m, siz n, torch.ndarray[torch.double_t,  ndim=1] _iou):
-        rleIou( <RLE*> dt._R, <RLE*> gt._R, m, n, <byte*> iscrowd.data, <double*> _iou.data )
-    def _bbIou(torch.ndarray[torch.double_t, ndim=2] dt, torch.ndarray[torch.double_t, ndim=2] gt, torch.ndarray[torch.uint8_t, ndim=1] iscrowd, siz m, siz n, torch.ndarray[torch.double_t, ndim=1] _iou):
-        bbIou( <BB> dt.data, <BB> gt.data, m, n, <byte*> iscrowd.data, <double*>_iou.data )
+
     def _len(obj):
-        cdef siz N = 0
         if type(obj) == RLEs:
-            N = obj.n
-        elif len(obj)==0:
-            pass
-        elif type(obj) == torch.ndarray:
-            N = obj.shape[0]
-        return N
-    # convert iscrowd to numpy array
-    cdef torch.ndarray[torch.uint8_t, ndim=1] iscrowd = torch.array(pyiscrowd, dtype=torch.uint8)
-    # simple type checking
-    cdef siz m, n
+            return obj.n
+        elif len(obj) == 0:
+            return 0
+        elif isinstance(obj, Tensor):
+            return obj.shape[0]
+        return 0
+
+    iscrowd = [bool(c) for c in pyiscrowd]
     dt = _preproc(dt)
     gt = _preproc(gt)
     m = _len(dt)
     n = _len(gt)
+    crowd_length = len(iscrowd)
+    assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101
     if m == 0 or n == 0:
-        return []
+        return []  # TODO: fix return type to be consistent
     if not type(dt) == type(gt):
-        raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.ndarray")
+        raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
+    _iouFun = rleIou if isinstance(dt, RLEs) else bbIou if isinstance(dt, Tensor) else None  # noqa: N806
+    if _iouFun is None:
+        raise Exception("input data type not allowed.")  # noqa: TRY002
 
-    # define local variables
-    cdef double* _iou = <double*> 0
-    cdef torch.npy_intp shape[1]
-    # check type and assign iou function
-    if type(dt) == RLEs:
-        _iouFun = _rleIou
-    elif type(dt) == torch.ndarray:
-        _iouFun = _bbIou
-    else:
-        raise Exception("input data type not allowed.")
-    _iou = <double*> malloc(m*n* sizeof(double))
-    iou = torch.zeros((m*n, ), dtype=torch.double)
-    shape[0] = <torch.npy_intp> m*n
-    iou = torch.PyArray_SimpleNewFromData(1, shape, torch.NPY_DOUBLE, _iou)
-    PyArray_ENABLEFLAGS(iou, torch.NPY_OWNDATA)
-    _iouFun(dt, gt, iscrowd, m, n, iou)
-    return iou.reshape((m,n), order="F")
+    iou = _iouFun(dt, gt, m, n, iscrowd)
+    # return iou.reshape((m, n), order="F")
+    return iou
 
-def toBbox( rleObjs ):
-    cdef RLEs Rs = _frString(rleObjs)
-    cdef siz n = Rs.n
-    cdef BB _bb = <BB> malloc(4*n* sizeof(double))
-    rleToBbox( <const RLE*> Rs._R, _bb, n )
-    cdef torch.npy_intp shape[1]
-    shape[0] = <torch.npy_intp> 4*n
-    bb = torch.array((1,4*n), dtype=torch.double)
-    bb = torch.PyArray_SimpleNewFromData(1, shape, torch.NPY_DOUBLE, _bb).reshape((n, 4))
-    PyArray_ENABLEFLAGS(bb, torch.NPY_OWNDATA)
+
+def toBbox(rleObjs: RleObjs) -> BB:  # noqa: N803, N802
+    rs = _frString(rleObjs)
+    n = rs.n
+    bb = rleToBbox(rs, n)
     return bb
 
-def frBbox(torch.ndarray[torch.double_t, ndim=2] bb, siz h, siz w ):
-    cdef siz n = bb.shape[0]
-    Rs = RLEs(n)
-    rleFrBbox( <RLE*> Rs._R, <const BB> bb.data, h, w, n )
-    objs = _toString(Rs)
+
+def frBbox(bb: BB, h: int, w: int) -> RleObjs:  # noqa: N802
+    n = bb.shape[0]
+    rs = rleFrBbox(bb, h, w, n)
+    objs = _toString(rs)
     return objs
 
-def frPoly( poly, siz h, siz w ):
-    cdef torch.ndarray[torch.double_t, ndim=1] np_poly
-    n = len(poly)
-    Rs = RLEs(n)
-    for i, p in enumerate(poly):
-        np_poly = torch.array(p, dtype=torch.double, order="F")
-        rleFrPoly( <RLE*>&Rs._R[i], <const double*> np_poly.data, int(len(p)/2), h, w )
-    objs = _toString(Rs)
-    return objs
 
-def frUncompressedRLE(ucRles, siz h, siz w):
-    cdef torch.ndarray[torch.uint32_t, ndim=1] cnts
-    cdef RLE R
-    cdef uint *data
+def frPoly(poly: list[list[float]] | Tensor, h: int, w: int) -> RleObjs:  # noqa: N802
+    rs = []  # RLEs(n)
+    for p in poly:
+        np_poly = p.to(dtype=torch.float64) if isinstance(p, Tensor) else torch.tensor(p, dtype=torch.float64)
+        rs.append(rleFrPoly(np_poly, int(len(p) / 2), h, w))
+    objs = _toString(RLEs(rs))
+    return RleObjs(objs)
+
+
+def frUncompressedRLE(ucRles: list[dict], h: int, w: int) -> RleObjs:  # noqa: N803, N802
     n = len(ucRles)
     objs = []
     for i in range(n):
-        Rs = RLEs(1)
-        cnts = torch.array(ucRles[i]["counts"], dtype=torch.uint32)
-        # time for malloc can be saved here but it's fine
-        data = <uint*> malloc(len(cnts)* sizeof(uint))
-        for j in range(len(cnts)):
-            data[j] = <uint> cnts[j]
-        R = RLE(ucRles[i]["size"][0], ucRles[i]["size"][1], len(cnts), <uint*> data)
-        Rs._R[0] = R
-        objs.append(_toString(Rs)[0])
-    return objs
+        cnts = torch.tensor(ucRles[i]["counts"], dtype=torch.int)
+        r = RLE(ucRles[i]["size"][0], ucRles[i]["size"][1], len(cnts), cnts)
+        objs.append(_toString(RLEs([r]))[0])
+    return RleObjs(objs)
 
-def frPyObjects(pyobj, h, w):
+
+def frPyObjects(pyobj: Tensor | list[list[int]] | list[dict] | dict, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
     # encode rle from a list of python objects
-    if type(pyobj) == torch.ndarray:
-        objs = frBbox(pyobj, h, w)
-    elif type(pyobj) == list and len(pyobj[0]) == 4:
-        objs = frBbox(pyobj, h, w)
-    elif type(pyobj) == list and len(pyobj[0]) > 4:
-        objs = frPoly(pyobj, h, w)
-    elif type(pyobj) == list and type(pyobj[0]) == dict \
-        and "counts" in pyobj[0] and "size" in pyobj[0]:
-        objs = frUncompressedRLE(pyobj, h, w)
+    if isinstance(pyobj, Tensor):
+        return frBbox(pyobj, h, w)
+    elif isinstance(pyobj, list) and len(pyobj[0]) == 4:  # not working in pycocotools
+        return frBbox(Tensor(pyobj), h, w)
+    elif isinstance(pyobj, list) and len(pyobj[0]) > 4:
+        return frPoly(pyobj, h, w)
+    elif isinstance(pyobj, list) and isinstance(pyobj[0], dict) and "counts" in pyobj[0] and "size" in pyobj[0]:
+        return frUncompressedRLE(pyobj, h, w)
     # encode rle from single python object
-    elif type(pyobj) == list and len(pyobj) == 4:
-        objs = frBbox([pyobj], h, w)[0]
-    elif type(pyobj) == list and len(pyobj) > 4:
-        objs = frPoly([pyobj], h, w)[0]
-    elif type(pyobj) == dict and "counts" in pyobj and "size" in pyobj:
-        objs = frUncompressedRLE([pyobj], h, w)[0]
+    elif isinstance(pyobj, list) and len(pyobj) == 4:  # not working in pycocotools
+        return frBbox(Tensor([pyobj]), h, w)[0]
+    elif isinstance(pyobj, list) and len(pyobj) > 4:
+        return frPoly([pyobj], h, w)[0]
+    elif isinstance(pyobj, dict) and "counts" in pyobj and "size" in pyobj:
+        return frUncompressedRLE([pyobj], h, w)[0]
     else:
-        raise Exception("input type is not supported.")
-    return objs
+        raise Exception("input type is not supported.")  # noqa: TRY002
