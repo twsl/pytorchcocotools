@@ -18,8 +18,8 @@ class Params:
         self.imgIds = []
         self.catIds = []
         # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
-        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
+        self.iouThrs = torch.linspace(0.5, 0.95, int(round((0.95 - 0.5) / 0.05)) + 1)
+        self.recThrs = torch.linspace(0.0, 1.00, int(round((1.00 - 0.0) / 0.01)) + 1)
         self.maxDets = [1, 10, 100]
         self.areaRng = [
             [0**2, 1e5**2],
@@ -34,14 +34,14 @@ class Params:
         self.imgIds = []
         self.catIds = []
         # torch.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = torch.linspace(0.5, 0.95, int(torch.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
-        self.recThrs = torch.linspace(0.0, 1.00, int(torch.round((1.00 - 0.0) / 0.01)) + 1, endpoint=True)
+        self.iouThrs = torch.linspace(0.5, 0.95, int(round((0.95 - 0.5) / 0.05)) + 1)
+        self.recThrs = torch.linspace(0.0, 1.00, int(round((1.00 - 0.0) / 0.01)) + 1)
         self.maxDets = [20]
         self.areaRng = [[0**2, 1e5**2], [32**2, 96**2], [96**2, 1e5**2]]
         self.areaRngLbl = ["all", "medium", "large"]
         self.useCats = 1
         self.kpt_oks_sigmas = (
-            torch.array(
+            torch.Tensor(
                 [
                     0.26,
                     0.25,
