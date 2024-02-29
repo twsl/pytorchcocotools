@@ -2,9 +2,7 @@ import numpy as np
 import pycocotools.mask as mask
 import pytest
 from pytest_cases import parametrize_with_cases
-from pytorchcocotools._maskApi import (
-    RleObjs,
-)
+from pytorchcocotools._entities import RleObjs
 import pytorchcocotools.mask as tmask
 import torch
 from torch import Tensor

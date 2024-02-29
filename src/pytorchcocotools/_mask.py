@@ -1,10 +1,12 @@
-from pytorchcocotools._maskApi import (
+from pytorchcocotools._entities import (
     BB,
     RLE,
     Mask,
     RleObj,
     RleObjs,
     RLEs,
+)
+from pytorchcocotools._maskApi import (
     bbIou,
     rleArea,
     rleDecode,

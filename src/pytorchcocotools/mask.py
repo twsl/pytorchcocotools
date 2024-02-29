@@ -45,11 +45,8 @@
 
 from typing import Literal
 
+from pytorchcocotools._entities import RleObj, RleObjs
 import pytorchcocotools._mask as _mask
-from pytorchcocotools._maskApi import (
-    RleObj,
-    RleObjs,
-)
 import torch
 from torch import Tensor
 
