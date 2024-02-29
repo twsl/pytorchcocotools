@@ -31,15 +31,31 @@ def dataset_gt() -> dict:
                 "num_keypoints": 5,
                 "segmentation": [[10, 10, 30, 10, 30, 30, 10, 30]],
             },
+            {
+                "id": 3,
+                "image_id": 2,
+                "category_id": 2,
+                "bbox": [5, 5, 15, 15],
+                "area": 100,
+                "iscrowd": 0,
+                "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 25, 15, 30, 35, 10, 30]],
+            },
         ],
         "images": [
             {
                 "id": 1,
                 "height": 50,
                 "width": 100,
-            }
+            },
+            {
+                "id": 2,
+                "height": 50,
+                "width": 100,
+            },
         ],
-        "categories": [{"id": 1}, {"id": 2}],
+        "categories": [{"id": 1}, {"id": 2}, {"id": 3}],
     }
 
 
@@ -71,15 +87,44 @@ def dataset_dt() -> dict:
                 "segmentation": [[10, 10, 25, 10, 30, 30, 10, 30]],
                 "score": 0.8,
             },
+            {
+                "id": 3,
+                "image_id": 2,
+                "category_id": 2,
+                "bbox": [5, 5, 12, 12],
+                "area": 100,
+                "iscrowd": 0,
+                "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 25, 12, 30, 33, 10, 30]],
+                "score": 0.8,
+            },
+            {
+                "id": 4,
+                "image_id": 2,
+                "category_id": 2,
+                "bbox": [5, 5, 20, 15],
+                "area": 100,
+                "iscrowd": 0,
+                "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 25, 18, 30, 38, 10, 30]],
+                "score": 0.7,
+            },
         ],
         "images": [
             {
                 "id": 1,
                 "height": 50,
                 "width": 100,
-            }
+            },
+            {
+                "id": 2,
+                "height": 50,
+                "width": 100,
+            },
         ],
-        "categories": [{"id": 1}, {"id": 2}],
+        "categories": [{"id": 1}, {"id": 2}, {"id": 3}],
     }
 
 
