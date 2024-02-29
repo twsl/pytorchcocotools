@@ -79,10 +79,10 @@ class COCO:
     def createIndex(self) -> None:  # noqa: N802
         self.logger.info("creating index...")
         anns, cats, imgs = {}, {}, {}
-        imgToAnns = defaultdict(list)  # noqa: N806
-        catToImgs = defaultdict(list)  # noqa: N806
+        img_to_anns = defaultdict(list)
+        cat_to_imgs = defaultdict(list)
         for ann in self.dataset.get("annotations", []):
-            imgToAnns[ann["image_id"]].append(ann)
+            img_to_anns[ann["image_id"]].append(ann)
             anns[ann["id"]] = ann
 
         for img in self.dataset.get("images", []):
@@ -93,14 +93,14 @@ class COCO:
 
         if "annotations" in self.dataset and "categories" in self.dataset:
             for ann in self.dataset["annotations"]:
-                catToImgs[ann["category_id"]].append(ann["image_id"])
+                cat_to_imgs[ann["category_id"]].append(ann["image_id"])
 
         self.logger.info("index created!")
 
         # create class members
         self.anns = anns
-        self.imgToAnns = imgToAnns
-        self.catToImgs = catToImgs
+        self.imgToAnns = img_to_anns
+        self.catToImgs = cat_to_imgs
         self.imgs = imgs
         self.cats = cats
 
@@ -127,20 +127,22 @@ class COCO:
         Returns:
             Integer array of ann ids.
         """
-        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []  # noqa: N806
-        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
-        areaRng = areaRng if _isArrayLike(areaRng) else [areaRng] if areaRng else []  # noqa: N806
+        img_ids = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []
+        cat_ids = catIds if _isArrayLike(catIds) else [catIds] if catIds else []
+        area_rng = areaRng if _isArrayLike(areaRng) else [areaRng] if areaRng else []
 
-        if len(imgIds) == len(catIds) == len(areaRng) == 0:
+        if len(img_ids) == len(cat_ids) == len(area_rng) == 0:
             anns = self.dataset["annotations"]
         else:
-            if imgIds:
-                lists = [self.imgToAnns[imgId] for imgId in imgIds if imgId in self.imgToAnns]
+            if img_ids:
+                lists = [self.imgToAnns[imgId] for imgId in img_ids if imgId in self.imgToAnns]
                 anns = list(itertools.chain.from_iterable(lists))
             else:
                 anns = self.dataset["annotations"]
-            anns = [ann for ann in anns if ann["category_id"] in catIds] if catIds else anns
-            anns = [ann for ann in anns if ann["area"] > areaRng[0] and ann["area"] < areaRng[1]] if areaRng else anns
+            anns = [ann for ann in anns if ann["category_id"] in cat_ids] if cat_ids else anns
+            anns = (
+                [ann for ann in anns if ann["area"] > area_rng[0] and ann["area"] < area_rng[1]] if area_rng else anns
+            )
         return (
             [ann["id"] for ann in anns if ann["iscrowd"] == iscrowd]
             if iscrowd is not None
@@ -152,7 +154,7 @@ class COCO:
         catNms: str | list[str] = None,  # noqa: N803, N802
         supNms: str | list[str] = None,  # noqa: N803, N802
         catIds: int | list[int] = None,  # noqa: N803, N802
-    ) -> list[int]:  # noqa: N803, N802
+    ) -> list[int]:
         """Filtering parameters. default skips that filter.
 
         Args:
@@ -163,16 +165,15 @@ class COCO:
         Returns:
             Integer array of cat ids.
         """
-        catIds = catIds if catIds else []  # noqa: N806
-        catNms = catNms if _isArrayLike(catNms) else [catNms] if catNms else []  # noqa: N806
-        supNms = supNms if _isArrayLike(supNms) else [supNms] if supNms else []  # noqa: N806
-        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
+        cat_nms = catNms if _isArrayLike(catNms) else [catNms] if catNms else []
+        sup_nms = supNms if _isArrayLike(supNms) else [supNms] if supNms else []
+        cat_ids = catIds if _isArrayLike(catIds) else [catIds] if catIds else []
 
         cats = self.dataset["categories"]
-        if not len(catNms) == len(supNms) == len(catIds) == 0:
-            cats = [cat for cat in cats if cat["name"] in catNms] if catNms else cats
-            cats = [cat for cat in cats if cat["supercategory"] in supNms] if supNms else cats
-            cats = [cat for cat in cats if cat["id"] in catIds] if catIds else cats
+        if not len(cat_nms) == len(sup_nms) == len(cat_ids) == 0:
+            cats = [cat for cat in cats if cat["name"] in cat_nms] if cat_nms else cats
+            cats = [cat for cat in cats if cat["supercategory"] in sup_nms] if sup_nms else cats
+            cats = [cat for cat in cats if cat["id"] in cat_ids] if cat_ids else cats
         return [cat["id"] for cat in cats]
 
     def getImgIds(self, imgIds: int | list[int] = None, catIds: int | list[int] = None) -> list[int]:  # noqa: N802, N803
@@ -185,14 +186,14 @@ class COCO:
         Returns:
             Integer array of img ids.
         """
-        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []  # noqa: N806
-        catIds = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
+        img_ids = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []  # noqa: N806
+        cat_ids = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # noqa: N806
 
-        if len(imgIds) == len(catIds) == 0:
+        if len(img_ids) == len(cat_ids) == 0:
             ids = self.imgs.keys()
         else:
-            ids = set(imgIds)
-            for i, catId in enumerate(catIds):  # noqa: N806
+            ids = set(img_ids)
+            for i, catId in enumerate(cat_ids):  # noqa: N806
                 if i == 0 and len(ids) == 0:
                     ids = set(self.catToImgs[catId])
                 else:

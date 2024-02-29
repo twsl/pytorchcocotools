@@ -17,6 +17,8 @@ def dataset_gt() -> dict:
                 "area": 100,
                 "iscrowd": 0,
                 "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 30, 10, 30, 30, 10, 30]],
             },
             {
                 "id": 2,
@@ -26,9 +28,17 @@ def dataset_gt() -> dict:
                 "area": 100,
                 "iscrowd": 0,
                 "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 30, 10, 30, 30, 10, 30]],
             },
         ],
-        "images": [{"id": 1}],
+        "images": [
+            {
+                "id": 1,
+                "height": 50,
+                "width": 100,
+            }
+        ],
         "categories": [{"id": 1}, {"id": 2}],
     }
 
@@ -45,18 +55,30 @@ def dataset_dt() -> dict:
                 "area": 100,
                 "iscrowd": 0,
                 "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 30, 10, 30, 30, 10, 30]],
+                "score": 0.5,
             },
             {
                 "id": 2,
                 "image_id": 1,
                 "category_id": 2,
-                "bbox": [10, 10, 20, 20],
+                "bbox": [10, 10, 15, 15],
                 "area": 100,
                 "iscrowd": 0,
                 "keypoints": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "num_keypoints": 5,
+                "segmentation": [[10, 10, 25, 10, 30, 30, 10, 30]],
+                "score": 0.8,
             },
         ],
-        "images": [{"id": 1}],
+        "images": [
+            {
+                "id": 1,
+                "height": 50,
+                "width": 100,
+            }
+        ],
         "categories": [{"id": 1}, {"id": 2}],
     }
 
@@ -95,29 +117,41 @@ def coco_dt_pt(dataset_dt: dict) -> COCOpt:
 
 @fixture(scope="session")
 def eval_bbox_np(coco_gt_np: COCOnp, coco_dt_np: COCOnp) -> COCOevalnp:
-    return COCOevalnp(coco_gt_np, coco_dt_np, "bbox")
+    eval = COCOevalnp(coco_gt_np, coco_dt_np, "bbox")
+    eval._prepare()
+    return eval
 
 
 @fixture(scope="session")
 def eval_bbox_pt(coco_gt_pt: COCOpt, coco_dt_pt: COCOpt) -> COCOevalpt:
-    return COCOevalpt(coco_gt_pt, coco_dt_pt, "bbox")
+    eval = COCOevalpt(coco_gt_pt, coco_dt_pt, "bbox")
+    eval._prepare()
+    return eval
 
 
 @fixture(scope="session")
 def eval_segm_np(coco_gt_np: COCOnp, coco_dt_np: COCOnp) -> COCOevalnp:
-    return COCOevalnp(coco_gt_np, coco_dt_np, "segm")
+    eval = COCOevalnp(coco_gt_np, coco_dt_np, "segm")
+    eval._prepare()
+    return eval
 
 
 @fixture(scope="session")
 def eval_segm_pt(coco_gt_pt: COCOpt, coco_dt_pt: COCOpt) -> COCOevalpt:
-    return COCOevalpt(coco_gt_pt, coco_dt_pt, "segm")
+    eval = COCOevalpt(coco_gt_pt, coco_dt_pt, "segm")
+    eval._prepare()
+    return eval
 
 
 @fixture(scope="session")
 def eval_keypoints_np(coco_gt_np: COCOnp, coco_dt_np: COCOnp) -> COCOevalnp:
-    return COCOevalnp(coco_gt_np, coco_dt_np, "keypoints")
+    eval = COCOevalnp(coco_gt_np, coco_dt_np, "keypoints")
+    eval._prepare()
+    return eval
 
 
 @fixture(scope="session")
 def eval_keypoints_pt(coco_gt_pt: COCOpt, coco_dt_pt: COCOpt) -> COCOevalpt:
-    return COCOevalpt(coco_gt_pt, coco_dt_pt, "keypoints")
+    eval = COCOevalpt(coco_gt_pt, coco_dt_pt, "keypoints")
+    eval._prepare()
+    return eval

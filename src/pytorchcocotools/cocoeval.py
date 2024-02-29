@@ -162,11 +162,11 @@ class COCOeval:
 
         p = self.params
         if p.useCats:
-            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
-            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
+            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(img_ids=p.imgIds, cat_ids=p.catIds))
+            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(img_ids=p.imgIds, cat_ids=p.catIds))
         else:
-            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
-            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
+            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(img_ids=p.imgIds))
+            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(img_ids=p.imgIds))
 
         # convert ground truth to mask if iouType == 'segm'
         if p.iouType == "segm":
