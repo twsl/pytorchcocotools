@@ -124,11 +124,11 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
                 raise Exception("Tensor input is only for *bounding boxes* and should have Nx4 dimension")  # noqa: TRY002
             objs = objs.to(dtype=torch.double)
         elif isinstance(objs, list):
-            # check if list is in box format and convert it to np.ndarray
-            isbox = torch.all(Tensor([(len(obj) == 4) and (isinstance(obj, list | Tensor)) for obj in objs]))
-            isrle = torch.all(Tensor([isinstance(obj, dict) for obj in objs]))
+            # check if list is in box format and convert it to torch.Tensor
+            isbox = bool(torch.all(Tensor([(len(obj) == 4) and (isinstance(obj, list | Tensor)) for obj in objs])))
+            isrle = bool(torch.all(Tensor([isinstance(obj, dict) for obj in objs])))
             if isbox:
-                objs = Tensor(objs, dtype=float)
+                objs = torch.tensor(objs, dtype=torch.float)
                 if len(objs.shape) == 1:
                     objs = objs.reshape((1, objs.shape[0]))
             elif isrle:

@@ -162,11 +162,11 @@ class COCOeval:
 
         p = self.params
         if p.useCats:
-            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(img_ids=p.imgIds, cat_ids=p.catIds))
-            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(img_ids=p.imgIds, cat_ids=p.catIds))
+            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
+            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
         else:
-            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(img_ids=p.imgIds))
-            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(img_ids=p.imgIds))
+            gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
+            dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
 
         # convert ground truth to mask if iouType == 'segm'
         if p.iouType == "segm":
@@ -207,7 +207,7 @@ class COCOeval:
             compute_iou = self.computeIoU
         elif p.iouType == "keypoints":
             compute_iou = self.computeOks
-        self.ious = {(imgId, catId): compute_iou(imgId, catId) for imgId in p.imgIds for catId in cat_ids}
+        self.ious = {(img_id, cat_id): compute_iou(img_id, cat_id) for img_id in p.imgIds for cat_id in cat_ids}
 
         evaluate_img = self.evaluateImg
         max_det = p.maxDets[-1]
@@ -231,7 +231,7 @@ class COCOeval:
             dt = [_ for cId in p.catIds for _ in self._dts[imgId, cId]]
         if len(gt) == 0 and len(dt) == 0:
             return []
-        inds = torch.argsort([-d["score"] for d in dt], kind="mergesort")
+        inds = torch.argsort(torch.Tensor([-d["score"] for d in dt]))
         dt = [dt[i] for i in inds]
         if len(dt) > p.maxDets[-1]:
             dt = dt[0 : p.maxDets[-1]]
@@ -246,7 +246,7 @@ class COCOeval:
             raise Exception("Unknown iouType for iou computation")  # noqa: TRY002
 
         # compute iou between each dt and gt region
-        iscrowd = [int(o["iscrowd"]) for o in gt]
+        iscrowd = [bool(o["iscrowd"]) for o in gt]
         ious = mask.iou(d, g, iscrowd)
         return ious
 
@@ -315,8 +315,8 @@ class COCOeval:
             gt = self._gts[imgId, catId]
             dt = self._dts[imgId, catId]
         else:
-            gt = [_ for cId in p.catIds for _ in self._gts[imgId, cId]]
-            dt = [_ for cId in p.catIds for _ in self._dts[imgId, cId]]
+            gt = [_ for c_id in p.catIds for _ in self._gts[imgId, c_id]]
+            dt = [_ for c_id in p.catIds for _ in self._dts[imgId, c_id]]
         if len(gt) == 0 and len(dt) == 0:
             return None
 

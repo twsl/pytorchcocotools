@@ -153,7 +153,7 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLEs:  # noqa: N802, N803
         return RLE()  # Return an empty RLE if empty or dimensions don't match
     n = len(Rs)
     if n == 1:
-        return Rs[0]
+        return Rs
 
     # Rs[0].cnts.device
     h, w = Rs[0].h, Rs[0].w
