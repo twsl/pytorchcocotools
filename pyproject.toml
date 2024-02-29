@@ -55,7 +55,7 @@ line_profiler = "^4.0.3"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "--benchmark-disable"
+addopts = "--benchmark-skip"
 testpaths = [
     "tests",
 ]
