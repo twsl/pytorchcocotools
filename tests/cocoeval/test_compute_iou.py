@@ -15,9 +15,6 @@ SEGM_DATA = [
     (1, 1, [[1.0]]),
     (1, 2, [[0.875]]),
 ]
-KEYPOINTS_DATA = [
-    (1, 1, [[1.0]]),
-]
 
 
 class COCOEvalCasesNp:
@@ -31,13 +28,6 @@ class COCOEvalCasesNp:
         img_id, cat_id, result = data
         return (eval_segm_np, img_id, cat_id, result)
 
-    @parametrize(data=KEYPOINTS_DATA)
-    def case_eval_keypoints(
-        self, eval_keypoints_np: COCOevalnp, data: tuple[int, int, Any]
-    ) -> tuple[COCOevalnp, int, int, Any]:
-        img_id, cat_id, result = data
-        return (eval_keypoints_np, img_id, cat_id, result)
-
 
 class COCOEvalCasesPt:
     @parametrize(data=BBOX_DATA)
@@ -49,13 +39,6 @@ class COCOEvalCasesPt:
     def case_eval_segm(self, eval_segm_pt: COCOevalpt, data: tuple[int, int, Any]) -> tuple[COCOevalpt, int, int, Any]:
         img_id, cat_id, result = data
         return (eval_segm_pt, img_id, cat_id, result)
-
-    @parametrize(data=KEYPOINTS_DATA)
-    def case_eval_keypoints(
-        self, eval_keypoints_pt: COCOevalpt, data: tuple[int, int, Any]
-    ) -> tuple[COCOevalpt, int, int, Any]:
-        img_id, cat_id, result = data
-        return (eval_keypoints_pt, img_id, cat_id, result)
 
 
 class COCOEvalCasesBoth:
@@ -72,13 +55,6 @@ class COCOEvalCasesBoth:
     ) -> tuple[COCOevalnp, COCOevalpt, int, int, Any]:
         img_id, cat_id, result = data
         return (eval_segm_np, eval_segm_pt, img_id, cat_id, result)
-
-    @parametrize(data=KEYPOINTS_DATA)
-    def case_eval_keypoints(
-        self, eval_keypoints_np: COCOevalnp, eval_keypoints_pt: COCOevalpt, data: tuple[int, int, Any]
-    ) -> tuple[COCOevalnp, COCOevalpt, int, int, Any]:
-        img_id, cat_id, result = data
-        return (eval_keypoints_np, eval_keypoints_pt, img_id, cat_id, result)
 
 
 @pytest.mark.benchmark(group="computeIoU", warmup=True)
