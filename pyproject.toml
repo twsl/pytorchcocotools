@@ -33,18 +33,20 @@ litdata = "^0.2.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
-ruff = "^0.2.0"
+ruff = "^0.3.0"
 safety = "^3.0.1"
 bandit = "^1.7.7"
 pre-commit = "^3.6.0"
 poetry-dynamic-versioning = "^1.2.0"
 ipykernel = "^6.22.0"
 ipywidgets = "^8.0.6"
-scikit-image = "^0.22.0"
-pytest-benchmark = "^4.0.0"
+pytest-benchmark = {extras = ["aspect"], version = "^4.0.0"}
 pytest-cases = "^3.8.1"
-pycocotools = "^2.0.7"
 importlib-metadata = "^7.0.1"
+
+[tool.poetry.group.ref.dependencies]
+pycocotools = "^2.0.7"
+scikit-image = "^0.22.0"
 
 [tool.poetry.group.debug]
 optional = true
