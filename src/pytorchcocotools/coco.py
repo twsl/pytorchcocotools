@@ -39,6 +39,7 @@ import json
 from logging import Logger
 from pathlib import Path
 import time
+from typing import Any
 from urllib.request import urlretrieve
 
 from matplotlib.collections import PatchCollection
@@ -62,8 +63,12 @@ class COCO:
         Args:
             annotation_file: The location of annotation file. Defaults to None.
         """
-        self.dataset, self.anns, self.cats, self.imgs = {}, {}, {}, {}
-        self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
+        self.dataset = {}
+        self.anns = {}
+        self.cats = {}
+        self.imgs = {}
+        self.imgToAnns = defaultdict(list)
+        self.catToImgs = defaultdict(list)
         self.logger = utils.get_logger(__name__)
         if annotation_file is not None:
             self.logger.info("loading annotations into memory...")
@@ -78,7 +83,9 @@ class COCO:
 
     def createIndex(self) -> None:  # noqa: N802
         self.logger.info("creating index...")
-        anns, cats, imgs = {}, {}, {}
+        anns = {}
+        cats = {}
+        imgs = {}
         img_to_anns = defaultdict(list)
         cat_to_imgs = defaultdict(list)
         for ann in self.dataset.get("annotations", []):
@@ -106,7 +113,8 @@ class COCO:
 
     def info(self) -> None:
         """Print information about the annotation file."""
-        for key, value in self.dataset["info"].items():
+        info: dict = self.dataset["info"]
+        for key, value in info.items():
             self.logger.info(f"{key}: {value}")
 
     def getAnnIds(  # noqa: N802
@@ -132,7 +140,7 @@ class COCO:
         area_rng = areaRng if _isArrayLike(areaRng) else [areaRng] if areaRng else []
 
         if len(img_ids) == len(cat_ids) == len(area_rng) == 0:
-            anns = self.dataset["annotations"]
+            anns: list[dict] = self.dataset["annotations"]
         else:
             if img_ids:
                 lists = [self.imgToAnns[imgId] for imgId in img_ids if imgId in self.imgToAnns]
@@ -169,7 +177,7 @@ class COCO:
         sup_nms = supNms if _isArrayLike(supNms) else [supNms] if supNms else []
         cat_ids = catIds if _isArrayLike(catIds) else [catIds] if catIds else []
 
-        cats = self.dataset["categories"]
+        cats: list[dict] = self.dataset["categories"]
         if not len(cat_nms) == len(sup_nms) == len(cat_ids) == 0:
             cats = [cat for cat in cats if cat["name"] in cat_nms] if cat_nms else cats
             cats = [cat for cat in cats if cat["supercategory"] in sup_nms] if sup_nms else cats
@@ -200,7 +208,7 @@ class COCO:
                     ids &= set(self.catToImgs[catId])
         return list(ids)
 
-    def loadAnns(self, ids: int | list[int] = None) -> list:  # noqa: N802
+    def loadAnns(self, ids: int | list[int] = None) -> list[dict[str, Any]]:  # noqa: N802
         """Load anns with the specified ids.
 
         Args:
@@ -215,7 +223,7 @@ class COCO:
         elif isinstance(ids, int):
             return [self.anns[ids]]
 
-    def loadCats(self, ids: int | list[int] = None) -> list:  # noqa: N802
+    def loadCats(self, ids: int | list[int] = None) -> list[dict[str, Any]]:  # noqa: N802
         """Load cats with the specified ids.
 
         Args:
@@ -230,7 +238,7 @@ class COCO:
         elif isinstance(ids, int):
             return [self.cats[ids]]
 
-    def loadImgs(self, ids: int | list[int] = None) -> list:  # noqa: N802
+    def loadImgs(self, ids: int | list[int] = None) -> list[dict[str, Any]]:  # noqa: N802
         """Load anns with the specified ids.
 
         Args:

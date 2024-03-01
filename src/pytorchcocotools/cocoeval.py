@@ -3,17 +3,17 @@ import copy
 import datetime
 from logging import Logger
 import time
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from pytorchcocotools import mask, utils
 from pytorchcocotools.coco import COCO
 import torch
 from torch import Tensor
 
-type RangeLabel = Literal["all", "small", "medium", "large"]
-type RangeLabels = list[RangeLabel]
-type Ranges = list[tuple[int, int]]
-type IoUType = Literal["segm", "bbox", "keypoints"]
+RangeLabel: TypeAlias = Literal["all", "small", "medium", "large"]
+RangeLabels: TypeAlias = list[RangeLabel]
+Ranges: TypeAlias = list[tuple[int, int]]
+IoUType: TypeAlias = Literal["segm", "bbox", "keypoints"]
 
 
 class Params:
