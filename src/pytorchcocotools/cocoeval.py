@@ -10,6 +10,11 @@ from pytorchcocotools.coco import COCO
 import torch
 from torch import Tensor
 
+type RangeLabel = Literal["all", "small", "medium", "large"]
+type RangeLabels = list[RangeLabel]
+type Ranges = list[tuple[int, int]]
+type IoUType = Literal["segm", "bbox", "keypoints"]
+
 
 class Params:
     """Params for coco evaluation api."""
@@ -21,13 +26,13 @@ class Params:
         self.iouThrs = torch.linspace(0.5, 0.95, int(round((0.95 - 0.5) / 0.05)) + 1)
         self.recThrs = torch.linspace(0.0, 1.00, int(round((1.00 - 0.0) / 0.01)) + 1)
         self.maxDets = [1, 10, 100]
-        self.areaRng = [
-            [0**2, 1e5**2],
-            [0**2, 32**2],
-            [32**2, 96**2],
-            [96**2, 1e5**2],
+        self.areaRng: Ranges = [
+            (0**2, 1e5**2),
+            (0**2, 32**2),
+            (32**2, 96**2),
+            (96**2, 1e5**2),
         ]
-        self.areaRngLbl = ["all", "small", "medium", "large"]
+        self.areaRngLbl: RangeLabels = ["all", "small", "medium", "large"]
         self.useCats = 1
 
     def setKpParams(self):  # noqa: N802
@@ -37,8 +42,8 @@ class Params:
         self.iouThrs = torch.linspace(0.5, 0.95, int(round((0.95 - 0.5) / 0.05)) + 1)
         self.recThrs = torch.linspace(0.0, 1.00, int(round((1.00 - 0.0) / 0.01)) + 1)
         self.maxDets = [20]
-        self.areaRng = [[0**2, 1e5**2], [32**2, 96**2], [96**2, 1e5**2]]
-        self.areaRngLbl = ["all", "medium", "large"]
+        self.areaRng: Ranges = [(0**2, 1e5**2), (32**2, 96**2), (96**2, 1e5**2)]
+        self.areaRngLbl: RangeLabels = ["all", "medium", "large"]
         self.useCats = 1
         self.kpt_oks_sigmas = (
             torch.Tensor(
@@ -65,7 +70,7 @@ class Params:
             / 10.0
         )
 
-    def __init__(self, iouType: Literal["segm", "bbox", "keypoints"] = "segm"):  # noqa: N803
+    def __init__(self, iouType: IoUType = "segm"):  # noqa: N803
         if iouType == "segm" or iouType == "bbox":
             self.setDetParams()
         elif iouType == "keypoints":
@@ -125,7 +130,7 @@ class COCOeval:
         self,
         cocoGt: COCO = None,  # noqa: N803
         cocoDt: COCO = None,  # noqa: N803
-        iouType: Literal["segm", "bbox", "keypoints"] = "segm",  # noqa: N803
+        iouType: IoUType = "segm",  # noqa: N803
     ):
         """Initialize CocoEval using coco APIs for gt and dt.
 
@@ -327,9 +332,9 @@ class COCOeval:
                 g["_ignore"] = 0
 
         # sort dt highest score first, sort gt ignore last
-        gtind = torch.argsort([g["_ignore"] for g in gt], kind="mergesort")
+        gtind = torch.argsort(Tensor([g["_ignore"] for g in gt]))
         gt = [gt[i] for i in gtind]
-        dtind = torch.argsort([-d["score"] for d in dt], kind="mergesort")
+        dtind = torch.argsort(Tensor([-d["score"] for d in dt]))
         dt = [dt[i] for i in dtind[0:maxDet]]
         iscrowd = [int(o["iscrowd"]) for o in gt]
         # load computed ious
@@ -348,6 +353,13 @@ class COCOeval:
                     # information about best match so far (m=-1 -> unmatched)
                     iou = min([t, 1 - torch.eps])
                     m = -1
+                    #############################################################################
+                    # Vectorize the comparison and selection process
+                    mask = (gtm[tind] <= 0) | iscrowd
+                    valid_ious = ious[dind] * mask
+                    m = torch.argmax(valid_ious).item()
+                    #############################################################################
+
                     for gind, g in enumerate(gt):  # noqa: B007
                         # if this gt already matched, and not a crowd, continue
                         if gtm[tind, gind] > 0 and not iscrowd[gind]:
@@ -502,7 +514,7 @@ class COCOeval:
             This functin can *only* be applied on the default parameter setting.
         """
 
-        def _summarize(ap=1, iouThr: float = None, areaRng: str = "all", maxDets: int = 100) -> int | Tensor:  # noqa: N803
+        def _summarize(ap=1, iouThr: float = None, areaRng: RangeLabel = "all", maxDets: int = 100) -> int | Tensor:  # noqa: N803
             p = self.params
             template = " {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}"
             title = "Average Precision" if ap == 1 else "Average Recall"
