@@ -1,6 +1,6 @@
 import pytest
 from pytest_cases import parametrize_with_cases
-from pytorchcocotools.dataset import CocoDetection as CocoDetectionpt
+from pytorchcocotools.torch.dataset import CocoDetection as CocoDetectionpt
 from torchvision.datasets import CocoDetection as CocoDetectionnp
 
 
