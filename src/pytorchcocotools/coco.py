@@ -46,16 +46,18 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import matplotlib.pyplot as plt
 from pytorchcocotools import mask, utils
+from pytorchcocotools.entities import CocoDataset
 import torch
 from torch import Tensor
 
 
-def _isArrayLike(obj):  # noqa: N802
+def _isArrayLike(obj) -> bool:  # noqa: N802
     return hasattr(obj, "__iter__") and hasattr(obj, "__len__")
 
 
 class COCO:
     logger: Logger
+    dataset: CocoDataset
 
     def __init__(self, annotation_file: str = None) -> None:
         """Constructor of Microsoft COCO helper class for reading and visualizing annotations.
@@ -63,7 +65,6 @@ class COCO:
         Args:
             annotation_file: The location of annotation file. Defaults to None.
         """
-        self.dataset = {}
         self.anns = {}
         self.cats = {}
         self.imgs = {}
@@ -75,8 +76,8 @@ class COCO:
             tic = time.time()
             path = Path(annotation_file)
             with path.open("r") as file:
-                dataset = json.load(file)
-            assert isinstance(dataset, dict), f"annotation file format {type(dataset)} not supported"  # noqa: S101
+                dataset = CocoDataset.from_dict(json.load(file))
+            assert isinstance(dataset, CocoDataset), f"annotation file format {type(dataset)} not supported"  # noqa: S101
             self.logger.info(f"Done (t={time.time() - tic:0.2f}s)")
             self.dataset = dataset
             self.createIndex()
@@ -88,7 +89,7 @@ class COCO:
         imgs = {}
         img_to_anns = defaultdict(list)
         cat_to_imgs = defaultdict(list)
-        for ann in self.dataset.get("annotations", []):
+        for ann in self.dataset.annotations:
             img_to_anns[ann["image_id"]].append(ann)
             anns[ann["id"]] = ann
 
