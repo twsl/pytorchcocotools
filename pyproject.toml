@@ -28,6 +28,7 @@ python = "^3.10"
 torch = "^2.2.0"
 torchvision = "^0.17.0"
 litdata = "^0.2.0"
+python-dateutil = "^2.9.0.post0"
 
 
 [tool.poetry.group.dev.dependencies]
