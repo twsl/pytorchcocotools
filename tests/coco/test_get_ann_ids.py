@@ -1,4 +1,4 @@
-from pycocotools.coco import COCO as COCO
+from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -28,7 +28,7 @@ def test_getAnnIds_pt(  # noqa: N802
 @parametrize_with_cases("img_id, cat_ids, area_rng, result", cases=GetAnnIdsCases)
 def test_getAnnIds_np(  # noqa: N802
     benchmark,
-    coco_np: COCO,
+    coco_np: COCOnp,
     img_id: int | list[int],
     cat_ids: int | list[int],
     area_rng: float | list[float],
@@ -41,7 +41,7 @@ def test_getAnnIds_np(  # noqa: N802
 
 @parametrize_with_cases("img_id, cat_ids, area_rng, result", cases=GetAnnIdsCases)
 def test_getAnnIds(  # noqa: N802
-    coco_np: COCO,
+    coco_np: COCOnp,
     coco_pt: COCOpt,
     img_id: int | list[int],
     cat_ids: int | list[int],

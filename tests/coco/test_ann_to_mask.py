@@ -1,5 +1,5 @@
 import numpy as np
-from pycocotools.coco import COCO as COCO
+from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -31,7 +31,7 @@ def test_annToMask_pt(benchmark, coco_pt: COCOpt, img_ids: int, result) -> None:
 
 @pytest.mark.benchmark(group="annToMask", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=AnnToMaskCases)
-def test_annToMask_np(benchmark, coco_np: COCO, img_ids: int, result) -> None:  # noqa: N802
+def test_annToMask_np(benchmark, coco_np: COCOnp, img_ids: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(img_ids)
     # get the mask for the annotation
@@ -41,7 +41,7 @@ def test_annToMask_np(benchmark, coco_np: COCO, img_ids: int, result) -> None:  
 
 
 @parametrize_with_cases("img_ids, result", cases=AnnToMaskCases)
-def test_annToMask(coco_np: COCO, coco_pt: COCOpt, img_ids: int, result) -> None:  # noqa: N802
+def test_annToMask(coco_np: COCOnp, coco_pt: COCOpt, img_ids: int, result) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(img_ids)
     ann_pt = coco_pt.loadAnns(img_ids)

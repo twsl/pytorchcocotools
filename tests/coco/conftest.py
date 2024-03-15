@@ -1,4 +1,4 @@
-from pycocotools.coco import COCO as COCO
+from pycocotools.coco import COCO as COCOnp  # noqa: N811
 from pytest_cases import fixture
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
@@ -10,8 +10,8 @@ def path() -> str:
 
 
 @fixture(scope="session")
-def coco_np(path: str) -> COCO:
-    return COCO(path)
+def coco_np(path: str) -> COCOnp:
+    return COCOnp(path)
 
 
 @fixture(scope="session")

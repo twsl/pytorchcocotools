@@ -1,7 +1,7 @@
-from pycocotools.coco import COCO as COCO
+from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
-from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811  # noqa: N811  # noqa: N811
+from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class LoadCatsCases:
@@ -20,7 +20,7 @@ def test_loadCats_pt(benchmark, coco_pt: COCOpt, cat_ids, result) -> None:  # no
 
 @pytest.mark.benchmark(group="loadCats", warmup=True)
 @parametrize_with_cases("cat_ids, result", cases=LoadCatsCases)
-def test_loadCats_np(benchmark, coco_np: COCO, cat_ids, result) -> None:  # noqa: N802
+def test_loadCats_np(benchmark, coco_np: COCOnp, cat_ids, result) -> None:  # noqa: N802
     # get the category ids for the image with id
     cat_np = benchmark(coco_np.loadCats, cat_ids)
     # compare the results
@@ -28,7 +28,7 @@ def test_loadCats_np(benchmark, coco_np: COCO, cat_ids, result) -> None:  # noqa
 
 
 @parametrize_with_cases("cat_ids, result", cases=LoadCatsCases)
-def test_loadCats(coco_np: COCO, coco_pt: COCOpt, cat_ids, result) -> None:  # noqa: N802
+def test_loadCats(coco_np: COCOnp, coco_pt: COCOpt, cat_ids, result) -> None:  # noqa: N802
     # get the category ids for the image with id 397133
     cat_np = coco_np.loadCats(cat_ids)
     cat_pt = coco_pt.loadCats(cat_ids)

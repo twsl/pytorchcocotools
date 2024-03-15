@@ -1,7 +1,7 @@
-from pycocotools.coco import COCO as COCO
+from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
-from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811  # noqa: N811
+from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class GetCatIdsCases:
@@ -23,7 +23,7 @@ def test_getCatIds_pt(  # noqa: N802
 @pytest.mark.benchmark(group="getCatIds", warmup=True)
 @parametrize_with_cases("cat_nms, sup_nms, cat_ids, result", cases=GetCatIdsCases)
 def test_getCatIds_np(  # noqa: N802
-    benchmark, coco_np: COCO, cat_nms: str | list[str], sup_nms: str | list[str], cat_ids: int | list[int], result
+    benchmark, coco_np: COCOnp, cat_nms: str | list[str], sup_nms: str | list[str], cat_ids: int | list[int], result
 ) -> None:
     # get the category ids for the image with id
     cat_ids_np = benchmark(coco_np.getCatIds, cat_nms, sup_nms, cat_ids)
@@ -33,7 +33,12 @@ def test_getCatIds_np(  # noqa: N802
 
 @parametrize_with_cases("cat_nms, sup_nms, cat_ids, result", cases=GetCatIdsCases)
 def test_getCatIds(  # noqa: N802
-    coco_np: COCO, coco_pt: COCOpt, cat_nms: str | list[str], sup_nms: str | list[str], cat_ids: int | list[int], result
+    coco_np: COCOnp,
+    coco_pt: COCOpt,
+    cat_nms: str | list[str],
+    sup_nms: str | list[str],
+    cat_ids: int | list[int],
+    result,
 ) -> None:
     # get the category ids for the image with id
     cat_ids_np = coco_np.getCatIds(cat_nms, sup_nms, cat_ids)
