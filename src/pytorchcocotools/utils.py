@@ -8,6 +8,8 @@ def dataclass_dict(
     cls = dataclass(cls)
     cls.__getitem__ = lambda self, key: self.__dict__[key]
     cls.__setitem__ = lambda self, key, value: self.__dict__.update({key: value})
+    cls.__contains__ = lambda self, key: key in self.__dict__
+    cls.items = lambda self: self.__dict__.items()
     return cls
 
 
