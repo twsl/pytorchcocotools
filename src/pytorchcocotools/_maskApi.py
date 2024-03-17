@@ -24,7 +24,7 @@ def rleEncode(mask: Mask, h: int, w: int, n: int) -> RLEs:  # noqa: N802
     mask_p = mask.permute(2, 1, 0)
     flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
     start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask.device)
-    torch.ones((1, n), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0]
+    # torch.ones((1, n), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0] # TODO: ???
     sentinel = torch.ones((1, n), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
     flat_tensor_with_sentinels = torch.cat([start_sentinel, flattened_mask, sentinel])
 

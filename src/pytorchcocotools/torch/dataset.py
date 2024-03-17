@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 import re
-from typing import Any
+from typing import Any, cast
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
@@ -14,9 +14,9 @@ from torchvision.tv_tensors._dataset_wrapper import list_of_dicts_to_dict_of_lis
 
 
 class CocoDetection(VisionDataset):
-    """`MS Coco Detection <https://cocodataset.org/#detection-2016>`_ Dataset.
+    """`MS Coco Detection <https://cocodataset.org/#detection-2020>`_ Dataset.
 
-    It requires the `COCO API to be installed <https://github.com/pdollar/coco/tree/master/PythonAPI>`_.
+    It requires the `PyTorch COCO API to be installed <https://github.com/twsl/pytorchcocotools>`_.
 
     Args:
         root (string): Root directory where images are downloaded to.
@@ -46,7 +46,7 @@ class CocoDetection(VisionDataset):
 
     @property
     def num_classes(self) -> int:
-        return len(self.coco.dataset["categories"])
+        return len(self.coco.dataset.categories)
 
     @property
     def version(self) -> str:
@@ -76,7 +76,7 @@ class CocoDetection(VisionDataset):
         image = self._load_image(id)
         og_target = self._load_target(id)
 
-        canvas_size = tuple(F.get_size(image))
+        canvas_size = cast(tuple[int, int], tuple(F.get_size(image)))
 
         batched_target = list_of_dicts_to_dict_of_lists(og_target)
 

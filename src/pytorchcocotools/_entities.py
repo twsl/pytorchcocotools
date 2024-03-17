@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-
+from pytorchcocotools.utils import dataclass_dict
 import torch
 from torch import Tensor
 
@@ -9,7 +8,7 @@ class BB(Tensor):
 
 
 class RLE:
-    def __init__(self, h: int = 0, w: int = 0, m: int = 0, cnts: torch.Tensor = None):
+    def __init__(self, h: int = 0, w: int = 0, m: int = 0, cnts: torch.Tensor | None = None):
         self.h = h
         self.w = w
         self.m = m
@@ -17,7 +16,7 @@ class RLE:
 
 
 class RLEs(list[RLE]):
-    def __init__(self, rles: list[RLE], n: int = None):
+    def __init__(self, rles: list[RLE], n: int | None = None):
         self.n = n if n is not None else len(rles) if len(rles) > 0 else 0
         super().__init__(rles)
 
@@ -33,33 +32,17 @@ class Mask(Tensor):
 
 
 class Masks(list[Mask]):
-    def __init__(self, masks: list[Mask], h: int = None, w: int = None, n: int = None):
+    def __init__(self, masks: list[Mask], h: int | None = None, w: int | None = None, n: int | None = None):
         self.h = h if h is not None else masks[0].shape[0] if len(masks) > 0 else 0
         self.w = w if w is not None else masks[0].shape[1] if len(masks) > 0 else 0
         self.n = n if n is not None else len(masks) if len(masks) > 0 else 0
         super().__init__(masks)
 
 
-@dataclass
+@dataclass_dict
 class RleObj(dict):
     size: tuple[int, int]
     counts: bytes
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        return setattr(self, key, value)
-
-    def __delitem__(self, key):
-        return delattr(self, key)
-
-    def __iter__(self):
-        for key in self.__dataclass_fields__:
-            yield key, getattr(self, key)
-
-    def __len__(self):
-        return len(self.__dataclass_fields__)
 
 
 class RleObjs(list[RleObj]):

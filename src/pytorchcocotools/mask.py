@@ -72,7 +72,7 @@ def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
     return _mask.merge(rleObjs, intersect)
 
 
-def frPyObjects(pyobj: Tensor | list | dict, h: int, w: int) -> RleObjs:  # noqa: N802
+def frPyObjects(pyobj: Tensor | list | dict, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
     """Convert polygon, bbox, and uncompressed RLE to encoded RLE mask."""
     return _mask.frPyObjects(pyobj, h, w)
 
