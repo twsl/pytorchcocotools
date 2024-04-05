@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
+from pytorchcocotools.entities.annotations import CocoAnnotationKeypointDetection, CocoAnnotationObjectDetection
 import torch
 from torchvision import tv_tensors as tvt
 from torchvision.datasets.vision import VisionDataset
@@ -19,13 +20,13 @@ class CocoDetection(VisionDataset):
     It requires the `PyTorch COCO API to be installed <https://github.com/twsl/pytorchcocotools>`_.
 
     Args:
-        root (string): Root directory where images are downloaded to.
-        annFile (string): Path to json annotation file.
-        transform (callable, optional): A function/transform that takes in a PIL image
-            and returns a transformed version. E.g, ``transforms.PILToTensor``
-        target_transform (callable, optional): A function/transform that takes in the
+        root: Root directory where images are downloaded to.
+        annFile: Path to json annotation file.
+        transform: A function/transform that takes in a ``torchvision.tv_tensors.Image`` image
+            and returns a transformed version.
+        target_transform: A function/transform that takes in the
             target and transforms it.
-        transforms (callable, optional): A function/transform that takes input sample and its target as entry
+        transforms: A function/transform that takes input sample and its target as entry
             and returns a transformed version.
     """
 
@@ -58,9 +59,9 @@ class CocoDetection(VisionDataset):
     def _load_image(self, id: int) -> tvt.Image:
         path = self.coco.loadImgs(id)[0]["file_name"]
         img = read_image(str(Path(self.root) / path))
-        return tvt.Image(img, dtype=torch.uint8)
+        return tvt.Image(img, dtype=torch.uint8)  # type: ignore
 
-    def _load_target(self, id: int) -> list[dict[str, Any]]:
+    def _load_target(self, id: int) -> list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]:
         return self.coco.loadAnns(self.coco.getAnnIds(id))
 
     def _segmentation_to_mask(self, segmentation, *, canvas_size):
@@ -71,7 +72,7 @@ class CocoDetection(VisionDataset):
         )
         return mask.decode(segmentation)
 
-    def __getitem__(self, index: int) -> tuple[Any, Any]:
+    def __getitem__(self, index: int) -> tuple[tvt.Image, dict[str, Any]]:
         id = self.ids[index]
         image = self._load_image(id)
         og_target = self._load_target(id)
@@ -80,7 +81,7 @@ class CocoDetection(VisionDataset):
 
         batched_target = list_of_dicts_to_dict_of_lists(og_target)
 
-        target = {}
+        target: dict[str, Any] = {}
         target["image_id"] = id
 
         target["boxes"] = F.convert_bounding_box_format(
@@ -88,7 +89,7 @@ class CocoDetection(VisionDataset):
                 batched_target["bbox"],
                 format=tvt.BoundingBoxFormat.XYWH,
                 canvas_size=canvas_size,
-            ),
+            ),  # type: ignore
             new_format=self.out_bbox_fmt,
         )
         target["masks"] = tvt.Mask(

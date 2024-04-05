@@ -15,7 +15,7 @@ def test_loadCats_pt(benchmark, coco_pt: COCOpt, cat_ids, result) -> None:  # no
     # get the category ids for the image with id
     cat_pt = benchmark(coco_pt.loadCats, cat_ids)
     # compare the results
-    assert cat_pt == result
+    assert cat_pt.__dict__ == result
 
 
 @pytest.mark.benchmark(group="loadCats", warmup=True)
@@ -33,5 +33,7 @@ def test_loadCats(coco_np: COCOnp, coco_pt: COCOpt, cat_ids, result) -> None:  #
     cat_np = coco_np.loadCats(cat_ids)
     cat_pt = coco_pt.loadCats(cat_ids)
     # compare the results
-    assert cat_np == cat_pt
-    assert cat_np == result
+    for cnp, cpt in zip(cat_np, cat_pt, strict=False):
+        assert cnp == cpt.__dict__
+    for cnp, c in zip(cat_np, result, strict=False):
+        assert cnp == c

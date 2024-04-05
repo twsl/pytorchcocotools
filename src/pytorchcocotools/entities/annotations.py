@@ -13,9 +13,11 @@ class CocoRLE(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoRLE:
-        return cls(counts=data.get("counts"), size=data.get("size"))
+        instance = cls(counts=data.get("counts"), size=data.get("size"))
+        return instance
 
 
+@dataclass_dict
 class CocoAnnotationObjectDetection(BaseCocoEntity):
     id: int = -1
     image_id: int = -1
@@ -24,14 +26,14 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
     area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
     iscrowd: bool = False
-    score: float | None = None  # only used in results
+    score: float = 0  # TODO: consider putting this in a subclass, only used in results/coco eval
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationObjectDetection:
         segmentations = [
             CocoRLE.from_dict(seg) if isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
         ]
-        return cls(
+        instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
             category_id=data.get("category_id"),
@@ -39,7 +41,9 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
             area=data.get("area"),
             bbox=data.get("bbox"),
             iscrowd=bool(data.get("iscrowd")),
+            score=data.get("score"),
         )
+        return instance
 
 
 @dataclass_dict
@@ -52,8 +56,7 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
         segmentations = [
             CocoRLE.from_dict(seg) if isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
         ]
-
-        return cls(
+        instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
             category_id=data.get("category_id"),
@@ -61,6 +64,8 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
             area=data.get("area"),
             bbox=data.get("bbox"),
             iscrowd=bool(data.get("iscrowd")),
+            score=data.get("score"),
             keypoints=data.get("keypoints"),
             num_keypoints=data.get("num_keypoints"),
         )
+        return instance

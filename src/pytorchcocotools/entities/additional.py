@@ -17,12 +17,13 @@ class ResultAnnotation(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> ResultAnnotation:
-        return cls(
+        instance = cls(
             image_id=data.get("image_id"),
             bbox=data.get("bbox", []),
             score=data.get("score"),
             category_id=data.get("category_id"),
         )
+        return instance
 
 
 @dataclass_dict
@@ -35,13 +36,14 @@ class CocoSegmentInfo(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoSegmentInfo:
-        return cls(
+        instance = cls(
             id=data.get("id"),
             category_id=data.get("category_id"),
             area=data.get("area"),
             bbox=data.get("bbox"),
             iscrowd=bool(data.get("iscrowd")),
         )
+        return instance
 
 
 @dataclass_dict
@@ -52,11 +54,12 @@ class CocoAnnotationPanopticSegmentation(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationPanopticSegmentation:
-        return cls(
+        instance = cls(
             image_id=data.get("image_id"),
             file_name=data.get("file_name"),
             segments_info=[CocoSegmentInfo.from_dict(seg) for seg in data.get("segments_info", [])],
         )
+        return instance
 
 
 @dataclass_dict
@@ -67,11 +70,12 @@ class CocoAnnotationImageCaptioning(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationImageCaptioning:
-        return cls(
+        instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
             caption=data.get("caption"),
         )
+        return instance
 
 
 @dataclass_dict
@@ -91,7 +95,7 @@ class CocoAnnotationDensePose(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationDensePose:
-        return cls(
+        instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
             category_id=data.get("category_id"),
@@ -105,6 +109,7 @@ class CocoAnnotationDensePose(BaseCocoEntity):
             dp_y=data.get("dp_y"),
             dp_masks=[CocoRLE.from_dict(mask) for mask in data.get("dp_masks", [])],
         )
+        return instance
 
 
 @dataclass_dict
@@ -114,10 +119,11 @@ class CocoCategoriesPanopticSegmentation(CocoCategoriesObjectDetection):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoCategoriesPanopticSegmentation:
-        return cls(
+        instance = cls(
             id=data.get("id"),
             name=data.get("name"),
             supercategory=data.get("supercategory"),
             isthing=bool(data.get("isthing")),
             color=data.get("color"),
         )
+        return instance

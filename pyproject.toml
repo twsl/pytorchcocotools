@@ -23,8 +23,9 @@ python = "^3.10"
 torch = "^2.2.2"
 torchvision = "^0.17.2"
 litdata = "^0.2.0"
-python-dateutil = "^2.9.0.post0" # datetime parsing
 
+[tool.poetry.group.dt.dependencies]
+python-dateutil = "^2.9.0.post0" # datetime parsing
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.2"

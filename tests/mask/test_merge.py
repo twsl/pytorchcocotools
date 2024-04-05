@@ -196,11 +196,7 @@ def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
     merged_np = mask.merge([rle_np1, rle_np2], intersect=intersect)
     merged_pt = tmask.merge([rle_pt1, rle_pt2], intersect=intersect)
     # compare the results
-    from pytorchcocotools._mask import _frString
-
-    _frString([merged_np])
-    _frString([merged_pt])
-    assert merged_np == merged_pt
+    assert merged_np == merged_pt.__dict__
     assert merged_pt["counts"] == merged_np["counts"]
     assert merged_pt["size"] == merged_np["size"]
     assert merged_pt["counts"] == result["counts"]

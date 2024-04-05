@@ -71,8 +71,8 @@ def test_computeIoU_np(benchmark, coco_eval_np: COCOevalnp, img_id: int, cat_id:
 @parametrize_with_cases("coco_eval_pt, img_id, cat_id, result", cases=COCOEvalCasesPt)
 def test_computeIoU_pt(benchmark, coco_eval_pt: COCOevalpt, img_id: int, cat_id: int, result):  # noqa: N802
     # ious = coco_eval_pt.computeIoU(img_id, cat_id)
-    ious = benchmark(coco_eval_pt.computeIoU, img_id, cat_id)
-    result = torch.Tensor(result)
+    ious: torch.Tensor = benchmark(coco_eval_pt.computeIoU, img_id, cat_id)
+    result = torch.tensor(result, dtype=torch.float32)
     assert ious.shape == result.shape
     assert torch.allclose(ious, result)
 
@@ -82,4 +82,4 @@ def test_computeIoU(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, img_id: 
     ious_np = coco_eval_np.computeIoU(img_id, cat_id)
     ious_pt = coco_eval_pt.computeIoU(img_id, cat_id)
     assert np.allclose(ious_np, np.array(result))
-    assert torch.allclose(ious_pt, torch.Tensor(result))
+    assert torch.allclose(ious_pt, torch.tensor(result, dtype=torch.float32))

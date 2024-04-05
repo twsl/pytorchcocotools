@@ -51,7 +51,7 @@ import torch
 from torch import Tensor
 
 
-def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor:
+def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor:  # TODO: add better type hints
     """Compute intersection over union between masks.
 
     Finally, a note about the intersection over union (iou) computation.
@@ -64,7 +64,8 @@ def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor
     iou(gt,dt,iscrowd) = iou(gt',dt) = area(intersect(gt,dt)) / area(dt)
     For crowd gt regions we use this modified criteria above for the iou.
     """
-    return _mask.iou(dt, gt, [bool(is_crowd) for is_crowd in pyiscrowd])
+    is_crowd = [bool(is_c) for is_c in pyiscrowd]
+    return _mask.iou(dt, gt, is_crowd)
 
 
 def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803

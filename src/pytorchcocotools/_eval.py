@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import field
 from datetime import datetime
 from typing import Literal, TypeAlias
 
@@ -61,26 +62,26 @@ class Params:
 
 @dataclass_dict
 class EvalImgResult(dict):
-    image_id: int
-    category_id: int
-    aRng: Range  # noqa: N815
-    maxDet: int  # noqa: N815
-    dtIds: list[int]  # noqa: N815
-    gtIds: list[int]  # noqa: N815
-    dtMatches: list[int]  # noqa: N815
-    gtMatches: list[int]  # noqa: N815
-    dtScores: list[float]  # noqa: N815
-    gtIgnore: list[int]  # noqa: N815
-    dtIgnore: list[int]  # noqa: N815
+    image_id: int = -1
+    category_id: int = -1
+    aRng: Range = field(default_factory=Range)  # noqa: N815
+    maxDet: int = 0  # noqa: N815
+    dtIds: list[int] = field(default_factory=list[int])  # noqa: N815
+    gtIds: list[int] = field(default_factory=list[int])  # noqa: N815
+    dtMatches: list[int] = field(default_factory=list[int])  # noqa: N815
+    gtMatches: list[int] = field(default_factory=list[int])  # noqa: N815
+    dtScores: list[float] = field(default_factory=list[float])  # noqa: N815
+    gtIgnore: list[int] = field(default_factory=list[int])  # noqa: N815
+    dtIgnore: list[int] = field(default_factory=list[int])  # noqa: N815
 
 
 @dataclass_dict
 class EvalResult(dict):
     """Accumulated evaluation results."""
 
-    params: Params
-    counts: list[int]
-    date: datetime
-    precision: torch.Tensor
-    recall: torch.Tensor
-    scores: torch.Tensor
+    params: Params = field(default_factory=Params)
+    counts: list[int] = field(default_factory=list[int])
+    date: datetime = datetime.now()
+    precision: torch.Tensor | None = None
+    recall: torch.Tensor | None = None
+    scores: torch.Tensor | None = None

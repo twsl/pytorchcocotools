@@ -9,6 +9,7 @@ import time
 from pytorchcocotools import mask, utils
 from pytorchcocotools._eval import EvalImgResult, EvalResult, IoUType, Params, Range, RangeLabel
 from pytorchcocotools.coco import COCO
+from pytorchcocotools.entities.annotations import CocoAnnotationKeypointDetection, CocoAnnotationObjectDetection
 import torch
 from torch import Tensor
 
@@ -79,8 +80,12 @@ class COCOeval:
         self.cocoDt = cocoDt or COCO()  # detections COCO API
         self.eval_imgs = defaultdict(list)  # per-image per-category evaluation results [KxAxI] elements
         self.eval = EvalResult()  # accumulated evaluation results
-        self._gts = defaultdict(list)  # gt for evaluation
-        self._dts = defaultdict(list)  # dt for evaluation
+        self._gts = defaultdict(
+            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
+        )  # gt for evaluation
+        self._dts = defaultdict(
+            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
+        )  # dt for evaluation
         self.params: Params = Params(iouType=iouType)  # parameters
         self._paramsEval: Params = Params(iouType=iouType)  # parameters for evaluation
         self.stats = []  # result summarization
@@ -116,8 +121,12 @@ class COCOeval:
             gt["ignore"] = "iscrowd" in gt and gt["iscrowd"]
             if p.iouType == "keypoints":
                 gt["ignore"] = (gt["num_keypoints"] == 0) or gt["ignore"]
-        self._gts = defaultdict(list)  # gt for evaluation
-        self._dts = defaultdict(list)  # dt for evaluation
+        self._gts = defaultdict(
+            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
+        )  # gt for evaluation
+        self._dts = defaultdict(
+            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
+        )  # dt for evaluation
         for gt in gts:
             self._gts[gt["image_id"], gt["category_id"]].append(gt)
         for dt in dts:
@@ -180,22 +189,22 @@ class COCOeval:
             dt = [_ for cId in p.catIds for _ in self._dts[imgId, cId]]
         if len(gt) == 0 and len(dt) == 0:
             return Tensor([])
-        inds = torch.argsort(Tensor([-d["score"] for d in dt]))
-        dt = [dt[i] for i in inds]
+        inds = torch.argsort(Tensor([-d.score for d in dt]))
+        dt = [dt[i] for i in inds]  # TODO: optimize, dt[inds]
         if len(dt) > p.maxDets[-1]:
             dt = dt[0 : p.maxDets[-1]]
 
         if p.iouType == "segm":
-            g = [g["segmentation"] for g in gt]
-            d = [d["segmentation"] for d in dt]
+            g = [g.segmentation for g in gt]
+            d = [d.segmentation for d in dt]
         elif p.iouType == "bbox":
-            g = [g["bbox"] for g in gt]
-            d = [d["bbox"] for d in dt]
+            g = Tensor([g.bbox for g in gt])
+            d = Tensor([d.bbox for d in dt])
         else:
             raise ValueError("Unknown iouType for iou computation.")  # noqa: TRY002
 
         # compute iou between each dt and gt region
-        iscrowd = [bool(o["iscrowd"]) for o in gt]
+        iscrowd = [bool(o.iscrowd) for o in gt]
         ious = mask.iou(d, g, iscrowd)
         return ious
 
@@ -453,7 +462,7 @@ class COCOeval:
         self.eval = EvalResult(
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
-            date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            date=datetime.datetime.now(),  # .strftime("%Y-%m-%d %H:%M:%S"),
             precision=precision,
             recall=recall,
             scores=scores,

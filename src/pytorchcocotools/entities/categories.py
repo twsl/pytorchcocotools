@@ -14,7 +14,8 @@ class CocoCategoriesObjectDetection(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoCategoriesObjectDetection:
-        return cls(id=data.get("id"), name=data.get("name"), supercategory=data.get("supercategory"))
+        instance = cls(id=data.get("id"), name=data.get("name"), supercategory=data.get("supercategory"))
+        return instance
 
 
 @dataclass_dict
@@ -24,10 +25,11 @@ class CocoCategoriesKeypointDetection(CocoCategoriesObjectDetection):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoCategoriesKeypointDetection:
-        return cls(
+        instance = cls(
             id=data.get("id"),
             name=data.get("name"),
             supercategory=data.get("supercategory"),
             keypoints=data.get("keypoints"),
             skeleton=data.get("skeleton"),
         )
+        return instance

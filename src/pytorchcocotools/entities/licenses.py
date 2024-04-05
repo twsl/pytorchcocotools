@@ -12,4 +12,5 @@ class CocoLicense(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoLicense:
-        return cls(id=data.get("id"), name=data.get("name"), url=data.get("url"))
+        instance = cls(id=data.get("id"), name=data.get("name"), url=data.get("url"))
+        return instance

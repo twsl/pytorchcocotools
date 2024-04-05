@@ -90,6 +90,8 @@ class COCO:
     def createIndex(self) -> None:  # noqa: N802
         self.logger.info("creating index...")
         anns: dict[int, CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection] = {}
+        cats: dict[int, CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = {}
+        imgs: dict[int, CocoImage] = {}
         img_to_anns: defaultdict[int, list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]] = (
             defaultdict(list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection])
         )
@@ -98,14 +100,20 @@ class COCO:
             img_to_anns[ann.image_id].append(ann)
             anns[ann.id] = ann
 
+        for img in self.dataset.images:
+            imgs[img.id] = img
+
+        for cat in self.dataset.categories:
+            cats[cat.id] = cat
+
         for ann in self.dataset.annotations:
             cat_to_imgs[ann.category_id].append(ann.image_id)
 
         self.anns = anns
-        self.cats = {}
-        self.imgs = {}
         self.imgToAnns = img_to_anns
         self.catToImgs = cat_to_imgs
+        self.imgs = imgs
+        self.cats = cats
 
         self.logger.info("index created!")
 
@@ -464,7 +472,9 @@ class COCO:
                 urlretrieve(img.coco_url, fname)  # noqa: S310
             self.logger.info(f"downloaded {i}/{num_imgs} images (t={time.time() - tic:0.1f}s)")
 
-    def annToRLE(self, ann: dict) -> dict | list[dict]:  # noqa: N802
+    def annToRLE(  # noqa: N802
+        self, ann: CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection
+    ) -> mask.RleObjs | mask.RleObj:
         """Convert annotation which can be polygons, uncompressed RLE to RLE.
 
         Args:
@@ -473,9 +483,9 @@ class COCO:
         Returns:
             _description_
         """
-        t = self.imgs[ann["image_id"]]
+        t = self.imgs[ann.image_id]
         h, w = t.height, t.width
-        segm = ann["segmentation"]
+        segm = ann.segmentation
         if isinstance(segm, list):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code

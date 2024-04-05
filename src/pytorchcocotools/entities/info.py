@@ -19,7 +19,7 @@ class CocoInfo(BaseCocoEntity):
     @classmethod
     def from_dict(cls, data: dict) -> CocoInfo:
         date = data.get("date_created")
-        return cls(
+        instance = cls(
             year=data.get("year"),
             version=data.get("version"),
             description=data.get("description"),
@@ -27,3 +27,4 @@ class CocoInfo(BaseCocoEntity):
             url=data.get("url"),
             date_created=parse(date) if date else None,
         )
+        return instance

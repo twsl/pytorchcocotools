@@ -2,7 +2,8 @@ from pycocotools.coco import COCO as COCOnp  # noqa: N811
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 from pytest_cases import fixture
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
-from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
+from pytorchcocotools.cocoeval import COCOeval as COCOevalpt
+from pytorchcocotools.entities.coco import CocoDetectionDataset  # noqa: N811
 
 
 @fixture(scope="session")
@@ -147,7 +148,7 @@ def coco_dt_np(dataset_dt: dict) -> COCOnp:
 @fixture(scope="session")
 def coco_gt_pt(dataset_gt: dict) -> COCOpt:
     coco = COCOpt()
-    coco.dataset = dataset_gt
+    coco.dataset = CocoDetectionDataset.from_dict(dataset_gt)
     coco.createIndex()
     return coco
 
@@ -155,7 +156,7 @@ def coco_gt_pt(dataset_gt: dict) -> COCOpt:
 @fixture(scope="session")
 def coco_dt_pt(dataset_dt: dict) -> COCOpt:
     coco = COCOpt()
-    coco.dataset = dataset_dt
+    coco.dataset = CocoDetectionDataset.from_dict(dataset_dt)
     coco.createIndex()
     return coco
 

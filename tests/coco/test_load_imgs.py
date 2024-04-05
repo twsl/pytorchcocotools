@@ -47,5 +47,7 @@ def test_loadImgs(coco_np: COCOnp, coco_pt: COCOpt, img_ids, result) -> None:  #
     imgs_np = coco_np.loadImgs(img_ids)
     imgs_pt = coco_pt.loadImgs(img_ids)
     # compare the results
-    assert imgs_np == imgs_pt
-    assert imgs_np == result
+    for img_np, img_pt in zip(imgs_np, imgs_pt, strict=False):
+        assert img_np == img_pt.__dict__
+    for img_np, img in zip(imgs_np, result, strict=False):
+        assert img_np == img

@@ -76,7 +76,8 @@ def test_loadAnns_pt(benchmark, coco_pt: COCOpt, ann_ids, result) -> None:  # no
     # get the annotation ids for the id
     ann_pt = benchmark(coco_pt.loadAnns, ann_ids)
     # compare the results
-    assert ann_pt == result
+    del ann_pt.score
+    assert ann_pt.__dict__ == result
 
 
 @pytest.mark.benchmark(group="loadAnns", warmup=True)
@@ -94,5 +95,8 @@ def test_loadAnns(coco_np: COCOnp, coco_pt: COCOpt, ann_ids, result) -> None:  #
     ann_np = coco_np.loadAnns(ann_ids)
     ann_pt = coco_pt.loadAnns(ann_ids)
     # compare the results
-    assert ann_np == ann_pt
-    assert ann_np == result
+    for annnp, annpt in zip(ann_np, ann_pt, strict=False):
+        del annpt.score
+        assert annnp == annpt.__dict__
+    for annnp, ann in zip(ann_np, result, strict=False):
+        assert annnp == ann

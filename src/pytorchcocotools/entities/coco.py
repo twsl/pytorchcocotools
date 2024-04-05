@@ -49,15 +49,17 @@ class CocoDetectionDataset(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoDetectionDataset:
-        return cls(
+        instance = cls(
             info=CocoInfo.from_dict(data.get("info", {})),
             licenses=[CocoLicense.from_dict(license) for license in data.get("licenses", [])],
             images=[CocoImage.from_dict(image) for image in data.get("images", [])],
             annotations=[cls._get_annotation(annotation) for annotation in data.get("annotations", [])],
             categories=[cls._get_category(category) for category in data.get("categories", [])],
         )
+        return instance
 
 
+@dataclass_dict
 class CocoCaptionDataset(CocoDetectionDataset):
     annotations: list[CocoAnnotationImageCaptioning] = field(default_factory=list[CocoAnnotationImageCaptioning])
     categories: list[CocoCategoriesObjectDetection] = field(default_factory=list[CocoCategoriesObjectDetection])
@@ -71,6 +73,7 @@ class CocoCaptionDataset(CocoDetectionDataset):
         return CocoCategoriesObjectDetection.from_dict(category)
 
 
+@dataclass_dict
 class CocoPanopticDataset(CocoDetectionDataset):
     annotations: list[CocoAnnotationPanopticSegmentation] = field(
         default_factory=list[CocoAnnotationPanopticSegmentation]

@@ -43,9 +43,12 @@ def test_loadPyTorchAnnotations(coco_np: COCOnp, coco_pt: COCOpt, data, result) 
     data_pt = data
     data_np = data.numpy()
     # get the annotations with id
-    ann_np = coco_np.loadNumpyAnnotations(data_np)
-    ann_pt = coco_pt.loadPyTorchAnnotations(data_pt)
+    anns_np = coco_np.loadNumpyAnnotations(data_np)
+    anns_pt = coco_pt.loadPyTorchAnnotations(data_pt)
     # compare the results
-    for i in range(len(ann_np)):
-        assert ann_np[i] == ann_pt[i]
-        assert ann_np[i] == result[i]
+    for annnp, annpt in zip(anns_np, anns_pt, strict=False):
+        for key in annnp:
+            assert annnp[key] == annpt[key]
+        assert annnp == annpt.__dict__
+    for annnp, ann in zip(anns_np, result, strict=False):
+        assert annnp == ann
