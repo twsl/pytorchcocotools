@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import field
+
 from pytorchcocotools.entities.base import BaseCocoEntity
 from pytorchcocotools.utils import dataclass_dict
 
 
 @dataclass_dict
 class CocoCategoriesObjectDetection(BaseCocoEntity):
-    id: int
-    name: str
-    supercategory: str
+    id: int = -1
+    name: str = ""
+    supercategory: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoCategoriesObjectDetection:
@@ -17,8 +19,8 @@ class CocoCategoriesObjectDetection(BaseCocoEntity):
 
 @dataclass_dict
 class CocoCategoriesKeypointDetection(CocoCategoriesObjectDetection):
-    keypoints: list[str]
-    skeleton: list[list[int]]
+    keypoints: list[str] = field(default_factory=list[str])
+    skeleton: list[list[int]] = field(default_factory=list[list[int]])
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoCategoriesKeypointDetection:

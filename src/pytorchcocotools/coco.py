@@ -132,9 +132,9 @@ class COCO:
         Returns:
             Integer array of ann ids.
         """
-        img_ids: list = imgIds if _isArrayLike(imgIds) else [imgIds] if imgIds else []  # type: ignore
-        cat_ids: list = catIds if _isArrayLike(catIds) else [catIds] if catIds else []  # type: ignore
-        area_rng: list = areaRng if _isArrayLike(areaRng) else [areaRng] if areaRng else []  # type: ignore
+        img_ids: list = imgIds if isinstance(imgIds, list) else [imgIds] if imgIds else []  # type: ignore
+        cat_ids: list = catIds if isinstance(catIds, list) else [catIds] if catIds else []  # type: ignore
+        area_rng: list = areaRng if isinstance(areaRng, list) else [areaRng] if areaRng else []  # type: ignore
 
         if len(img_ids) == len(cat_ids) == len(area_rng) == 0:
             anns = self.dataset.annotations
@@ -412,9 +412,9 @@ class COCO:
             elif "segmentation" in ann:
                 new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # type: ignore
                 # now only support compressed RLE format as segmentation results
-                new_ann.area = float(mask.area(ann["segmentation"]))
+                new_ann.area = float(mask.area(ann.segmentation))
                 if "bbox" not in ann:
-                    new_ann.bbox = mask.toBbox(ann["segmentation"])
+                    new_ann.bbox = mask.toBbox(ann.segmentation)
                 else:
                     new_ann.bbox = ann.bbox
                 new_ann.id = id + 1

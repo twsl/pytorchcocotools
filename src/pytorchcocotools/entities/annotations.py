@@ -17,14 +17,14 @@ class CocoRLE(BaseCocoEntity):
 
 
 class CocoAnnotationObjectDetection(BaseCocoEntity):
-    id: int
-    image_id: int
-    category_id: int
+    id: int = -1
+    image_id: int = -1
+    category_id: int = -1
     segmentation: list[CocoRLE | list[float]] = field(default_factory=list[CocoRLE | list[float]])
-    area: float
+    area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
-    iscrowd: bool
-    score: float | None  # only used in results
+    iscrowd: bool = False
+    score: float | None = None  # only used in results
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationObjectDetection:
@@ -45,7 +45,7 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
 @dataclass_dict
 class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
     keypoints: list[float] = field(default_factory=list[float])
-    num_keypoints: int
+    num_keypoints: int = 0
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationKeypointDetection:

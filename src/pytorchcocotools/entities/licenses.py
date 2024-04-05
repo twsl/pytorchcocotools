@@ -6,9 +6,9 @@ from pytorchcocotools.utils import dataclass_dict
 
 @dataclass_dict
 class CocoLicense(BaseCocoEntity):
-    id: int
-    name: str
-    url: str
+    id: int = -1
+    name: str = ""
+    url: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoLicense:

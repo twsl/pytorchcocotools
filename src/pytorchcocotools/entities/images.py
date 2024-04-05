@@ -9,14 +9,14 @@ from pytorchcocotools.utils import dataclass_dict
 
 @dataclass_dict
 class CocoImage(BaseCocoEntity):
-    id: int
-    width: int
-    height: int
-    file_name: str
-    license: int
-    date_captured: datetime | None
-    flickr_url: str
-    coco_url: str
+    id: int = -1
+    width: int = 0
+    height: int = 0
+    file_name: str = ""
+    license: int = -1
+    date_captured: datetime | None = None
+    flickr_url: str = ""
+    coco_url: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoImage:

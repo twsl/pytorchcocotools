@@ -10,10 +10,10 @@ from pytorchcocotools.utils import dataclass_dict
 
 @dataclass_dict
 class ResultAnnotation(BaseCocoEntity):
-    image_id: int
+    image_id: int = -1
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
-    score: float
-    category_id: int
+    score: float | None = None
+    category_id: int = -1
 
     @classmethod
     def from_dict(cls, data: dict) -> ResultAnnotation:
@@ -27,11 +27,11 @@ class ResultAnnotation(BaseCocoEntity):
 
 @dataclass_dict
 class CocoSegmentInfo(BaseCocoEntity):
-    id: int
-    category_id: int
-    area: float
+    id: int = -1
+    category_id: int = -1
+    area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
-    iscrowd: bool
+    iscrowd: bool = False
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoSegmentInfo:
@@ -46,8 +46,8 @@ class CocoSegmentInfo(BaseCocoEntity):
 
 @dataclass_dict
 class CocoAnnotationPanopticSegmentation(BaseCocoEntity):
-    image_id: int
-    file_name: str
+    image_id: int = -1
+    file_name: str = ""
     segments_info: list[CocoSegmentInfo] = field(default_factory=list[CocoSegmentInfo])
 
     @classmethod
@@ -61,9 +61,9 @@ class CocoAnnotationPanopticSegmentation(BaseCocoEntity):
 
 @dataclass_dict
 class CocoAnnotationImageCaptioning(BaseCocoEntity):
-    id: int
-    image_id: int
-    caption: str
+    id: int = -1
+    image_id: int = -1
+    caption: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationImageCaptioning:
@@ -76,11 +76,11 @@ class CocoAnnotationImageCaptioning(BaseCocoEntity):
 
 @dataclass_dict
 class CocoAnnotationDensePose(BaseCocoEntity):
-    id: int
-    image_id: int
-    category_id: int
-    is_crowd: bool
-    area: float
+    id: int = -1
+    image_id: int = -1
+    category_id: int = -1
+    is_crowd: bool = False
+    area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
     dp_I: list[float] = field(default_factory=list[float])  # noqa: N815
     dp_U: list[float] = field(default_factory=list[float])  # noqa: N815
@@ -109,7 +109,7 @@ class CocoAnnotationDensePose(BaseCocoEntity):
 
 @dataclass_dict
 class CocoCategoriesPanopticSegmentation(CocoCategoriesObjectDetection):
-    isthing: bool | None  # noqa: N815
+    isthing: bool | None = None  # noqa: N815
     color: list[int] = field(default_factory=list[int])  # [R,G,B]
 
     @classmethod

@@ -9,12 +9,12 @@ from pytorchcocotools.utils import dataclass_dict
 
 @dataclass_dict
 class CocoInfo(BaseCocoEntity):
-    year: int
-    version: str
-    description: str
-    contributor: str
-    url: str
-    date_created: datetime | None
+    year: int = datetime.now().year
+    version: str = "0.1.0"
+    description: str = ""
+    contributor: str = ""
+    url: str = ""
+    date_created: datetime | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoInfo:
