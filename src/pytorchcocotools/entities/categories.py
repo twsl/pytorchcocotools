@@ -29,7 +29,7 @@ class CocoCategoriesKeypointDetection(CocoCategoriesObjectDetection):
             id=data.get("id"),
             name=data.get("name"),
             supercategory=data.get("supercategory"),
-            keypoints=data.get("keypoints"),
-            skeleton=data.get("skeleton"),
+            keypoints=data.get("keypoints", []),
+            skeleton=data.get("skeleton", []),
         )
         return instance

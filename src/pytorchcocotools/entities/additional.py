@@ -40,7 +40,7 @@ class CocoSegmentInfo(BaseCocoEntity):
             id=data.get("id"),
             category_id=data.get("category_id"),
             area=data.get("area"),
-            bbox=data.get("bbox"),
+            bbox=data.get("bbox", []),
             iscrowd=bool(data.get("iscrowd")),
         )
         return instance
@@ -101,12 +101,12 @@ class CocoAnnotationDensePose(BaseCocoEntity):
             category_id=data.get("category_id"),
             is_crowd=bool(data.get("is_crowd")),
             area=data.get("area"),
-            bbox=data.get("bbox"),
-            dp_I=data.get("dp_I"),
-            dp_U=data.get("dp_U"),
-            dp_V=data.get("dp_V"),
-            dp_x=data.get("dp_x"),
-            dp_y=data.get("dp_y"),
+            bbox=data.get("bbox", []),
+            dp_I=data.get("dp_I", []),
+            dp_U=data.get("dp_U", []),
+            dp_V=data.get("dp_V", []),
+            dp_x=data.get("dp_x", []),
+            dp_y=data.get("dp_y", []),
             dp_masks=[CocoRLE.from_dict(mask) for mask in data.get("dp_masks", [])],
         )
         return instance
@@ -124,6 +124,6 @@ class CocoCategoriesPanopticSegmentation(CocoCategoriesObjectDetection):
             name=data.get("name"),
             supercategory=data.get("supercategory"),
             isthing=bool(data.get("isthing")),
-            color=data.get("color"),
+            color=data.get("color", []),
         )
         return instance

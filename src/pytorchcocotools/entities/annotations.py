@@ -13,7 +13,7 @@ class CocoRLE(BaseCocoEntity):
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoRLE:
-        instance = cls(counts=data.get("counts"), size=data.get("size"))
+        instance = cls(counts=data.get("counts", []), size=data.get("size", (-1, -1)))
         return instance
 
 
@@ -39,7 +39,7 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
             category_id=data.get("category_id"),
             segmentation=segmentations,
             area=data.get("area"),
-            bbox=data.get("bbox"),
+            bbox=data.get("bbox", []),
             iscrowd=bool(data.get("iscrowd")),
             score=data.get("score"),
         )
@@ -65,7 +65,7 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
             bbox=data.get("bbox"),
             iscrowd=bool(data.get("iscrowd")),
             score=data.get("score"),
-            keypoints=data.get("keypoints"),
+            keypoints=data.get("keypoints", []),
             num_keypoints=data.get("num_keypoints"),
         )
         return instance

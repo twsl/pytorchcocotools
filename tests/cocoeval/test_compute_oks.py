@@ -42,7 +42,7 @@ class COCOEvalCasesBoth:
 @pytest.mark.benchmark(group="computeOks", warmup=True)
 @parametrize_with_cases("coco_eval_np, img_id, cat_id, result", cases=COCOEvalCasesNp)
 def test_computeOks_np(benchmark, coco_eval_np: COCOevalnp, img_id: int, cat_id: int, result):  # noqa: N802
-    ious: np.array = coco_eval_np.computeOks(img_id, cat_id)
+    ious: np.ndarray = coco_eval_np.computeOks(img_id, cat_id)
     # ious = benchmark(coco_eval_np.computeOks, img_id, cat_id)
     result = np.array(result)
     assert ious.shape == result.shape
@@ -62,5 +62,5 @@ def test_computeOks_pt(benchmark, coco_eval_pt: COCOevalpt, img_id: int, cat_id:
 def test_ccomputeOks(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, img_id: int, cat_id: int, result):  # noqa: N802
     ious_np = coco_eval_np.computeOks(img_id, cat_id)
     ious_pt = coco_eval_pt.computeOks(img_id, cat_id)
-    assert np.allclose(ious_np, ious_pt)
+    assert np.allclose(ious_np, np.array(result))
     assert torch.allclose(ious_pt, torch.Tensor(result))
