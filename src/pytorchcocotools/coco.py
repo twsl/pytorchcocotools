@@ -301,7 +301,7 @@ class COCO:
                         if isinstance(ann.segmentation["counts"], list):
                             rle = mask.frPyObjects([ann.segmentation], t.height, t.width)
                         else:
-                            rle = [ann["segmentation"]]
+                            rle = [ann.segmentation]
                         m = mask.decode(rle)
                         img = torch.ones((m.shape[0], m.shape[1], 3))
                         color_mask = torch.tensor([2.0, 166.0, 101.0]) / 255 if ann.iscrowd else torch.rand((1, 3))[0]
@@ -326,7 +326,7 @@ class COCO:
                     )
 
                 if draw_bbox:
-                    [bbox_x, bbox_y, bbox_w, bbox_h] = ann["bbox"]
+                    [bbox_x, bbox_y, bbox_w, bbox_h] = ann.bbox
                     poly = [
                         [bbox_x, bbox_y],
                         [bbox_x, bbox_y + bbox_h],

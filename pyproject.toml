@@ -20,17 +20,17 @@ keywords = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-torch = "^2.2.2"
-torchvision = "^0.17.2"
+torch = "^2.3.1"
+torchvision = "^0.18.1"
 litdata = "^0.2.0"
 
 [tool.poetry.group.dt.dependencies]
 python-dateutil = "^2.9.0.post0" # datetime parsing
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.2"
+pytest = "^8.2.2"
 pytest-cov = "^5.0.0"
-ruff = "^0.3.3"
+ruff = "^0.4.8"
 safety = "^3.0.1"
 bandit = "^1.7.7"
 ipykernel = "^6.22.0"
