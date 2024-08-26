@@ -10,13 +10,14 @@ from typing import cast
 import torch
 from torch import Tensor
 
-from pytorchcocotools import mask, utils
-from pytorchcocotools._eval import EvalImgResult, EvalResult, IoUType, Params, Range, RangeLabel
+from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
+from pytorchcocotools.eval_types import EvalImgResult, EvalResult, IoUType, Params, Range, RangeLabel
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
 )
+from pytorchcocotools.utils.logging import get_logger
 
 
 class COCOeval:
@@ -78,7 +79,7 @@ class COCOeval:
             cocoDt: COCO object with detection results. Defaults to None.
             iouType: _description_. Defaults to "segm".
         """
-        self.logger = utils.get_logger(__name__)
+        self.logger = get_logger(__name__)
         if not iouType:
             self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt or COCO()  # ground truth COCO API

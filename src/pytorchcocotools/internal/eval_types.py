@@ -6,13 +6,8 @@ from typing import Literal, TypeAlias
 
 import torch
 
+from pytorchcocotools.internal.type_hints import IoUType, Range, RangeLabel, RangeLabels, Ranges
 from pytorchcocotools.utils.dataclass import dataclass_dict
-
-RangeLabel: TypeAlias = Literal["all", "small", "medium", "large"]
-RangeLabels: TypeAlias = list[RangeLabel]
-Range: TypeAlias = tuple[int, int]
-Ranges: TypeAlias = list[Range]
-IoUType: TypeAlias = Literal["segm", "bbox", "keypoints"]
 
 
 class Params:
