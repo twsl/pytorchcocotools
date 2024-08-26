@@ -1,6 +1,7 @@
-import pytorchcocotools.mask as mask_util
 import torch
 from torch import Tensor
+
+import pytorchcocotools.mask as mask_util
 
 
 def _encode(x: Tensor) -> Tensor:

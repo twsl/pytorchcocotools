@@ -4,8 +4,9 @@ import numpy as np
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize, parametrize_with_cases
-from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 import torch
+
+from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
 KEYPOINTS_DATA = [
     (1, 1, [[1.0]]),

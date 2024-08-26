@@ -2,10 +2,11 @@ from typing import Any
 
 import pytest
 from pytest_cases import parametrize_with_cases
-from pytorchcocotools.torch.dataset import CocoDetection as CocoDetectionpt
 import torch
 from torchvision.datasets import CocoDetection as CocoDetectionnp
 from torchvision.transforms.functional import pil_to_tensor
+
+from pytorchcocotools.torch.dataset import CocoDetection as CocoDetectionpt
 
 
 class DatasetCases:

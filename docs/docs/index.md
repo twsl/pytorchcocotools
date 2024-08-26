@@ -18,9 +18,17 @@ Welcome to pytorchcocotools's documentation!
 
 <!--- BADGES: END --->
 
+Unofficial APIs for the MS-COCO dataset using PyTorch
+
+The file format is explained in the [official documentation](https://cocodataset.org/#format-data) and nicely summarized [here](https://www.youtube.com/watch?v=h6s61a_pqfM).
+
 ## Features
 
-- `...`
+- Strongly typed COCO data format [represetation](./src/pytorchcocotools/internal/structure/)
+- Drop-in compatible [`COCO`](./coco.md) and [`COCOeval`](./cocoeval.md) classes
+- Pure `torch` implementation
+- `torchvision` data set using the latest transformation API
+- fully unit tested and documented
 
 
 ## Installation

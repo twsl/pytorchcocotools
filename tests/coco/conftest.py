@@ -1,5 +1,6 @@
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 from pytest_cases import fixture
+
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 

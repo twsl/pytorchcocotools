@@ -1,11 +1,8 @@
 import torch
 from torch import Tensor
 
+from pytorchcocotools.internal.type_hints import Mask
 from pytorchcocotools.utils.dataclass import dataclass_dict
-
-
-class BB(Tensor):
-    pass
 
 
 class RLE:
@@ -20,16 +17,6 @@ class RLEs(list[RLE]):
     def __init__(self, rles: list[RLE], n: int | None = None):
         self.n = n if n is not None else len(rles) if len(rles) > 0 else 0
         super().__init__(rles)
-
-
-class Mask(Tensor):
-    """# hxwxn binary mask, in column-major order.
-
-    Args:
-        Tensor: _description_
-    """
-
-    pass
 
 
 class Masks(list[Mask]):

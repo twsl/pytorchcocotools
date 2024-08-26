@@ -1,9 +1,10 @@
 import pycocotools.mask as mask
 import pytest
 from pytest_cases import parametrize_with_cases
-import pytorchcocotools.mask as tmask
 import torch
 from torch import Tensor
+
+import pytorchcocotools.mask as tmask
 
 
 class PyObjectsCases:

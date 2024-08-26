@@ -1,4 +1,5 @@
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
+
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 

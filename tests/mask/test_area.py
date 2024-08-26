@@ -2,8 +2,9 @@ import numpy as np
 import pycocotools.mask as mask
 import pytest
 from pytest_cases import parametrize_with_cases
-import pytorchcocotools.mask as tmask
 import torch
+
+import pytorchcocotools.mask as tmask
 
 
 class AreaCases:

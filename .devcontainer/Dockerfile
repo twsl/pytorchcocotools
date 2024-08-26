@@ -16,4 +16,3 @@ RUN curl -sSL  https://install.python-poetry.org | POETRY_HOME=/etc/poetry pytho
     && poetry completions bash >> ~/.bash_completion \
     && poetry config virtualenvs.create false \
     && poetry self add "poetry-dynamic-versioning[plugin]"
-
