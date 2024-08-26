@@ -61,7 +61,7 @@ jobs:
         run: poetry run mkdocs build -f ./docs/mkdocs.yml -d ./_build/
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3 # cant update yet on GHES
+        uses: actions/upload-artifact@v4 # cant update yet on GHES
         with:
           name: ${{ env.ARTIFACT }}
           path: ./docs/_build/
