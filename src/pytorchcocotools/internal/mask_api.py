@@ -1,11 +1,12 @@
-from pytorchcocotools._entities import (
+import torch
+from torch import Tensor
+
+from pytorchcocotools.internal.entities import (
     BB,
     RLE,
     Mask,
     RLEs,
 )
-import torch
-from torch import Tensor
 
 
 def rleEncode(mask: Mask, h: int, w: int, n: int) -> RLEs:  # noqa: N802

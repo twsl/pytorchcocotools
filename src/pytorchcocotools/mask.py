@@ -45,10 +45,11 @@
 
 from typing import Literal
 
-from pytorchcocotools._entities import RleObj, RleObjs
-import pytorchcocotools._mask as _mask
 import torch
 from torch import Tensor
+
+import pytorchcocotools._mask as _mask
+from pytorchcocotools.internal._entities import RleObj, RleObjs
 
 
 def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor:  # TODO: add better type hints

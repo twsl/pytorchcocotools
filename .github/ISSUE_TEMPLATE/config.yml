@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/twsl/pytorchcocotools/discussions/new
+    about: Ask and answer questions
+  - name: Read the documentation
+    url: https://twsl.github.io/pytorchcocotools/

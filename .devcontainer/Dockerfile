@@ -12,7 +12,8 @@ RUN python3 -m pip install --upgrade setuptools
 RUN pip install --upgrade pip
 
 ENV PATH "/etc/poetry/bin:$PATH"
-RUN curl -sSLk https://install.python-poetry.org | POETRY_HOME=/etc/poetry python - \
+RUN curl -sSL  https://install.python-poetry.org | POETRY_HOME=/etc/poetry python - \
     && poetry completions bash >> ~/.bash_completion \
     && poetry config virtualenvs.create false \
     && poetry self add "poetry-dynamic-versioning[plugin]"
+

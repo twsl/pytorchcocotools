@@ -2,24 +2,24 @@ from __future__ import annotations
 
 from dataclasses import field
 
-from pytorchcocotools.entities.additional import (
+from pytorchcocotools.internal.structure.additional import (
     CocoAnnotationImageCaptioning,
     CocoAnnotationPanopticSegmentation,
     CocoCategoriesPanopticSegmentation,
 )
-from pytorchcocotools.entities.annotations import (
+from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
 )
-from pytorchcocotools.entities.base import BaseCocoEntity
-from pytorchcocotools.entities.categories import (
+from pytorchcocotools.internal.structure.base import BaseCocoEntity
+from pytorchcocotools.internal.structure.categories import (
     CocoCategoriesKeypointDetection,
     CocoCategoriesObjectDetection,
 )
-from pytorchcocotools.entities.images import CocoImage
-from pytorchcocotools.entities.info import CocoInfo
-from pytorchcocotools.entities.licenses import CocoLicense
-from pytorchcocotools.utils import dataclass_dict
+from pytorchcocotools.internal.structure.images import CocoImage
+from pytorchcocotools.internal.structure.info import CocoInfo
+from pytorchcocotools.internal.structure.licenses import CocoLicense
+from pytorchcocotools.utils.dataclass import dataclass_dict
 
 
 # https://cocodataset.org/#format-data

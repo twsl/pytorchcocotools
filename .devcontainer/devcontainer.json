@@ -1,121 +1,128 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Python 3",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"build": {
-		"dockerfile": "Dockerfile",
-		"context": "..",
-		"args": {
-			"VARIANT": "3.11-bookworm"
-		}
-	},
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	"features": {
-		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers-contrib/features/actionlint:1": {},
-		"ghcr.io/devcontainers-contrib/features/pre-commit:2": {},
-		"ghcr.io/dhoeric/features/act:1": {},
-		"ghcr.io/devcontainers/features/docker-in-docker:1": {
-			"version": "latest",
-			"moby": true
-		}
-	},
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "poetry install && pre-commit install && pre-commit autoupdate",
-	// Configure tool-specific properties.
-	"customizations": {
-		// Configure properties specific to VS Code.
-		"vscode": {
-			// Set *default* container specific settings.json values on container create.
-			"settings": {
-				"editor.tabSize": 4,
-				"editor.renderWhitespace": "all",
-				"editor.formatOnPaste": false,
-				"editor.formatOnSave": true,
-				"editor.rulers": [
-					120
-				],
-				"python.pythonPath": "/usr/local/bin/python",
-				"python.envFile": "${workspaceFolder}/.env",
-				"python.defaultInterpreterPath": "/usr/local/bin/python",
-				"python.languageServer": "Pylance",
-				"python.autoComplete.addBrackets": true,
-				"python.analysis.autoImportCompletions": true,
-				"python.analysis.completeFunctionParens": true,
-				"python.analysis.autoSearchPaths": true,
-				"python.analysis.autoFormatStrings": true,
-				"python.analysis.useImportHeuristic": true,
-				"python.analysis.typeCheckingMode": "basic",
-				"python.analysis.inlayHints.variableTypes": true,
-				"python.analysis.inlayHints.functionReturnTypes": true,
-				"python.analysis.diagnosticMode": "workspace",
-				"python.analysis.extraPaths": [
-					"./src"
-				],
-				"python.sortImports": true,
-				"python.testing.autoTestDiscoverOnSaveEnabled": false,
-				"python.testing.unittestEnabled": false,
-				"python.testing.pytestEnabled": true,
-				"python.testing.cwd": "${workspaceFolder}",
-				"python.testing.pytestArgs": [
-					"tests",
-					"-v"
-				],
-				"[python]": {
-					"editor.formatOnType": true,
-					"editor.defaultFormatter": "charliermarsh.ruff",
-					"editor.codeActionsOnSave": {
-						"source.organizeImports": "always",
-						"source.organizeImports.ruff": "always",
-						"source.fixAll.ruff": "always"
-					}
-				},
-				"testExplorer.codeLens": true,
-				"testExplorer.gutterDecoration": true,
-				"autoDocstring.docstringFormat": "google-notypes",
-				"autoDocstring.guessTypes": true,
-				"autoDocstring.generateDocstringOnEnter": true,
-				"autoDocstring.startOnNewLine": true,
-				"git.enableSmartCommit": true,
-				"http.proxyStrictSSL": false, // required for self signed certificates
-				"telemetry.telemetryLevel": "off",
-			},
-			// Add the IDs of extensions you want installed when the container is created.
-			"extensions": [
-				"ms-python.python",
-				"ms-python.vscode-pylance",
-				"visualstudioexptteam.vscodeintellicode",
-				"VisualStudioExptTeam.vscodeintellicode-completions",
-				"GitHub.copilot",
-				"GitHub.copilot-chat",
-				"charliermarsh.ruff",
-				"esbenp.prettier-vscode",
-				"ms-vscode.test-adapter-converter",
-				"littlefoxteam.vscode-python-test-adapter",
-				"njqdev.vscode-python-typehint",
-				"KevinRose.vsc-python-indent",
-				"medo64.render-crlf",
-				"shardulm94.trailing-spaces",
-				"nhoizey.gremlins",
-				"wayou.vscode-todo-highlight",
-				"Gruntfuggly.todo-tree",
-				"njpwerner.autodocstring",
-				"rodolphebarbanneau.python-docstring-highlighter",
-				"mechatroner.rainbow-csv",
-				"uctakeoff.vscode-counter",
-				"bierner.github-markdown-preview",
-				"ms-vscode-remote.vscode-remote-extensionpack",
-				"ms-azuretools.vscode-docker",
-				"uctakeoff.vscode-counter",
-				"bierner.github-markdown-preview",
-				"tomoki1207.pdf",
-				"ms-vscode.cpptools-extension-pack"
-			]
-		}
-	},
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	"remoteUser": "root"
+    "name": "Python 3 (pytorchcocotools)",
+    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+            "VARIANT": "3.10-bookworm"
+        }
+    },
+    // Features to add to the dev container. More info: https://containers.dev/features.
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers-contrib/features/actionlint:1": {},
+        "ghcr.io/devcontainers-contrib/features/pre-commit:2": {},
+        "ghcr.io/dhoeric/features/act:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "version": "latest",
+            "moby": true
+        }
+    },
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [],
+    // Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": "poetry install && pre-commit install && pre-commit autoupdate",
+    // Configure tool-specific properties.
+    "customizations": {
+        // Configure properties specific to VS Code.
+        "vscode": {
+            // Set *default* container specific settings.json values on container create.
+            "settings": {
+                "editor.tabSize": 4,
+                "editor.renderWhitespace": "all",
+                "editor.formatOnPaste": false,
+                "editor.formatOnSave": true,
+                "editor.rulers": [
+                    120
+                ],
+                "python.pythonPath": "/usr/local/bin/python",
+                "python.envFile": "${workspaceFolder}/.env",
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.languageServer": "Pylance",
+                "python.autoComplete.addBrackets": true,
+                "python.analysis.autoImportCompletions": true,
+                "python.analysis.completeFunctionParens": true,
+                "python.analysis.autoSearchPaths": true,
+                "python.analysis.autoFormatStrings": true,
+                "python.analysis.useImportHeuristic": true,
+                "python.analysis.typeCheckingMode": "basic",
+                "python.analysis.inlayHints.variableTypes": true,
+                "python.analysis.inlayHints.functionReturnTypes": true,
+                "python.analysis.diagnosticMode": "workspace",
+                "python.analysis.extraPaths": [
+                    "./src"
+                ],
+                "python.sortImports": true,
+                "python.testing.autoTestDiscoverOnSaveEnabled": false,
+                "python.testing.unittestEnabled": false,
+                "python.testing.pytestEnabled": true,
+                "python.testing.cwd": "${workspaceFolder}",
+                "python.testing.pytestArgs": [
+                    "tests",
+                    "-v"
+                ],
+                "[python]": {
+                    "editor.formatOnSave": true,
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": "always",
+                        "source.fixAll": "always"
+                    }
+                },
+                "notebook.formatOnSave.enabled": true,
+                "notebook.codeActionsOnSave": {
+                    "notebook.source.fixAll": "explicit",
+                    "notebook.source.organizeImports": "explicit"
+                },
+                "testExplorer.codeLens": true,
+                "testExplorer.gutterDecoration": true,
+                "git.enableSmartCommit": true,
+                "git.autofetch": true,
+                "autoDocstring.docstringFormat": "google-notypes",
+                "autoDocstring.guessTypes": true,
+                "autoDocstring.generateDocstringOnEnter": true,
+                "autoDocstring.startOnNewLine": true,
+                "telemetry.telemetryLevel": "off",
+                "files.eol": "\n",
+                "code-eol.highlightNonDefault": true,
+                "code-eol.highlightExtraWhitespace": true
+            },
+            // Add the IDs of extensions you want installed when the container is created.
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter",
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "github.vscode-github-actions",
+                "charliermarsh.ruff",
+                "esbenp.prettier-vscode",
+                "ms-vscode.test-adapter-converter",
+                "littlefoxteam.vscode-python-test-adapter",
+                "njqdev.vscode-python-typehint",
+                "KevinRose.vsc-python-indent",
+                "medo64.render-crlf",
+                "shardulm94.trailing-spaces",
+                "nhoizey.gremlins",
+                "wayou.vscode-todo-highlight",
+                "Gruntfuggly.todo-tree",
+                "njpwerner.autodocstring",
+                "rodolphebarbanneau.python-docstring-highlighter",
+                "mechatroner.rainbow-csv",
+                "uctakeoff.vscode-counter",
+                "bierner.github-markdown-preview",
+                "ms-vscode-remote.vscode-remote-extensionpack",
+                "ms-azuretools.vscode-docker",
+                "uctakeoff.vscode-counter",
+                "bierner.github-markdown-preview",
+                "ExecutableBookProject.myst-highlight",
+                "redhat.vscode-yaml"
+            ]
+        }
+    },
+    // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+    "remoteUser": "root"
 }

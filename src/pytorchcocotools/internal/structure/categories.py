@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import field
 
-from pytorchcocotools.entities.base import BaseCocoEntity
-from pytorchcocotools.utils import dataclass_dict
+from pytorchcocotools.internal.structure.base import BaseCocoEntity
+from pytorchcocotools.utils.dataclass import dataclass_dict
 
 
 @dataclass_dict

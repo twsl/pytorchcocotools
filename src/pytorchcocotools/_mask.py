@@ -1,4 +1,7 @@
-from pytorchcocotools._entities import (
+import torch
+from torch import Tensor
+
+from pytorchcocotools.internal.entities import (
     BB,
     RLE,
     Mask,
@@ -6,7 +9,7 @@ from pytorchcocotools._entities import (
     RleObjs,
     RLEs,
 )
-from pytorchcocotools._maskApi import (
+from pytorchcocotools.internal.mask_api import (
     bbIou,
     rleArea,
     rleDecode,
@@ -19,8 +22,6 @@ from pytorchcocotools._maskApi import (
     rleToBbox,
     rleToString,
 )
-import torch
-from torch import Tensor
 
 
 def _toString(Rs: RLEs) -> RleObjs:  # noqa: N802, N803

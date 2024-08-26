@@ -1,6 +1,7 @@
-from pytorchcocotools.utils import dataclass_dict
 import torch
 from torch import Tensor
+
+from pytorchcocotools.utils.dataclass import dataclass_dict
 
 
 class BB(Tensor):

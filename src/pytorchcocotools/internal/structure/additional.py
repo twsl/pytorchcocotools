@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import field
 
-from pytorchcocotools.entities.annotations import CocoRLE
-from pytorchcocotools.entities.base import BaseCocoEntity
-from pytorchcocotools.entities.categories import CocoCategoriesObjectDetection
-from pytorchcocotools.utils import dataclass_dict
+from pytorchcocotools.internal.structure.annotations import CocoRLE
+from pytorchcocotools.internal.structure.base import BaseCocoEntity
+from pytorchcocotools.internal.structure.categories import CocoCategoriesObjectDetection
+from pytorchcocotools.utils.dataclass import dataclass_dict
 
 
 @dataclass_dict

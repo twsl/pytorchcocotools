@@ -1,9 +1,10 @@
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 from pytest_cases import fixture
+
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt
-from pytorchcocotools.entities.coco import CocoDetectionDataset  # noqa: N811
+from pytorchcocotools.internal.structure.coco import CocoDetectionDataset  # noqa: N811
 
 
 @fixture(scope="session")

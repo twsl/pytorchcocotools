@@ -1,0 +1,34 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 2767f5d
+_src_path: git+https://github.com/twsl/python-project-template
+author_email: 45483159+twsl@users.noreply.github.com
+author_username: twsl
+copyright_holder: twsl
+copyright_holder_email: 45483159+twsl@users.noreply.github.com
+copyright_license: MIT
+copyright_year: 2024
+custom_install: true
+docs_library: mkdocs
+github_runner:
+- ubuntu-latest
+github_runner_python_version:
+- '3.10'
+- '3.11'
+include_copilot: true
+include_databricks: false
+include_docs: true
+include_notebooks: true
+include_sample_code: false
+line_ending: lf
+primary_branch: main
+project_description: Unofficial APIs for the MS-COCO dataset using PyTorch
+project_name: pytorchcocotools
+python_package_command_line_name: pytorchcocotools
+python_package_distribution_name: pytorchcocotools
+python_package_import_name: pytorchcocotools
+python_version: '3.10'
+repository_name: pytorchcocotools
+repository_namespace: twsl
+repository_provider: github.com
+self_signed: false
+use_precommit: true

@@ -7,12 +7,16 @@ from logging import Logger
 import time
 from typing import cast
 
+import torch
+from torch import Tensor
+
 from pytorchcocotools import mask, utils
 from pytorchcocotools._eval import EvalImgResult, EvalResult, IoUType, Params, Range, RangeLabel
 from pytorchcocotools.coco import COCO
-from pytorchcocotools.entities.annotations import CocoAnnotationKeypointDetection, CocoAnnotationObjectDetection
-import torch
-from torch import Tensor
+from pytorchcocotools.internal.structure.annotations import (
+    CocoAnnotationKeypointDetection,
+    CocoAnnotationObjectDetection,
+)
 
 
 class COCOeval:

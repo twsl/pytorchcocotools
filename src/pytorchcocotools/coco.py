@@ -46,14 +46,21 @@ from urllib.request import urlretrieve
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import matplotlib.pyplot as plt
-from pytorchcocotools import mask, utils
-from pytorchcocotools.entities import CocoDetectionDataset
-from pytorchcocotools.entities.additional import ResultAnnotation
-from pytorchcocotools.entities.annotations import CocoAnnotationKeypointDetection, CocoAnnotationObjectDetection
-from pytorchcocotools.entities.categories import CocoCategoriesKeypointDetection, CocoCategoriesObjectDetection
-from pytorchcocotools.entities.images import CocoImage
 import torch
 from torch import Tensor
+
+from pytorchcocotools import mask, utils
+from pytorchcocotools.internal.structure import CocoDetectionDataset
+from pytorchcocotools.internal.structure.additional import ResultAnnotation
+from pytorchcocotools.internal.structure.annotations import (
+    CocoAnnotationKeypointDetection,
+    CocoAnnotationObjectDetection,
+)
+from pytorchcocotools.internal.structure.categories import (
+    CocoCategoriesKeypointDetection,
+    CocoCategoriesObjectDetection,
+)
+from pytorchcocotools.internal.structure.images import CocoImage
 
 
 class COCO:

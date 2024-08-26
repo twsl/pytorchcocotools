@@ -3,15 +3,19 @@ from pathlib import Path
 import re
 from typing import Any, cast
 
-from pytorchcocotools import mask
-from pytorchcocotools.coco import COCO
-from pytorchcocotools.entities.annotations import CocoAnnotationKeypointDetection, CocoAnnotationObjectDetection
 import torch
 from torchvision import tv_tensors as tvt
 from torchvision.datasets.vision import VisionDataset
 from torchvision.io import read_image
 from torchvision.transforms.v2 import functional as F  # noqa: N812
 from torchvision.tv_tensors._dataset_wrapper import list_of_dicts_to_dict_of_lists
+
+from pytorchcocotools import mask
+from pytorchcocotools.coco import COCO
+from pytorchcocotools.internal.structure.annotations import (
+    CocoAnnotationKeypointDetection,
+    CocoAnnotationObjectDetection,
+)
 
 
 class CocoDetection(VisionDataset):

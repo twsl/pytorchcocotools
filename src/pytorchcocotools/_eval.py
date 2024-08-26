@@ -4,8 +4,9 @@ from dataclasses import field
 from datetime import datetime
 from typing import Literal, TypeAlias
 
-from pytorchcocotools.utils import dataclass_dict
 import torch
+
+from pytorchcocotools.utils.dataclass import dataclass_dict
 
 RangeLabel: TypeAlias = Literal["all", "small", "medium", "large"]
 RangeLabels: TypeAlias = list[RangeLabel]
