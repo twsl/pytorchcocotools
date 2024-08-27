@@ -168,7 +168,7 @@ class COCOeval:
 
         # compute iou between each dt and gt region
         iscrowd = [bool(o.iscrowd) for o in gt]
-        ious = mask.iou(d, g, iscrowd)  # type: ignore
+        ious = mask.iou(d, g, iscrowd)
         return ious
 
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
@@ -514,5 +514,5 @@ class COCOeval:
             summarize = _summarizeKps
         self.stats = summarize()
 
-    def __str__(self):
-        self.summarize()
+    def __str__(self) -> None:
+        self.summarize()  # should return a string but just calculates it

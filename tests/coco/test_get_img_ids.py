@@ -6,13 +6,15 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class GetImgIdsCases:
-    def case_test(self) -> tuple:
+    def case_test(self) -> tuple[int | list[int], int | list[int], list[int]]:
         return ([], 1, [397133])
 
 
 @pytest.mark.benchmark(group="getImgIds", warmup=True)
 @parametrize_with_cases("img_ids, cat_ids, result", cases=GetImgIdsCases)
-def test_getImgIds_pt(benchmark, coco_pt: COCOpt, img_ids, cat_ids, result) -> None:  # noqa: N802
+def test_getImgIds_pt(  # noqa: N802
+    benchmark, coco_pt: COCOpt, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
+) -> None:
     # get the category ids for the image with id
     img_ids_pt = benchmark(coco_pt.getImgIds, img_ids, cat_ids)
     # compare the results
@@ -21,7 +23,9 @@ def test_getImgIds_pt(benchmark, coco_pt: COCOpt, img_ids, cat_ids, result) -> N
 
 @pytest.mark.benchmark(group="getImgIds", warmup=True)
 @parametrize_with_cases("img_ids, cat_ids, result", cases=GetImgIdsCases)
-def test_getImgIds_np(benchmark, coco_np: COCOnp, img_ids, cat_ids, result) -> None:  # noqa: N802
+def test_getImgIds_np(  # noqa: N802
+    benchmark, coco_np: COCOnp, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
+) -> None:
     # get the category ids for the image with id
     img_ids_np = benchmark(coco_np.getImgIds, img_ids, cat_ids)
     # compare the results
@@ -29,7 +33,9 @@ def test_getImgIds_np(benchmark, coco_np: COCOnp, img_ids, cat_ids, result) -> N
 
 
 @parametrize_with_cases("img_ids, cat_ids, result", cases=GetImgIdsCases)
-def test_getCatIds(coco_np: COCOnp, coco_pt: COCOpt, img_ids, cat_ids, result) -> None:  # noqa: N802
+def test_getCatIds(  # noqa: N802
+    coco_np: COCOnp, coco_pt: COCOpt, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
+) -> None:
     # get the category ids for the image with id 397133
     img_ids_np = coco_np.getImgIds(img_ids, cat_ids)
     img_ids_pt = coco_pt.getImgIds(img_ids, cat_ids)

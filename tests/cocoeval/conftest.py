@@ -133,7 +133,7 @@ def dataset_dt() -> dict:
 @fixture(scope="session")
 def coco_gt_np(dataset_gt: dict) -> COCOnp:
     coco = COCOnp()
-    coco.dataset = dataset_gt
+    coco.dataset = dataset_gt  # pyright: ignore[reportAttributeAccessIssue]
     coco.createIndex()
     return coco
 
@@ -141,7 +141,7 @@ def coco_gt_np(dataset_gt: dict) -> COCOnp:
 @fixture(scope="session")
 def coco_dt_np(dataset_dt: dict) -> COCOnp:
     coco = COCOnp()
-    coco.dataset = dataset_dt
+    coco.dataset = dataset_dt  # pyright: ignore[reportAttributeAccessIssue]
     coco.createIndex()
     return coco
 
@@ -165,7 +165,7 @@ def coco_dt_pt(dataset_dt: dict) -> COCOpt:
 @fixture(scope="session")
 def eval_bbox_np(coco_gt_np: COCOnp, coco_dt_np: COCOnp) -> COCOevalnp:
     eval = COCOevalnp(coco_gt_np, coco_dt_np, "bbox")
-    eval._prepare()
+    eval._prepare()  # pyright: ignore[reportAttributeAccessIssue]
     return eval
 
 
@@ -179,7 +179,7 @@ def eval_bbox_pt(coco_gt_pt: COCOpt, coco_dt_pt: COCOpt) -> COCOevalpt:
 @fixture(scope="session")
 def eval_segm_np(coco_gt_np: COCOnp, coco_dt_np: COCOnp) -> COCOevalnp:
     eval = COCOevalnp(coco_gt_np, coco_dt_np, "segm")
-    eval._prepare()
+    eval._prepare()  # pyright: ignore[reportAttributeAccessIssue]
     return eval
 
 
@@ -193,7 +193,7 @@ def eval_segm_pt(coco_gt_pt: COCOpt, coco_dt_pt: COCOpt) -> COCOevalpt:
 @fixture(scope="session")
 def eval_keypoints_np(coco_gt_np: COCOnp, coco_dt_np: COCOnp) -> COCOevalnp:
     eval = COCOevalnp(coco_gt_np, coco_dt_np, "keypoints")
-    eval._prepare()
+    eval._prepare()  # pyright: ignore[reportAttributeAccessIssue]
     return eval
 
 

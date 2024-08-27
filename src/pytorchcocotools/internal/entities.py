@@ -1,8 +1,27 @@
+from typing import Literal, TypeAlias
+
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.type_hints import Mask
 from pytorchcocotools.utils.dataclass import dataclass_dict
+
+RangeLabel: TypeAlias = Literal["all", "small", "medium", "large"]
+
+RangeLabels: TypeAlias = list[RangeLabel]
+
+Range: TypeAlias = tuple[int, int]
+
+Ranges: TypeAlias = list[Range]
+
+IoUType: TypeAlias = Literal["segm", "bbox", "keypoints"]
+
+BB: TypeAlias = Tensor
+
+Mask: TypeAlias = Tensor  # hxwxn binary mask, in column-major order
+
+IsCrowd: TypeAlias = list[bool | Literal[0, 1]]
+
+Poly: TypeAlias = list[float]
 
 
 class RLE:
@@ -13,10 +32,7 @@ class RLE:
         self.cnts = cnts if cnts is not None else torch.zeros(m, dtype=torch.int32)
 
 
-class RLEs(list[RLE]):
-    def __init__(self, rles: list[RLE], n: int | None = None):
-        self.n = n if n is not None else len(rles) if len(rles) > 0 else 0
-        super().__init__(rles)
+RLEs: TypeAlias = list[RLE]
 
 
 class Masks(list[Mask]):
@@ -33,5 +49,4 @@ class RleObj(dict):
     counts: bytes
 
 
-class RleObjs(list[RleObj]):
-    pass
+RleObjs: TypeAlias = list[RleObj]

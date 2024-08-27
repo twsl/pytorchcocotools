@@ -6,7 +6,7 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class LoadImgsCases:
-    def case_test(self) -> tuple:
+    def case_test(self) -> tuple[int | list[int], list[dict]]:
         return (
             397133,
             [
@@ -26,7 +26,7 @@ class LoadImgsCases:
 
 @pytest.mark.benchmark(group="loadImgs", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
-def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids, result) -> None:  # noqa: N802
+def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
     # get the image with id
     cat_pt = benchmark(coco_pt.loadImgs, img_ids)
     # compare the results
@@ -35,7 +35,7 @@ def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids, result) -> None:  # no
 
 @pytest.mark.benchmark(group="loadImgs", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
-def test_loadImgs_np(benchmark, coco_np: COCOnp, img_ids, result) -> None:  # noqa: N802
+def test_loadImgs_np(benchmark, coco_np: COCOnp, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
     # get the image with id
     cat_np = benchmark(coco_np.loadImgs, img_ids)
     # compare the results
@@ -43,7 +43,7 @@ def test_loadImgs_np(benchmark, coco_np: COCOnp, img_ids, result) -> None:  # no
 
 
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
-def test_loadImgs(coco_np: COCOnp, coco_pt: COCOpt, img_ids, result) -> None:  # noqa: N802
+def test_loadImgs(coco_np: COCOnp, coco_pt: COCOpt, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
     # get the image with id
     imgs_np = coco_np.loadImgs(img_ids)
     imgs_pt = coco_pt.loadImgs(img_ids)

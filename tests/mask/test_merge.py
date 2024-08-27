@@ -5,7 +5,7 @@ from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
-from pytorchcocotools._entities import RleObj
+from pytorchcocotools.internal.entities import RleObj
 import pytorchcocotools.mask as tmask
 
 
@@ -19,137 +19,141 @@ class MergeCases:
         mask_pt1[min1:max1, min1:max1] = 1
         return mask_pt1
 
-    def case_start_area_same(self) -> tuple:
+    def case_start_area_same(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(0, 5),
             self._build_mask(0, 5),
             False,
-            {"size": [self.h, self.w], "counts": b"05d00000000d?"},
+            RleObj({"size": [self.h, self.w], "counts": b"05d00000000d?"}),
         )
 
-    def case_center_area_same(self) -> tuple:
+    def case_center_area_same(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(5, 10),
             False,
-            {"size": [self.h, self.w], "counts": b"R45d00000000b;"},
+            RleObj({"size": [self.h, self.w], "counts": b"R45d00000000b;"}),
         )
 
-    def case_end_area_same(self) -> tuple:
+    def case_end_area_same(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(20, 25),
             self._build_mask(20, 25),
             False,
-            {"size": [self.h, self.w], "counts": b"X`05d00000000"},
+            RleObj({"size": [self.h, self.w], "counts": b"X`05d00000000"}),
         )
 
-    def case_full_area_same(self) -> tuple:
+    def case_full_area_same(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(0, 25),
             self._build_mask(0, 25),
             False,
-            {"size": [self.h, self.w], "counts": b"0ac0"},
+            RleObj({"size": [self.h, self.w], "counts": b"0ac0"}),
         )
 
-    def case_center_area_none(self) -> tuple:
+    def case_center_area_none(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(10, 15),
             False,
-            {"size": [self.h, self.w], "counts": b"R45d0000000050K0000000`7"},
+            RleObj({"size": [self.h, self.w], "counts": b"R45d0000000050K0000000`7"}),
         )
 
-    def case_center_area_partial(self) -> tuple:
+    def case_center_area_partial(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(5, 15),
             False,
-            {"size": [self.h, self.w], "counts": b"R4:?00000000000000000e7"},
+            RleObj({"size": [self.h, self.w], "counts": b"R4:?00000000000000000e7"}),
         )
 
-    def case_center_area_overlap(self) -> tuple:
+    def case_center_area_overlap(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(8, 13),
             False,
-            {"size": [self.h, self.w], "counts": b"R45d000003M03M0000T9"},
+            RleObj({"size": [self.h, self.w], "counts": b"R45d000003M03M0000T9"}),
         )
 
-    def case_start_area_same_intersect(self) -> tuple:
+    def case_start_area_same_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(0, 5),
             self._build_mask(0, 5),
             True,
-            {"size": [self.h, self.w], "counts": b"05d00000000d?"},
+            RleObj({"size": [self.h, self.w], "counts": b"05d00000000d?"}),
         )
 
-    def case_center_area_same_intersect(self) -> tuple:
+    def case_center_area_same_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(5, 10),
             True,
-            {"size": [self.h, self.w], "counts": b"R45d00000000b;"},
+            RleObj({"size": [self.h, self.w], "counts": b"R45d00000000b;"}),
         )
 
-    def case_end_area_same_intersect(self) -> tuple:
+    def case_end_area_same_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(20, 25),
             self._build_mask(20, 25),
             True,
-            {"size": [self.h, self.w], "counts": b"X`05d00000000"},
+            RleObj({"size": [self.h, self.w], "counts": b"X`05d00000000"}),
         )
 
-    def case_full_area_same_intersect(self) -> tuple:
+    def case_full_area_same_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(0, 25),
             self._build_mask(0, 25),
             True,
-            {"size": [self.h, self.w], "counts": b"0ac0"},
+            RleObj({"size": [self.h, self.w], "counts": b"0ac0"}),
         )
 
-    def case_center_area_none_intersect(self) -> tuple:
+    def case_center_area_none_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(10, 15),
             True,
-            {"size": [self.h, self.w], "counts": b"ac0"},
+            RleObj({"size": [self.h, self.w], "counts": b"ac0"}),
         )
 
-    def case_center_area_partial_intersect(self) -> tuple:
+    def case_center_area_partial_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(5, 15),
             True,
-            {"size": [self.h, self.w], "counts": b"R45d00000000b;"},
+            RleObj({"size": [self.h, self.w], "counts": b"R45d00000000b;"}),
         )
 
-    def case_center_area_overlap_intersect(self) -> tuple:
+    def case_center_area_overlap_intersect(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         return (
             self._build_mask(5, 10),
             self._build_mask(8, 13),
             True,
-            {"size": [self.h, self.w], "counts": b"`62g00_;"},
+            RleObj({"size": [self.h, self.w], "counts": b"`62g00_;"}),
         )
 
-    def case_complex(self) -> tuple:
+    def case_complex(self) -> tuple[Tensor, Tensor, bool, RleObj]:
         from pytorchcocotools.mask import decode
 
         h = 427
         w = 640
-        data1 = {
-            "size": [h, w],
-            "counts": b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
-        }
-        data2 = {"size": [h, w], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"}
+        data1 = RleObj(
+            {
+                "size": [h, w],
+                "counts": b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
+            }
+        )
+        data2 = RleObj({"size": [h, w], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"})
 
         return (
             decode(data1),
             decode(data2),
             False,
-            {
-                "size": [h, w],
-                "counts": b"RT_32X<9SD3f;3ZDNb;5_DKU;DeDd05HU;b0kD_OS;b0nD]OQ;e0nD[OR;e0nD[OR;f0nDZOQ;f0oDZOQ;f0oDZOQ;g0oDXOQ;h0oDXOQ;h0oDXOQ;i0oDVOQ;j0oDVOQ;k0nDTOS;l0mDTOS;l0nDSOR;l0oDmNX;n0f0J5J6A^C0g<N=O001O0O2Omk^4",
-            },
+            RleObj(
+                {
+                    "size": [h, w],
+                    "counts": b"RT_32X<9SD3f;3ZDNb;5_DKU;DeDd05HU;b0kD_OS;b0nD]OQ;e0nD[OR;e0nD[OR;f0nDZOQ;f0oDZOQ;f0oDZOQ;g0oDXOQ;h0oDXOQ;h0oDXOQ;i0oDVOQ;j0oDVOQ;k0nDTOS;l0mDTOS;l0nDSOR;l0oDmNX;n0f0J5J6A^C0g<N=O001O0O2Omk^4",
+                }
+            ),
         )
 
 

@@ -1,20 +1,23 @@
+from typing import cast
+
 import numpy as np
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
+from torch import Tensor
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class AnnToMaskCases:
-    def case_test(self) -> tuple:
+    def case_test(self) -> tuple[int, np.ndarray]:
         from pycocotools.mask import decode
 
         data = {
             "size": [427, 640],
             "counts": b"RT_32X<9SD3f;3ZDNb;5_DKU;DeDd05HU;b0kD_OS;b0nD]OQ;e0nD[OR;e0nD[OR;f0nDZOQ;f0oDZOQ;f0oDZOQ;g0oDXOQ;h0oDXOQ;h0oDXOQ;i0oDVOQ;j0oDVOQ;k0nDTOS;l0mDTOS;l0nDSOR;l0oDmNX;n0f0J5J6A^C0g<N=O001O0O2Omk^4",
         }
-        mask = decode(data)
+        mask = decode(data)  # pyright: ignore[reportArgumentType]
         return (2096753, mask)
 
 
@@ -24,7 +27,7 @@ def test_annToMask_pt(benchmark, coco_pt: COCOpt, img_ids: int, result) -> None:
     # test with an annotation dict object
     ann_pt = coco_pt.loadAnns(img_ids)
     # get the mask for the annotation
-    mask_pt = benchmark(coco_pt.annToMask, ann_pt[0])
+    mask_pt = cast(Tensor, benchmark(coco_pt.annToMask, ann_pt[0]))
     # compare the results
     # np.nonzero(mask_np)
     assert np.array_equal(result, mask_pt.numpy())

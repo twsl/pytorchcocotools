@@ -6,7 +6,7 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class GetAnnIdsCases:
-    def case_test(self) -> tuple:
+    def case_test(self) -> tuple[int | list[int], int | list[int], float | list[float], list[int]]:
         return (397133, [], [], [2096753])
 
 
@@ -50,7 +50,7 @@ def test_getAnnIds(  # noqa: N802
     result: list[int],
 ) -> None:
     # get the annotation ids for the image with id
-    ann_ids_np = coco_np.getAnnIds(img_id, cat_ids, area_rng)
+    ann_ids_np = coco_np.getAnnIds(img_id, cat_ids, area_rng)  # pyright: ignore[reportArgumentType]
     ann_ids_pt = coco_pt.getAnnIds(img_id, cat_ids, area_rng)
     # compare the results
     assert ann_ids_np == ann_ids_pt

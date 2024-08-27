@@ -12,22 +12,22 @@ class AreaCases:
     w = 25
 
     # @case(id="start_area")
-    def case_start_area(self) -> tuple:
+    def case_start_area(self) -> tuple[int, int, int, int, int]:
         return (0, 5, self.h, self.w, 25)
 
-    def case_center_area(self) -> tuple:
+    def case_center_area(self) -> tuple[int, int, int, int, int]:
         return (5, 10, self.h, self.w, 25)
 
-    def case_end_area(self) -> tuple:
+    def case_end_area(self) -> tuple[int, int, int, int, int]:
         return (20, 25, self.h, self.w, 25)
 
-    def case_full_area(self) -> tuple:
+    def case_full_area(self) -> tuple[int, int, int, int, int]:
         return (0, 25, self.h, self.w, 625)
 
 
 @pytest.mark.benchmark(group="area", warmup=True)
 @parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
-def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int):
+def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int) -> None:
     # create a mask
     mask_pt = torch.zeros((h, w), dtype=torch.uint8)
     mask_pt[min:max, min:max] = 1
@@ -40,7 +40,7 @@ def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int):
 
 @pytest.mark.benchmark(group="area", warmup=True)
 @parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
-def test_area_np(benchmark, min: int, max: int, h: int, w: int, result: int):
+def test_area_np(benchmark, min: int, max: int, h: int, w: int, result: int) -> None:
     # create a mask
     mask_np = np.zeros((h, w), dtype=np.uint8, order="F")
     mask_np[min:max, min:max] = 1
@@ -52,7 +52,7 @@ def test_area_np(benchmark, min: int, max: int, h: int, w: int, result: int):
 
 
 @parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
-def test_area(min: int, max: int, h: int, w: int, result: int):
+def test_area(min: int, max: int, h: int, w: int, result: int) -> None:
     # create a mask
     mask_pt = torch.zeros((h, w), dtype=torch.uint8)
     mask_pt[min:max, min:max] = 1

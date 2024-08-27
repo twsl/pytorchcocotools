@@ -1,14 +1,7 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import (
-    BB,
-    RLE,
-    Mask,
-    RleObj,
-    RleObjs,
-    RLEs,
-)
+from pytorchcocotools.internal.entities import BB, RLE, Mask, RleObj, RleObjs, RLEs
 from pytorchcocotools.internal.mask_api import (
     bbIou,
     rleArea,
@@ -83,7 +76,7 @@ def decode(rleObjs: RleObjs) -> Mask:  # noqa: N803
         _description_
     """
     rs = _frString(rleObjs)
-    _h, _w, n = rs[0].h, rs[0].w, rs.n
+    _h, _w, n = rs[0].h, rs[0].w, len(rs)
     masks = rleDecode(rs, n)
     return masks
 
@@ -99,20 +92,20 @@ def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
         _description_
     """
     rs = _frString(rleObjs)
-    r = rleMerge(rs, rs.n, intersect)
-    obj = _toString(r)[0]
+    r = rleMerge(rs, len(rs), intersect)
+    obj = _toString([r])[0]
     return obj
 
 
 def area(rleObjs: RleObjs) -> list[int]:  # noqa: N803
     rs = _frString(rleObjs)
-    a = rleArea(rs, rs.n)
+    a = rleArea(rs, len(rs))
     return a
 
 
 # iou computation. support function overload (RLEs-RLEs and bbox-bbox).
 def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd: list[bool]) -> Tensor:
-    def _preproc(objs):
+    def _preproc(objs: list[list] | Tensor | RLEs) -> Tensor | RLEs | list:
         if len(objs) == 0:
             return objs
         if isinstance(objs, Tensor):
@@ -126,8 +119,8 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
             objs = objs.to(dtype=torch.float32)  # TODO: originally double is used, why???
         elif isinstance(objs, list):
             # check if list is in box format and convert it to torch.Tensor
-            isbox = bool(torch.all(Tensor([(len(obj) == 4) and (isinstance(obj, list | Tensor)) for obj in objs])))
-            isrle = bool(torch.all(Tensor([isinstance(obj, dict) for obj in objs])))
+            isbox = all((len(obj) == 4) and (isinstance(obj, list | Tensor)) for obj in objs)
+            isrle = all(isinstance(obj, dict) for obj in objs)
             if isbox:
                 objs = torch.tensor(objs, dtype=torch.float32)
                 if len(objs.shape) == 1:
@@ -142,13 +135,13 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
             )
         return objs
 
-    def _len(obj):
-        if type(obj) == RLEs:
-            return obj.n
-        elif len(obj) == 0:
-            return 0
+    def _len(obj: list | Tensor) -> int:
+        if isinstance(obj, list):  # RLEs
+            return len(obj)
         elif isinstance(obj, Tensor):
             return obj.shape[0]
+        elif len(obj) == 0:
+            return 0
         return 0
 
     is_crowd = pyiscrowd
@@ -160,7 +153,7 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
     assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101
     if m == 0 or n == 0:
         return Tensor([])  # TODO: fix return type to be consistent
-    if not type(dt) == type(gt):
+    if type(dt) is not type(gt):
         raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
     _iouFun = rleIou if isinstance(dt, RLEs) else bbIou if isinstance(dt, Tensor) else None  # noqa: N806
     if _iouFun is None:
@@ -173,7 +166,7 @@ def iou(dt: RLEs | BB | list | Tensor, gt: RLEs | BB | list | Tensor, pyiscrowd:
 
 def toBbox(rleObjs: RleObjs) -> BB:  # noqa: N803, N802
     rs = _frString(rleObjs)
-    n = rs.n
+    n = len(rs)
     bb = rleToBbox(rs, n)
     return bb
 
@@ -204,7 +197,9 @@ def frUncompressedRLE(ucRles: list[dict], h: int, w: int) -> RleObjs:  # noqa: N
     return RleObjs(objs)
 
 
-def frPyObjects(pyobj: Tensor | list[list[int]] | list[dict] | dict, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
+def frPyObjects(  # noqa: N802
+    pyobj: Tensor | list[list[int]] | list[list[float]] | list[dict] | dict, h: int, w: int
+) -> RleObjs | RleObj:
     # encode rle from a list of python objects
     if isinstance(pyobj, Tensor):
         return frBbox(pyobj, h, w)

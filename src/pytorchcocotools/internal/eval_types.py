@@ -6,7 +6,7 @@ from typing import Literal, TypeAlias
 
 import torch
 
-from pytorchcocotools.internal.type_hints import IoUType, Range, RangeLabel, RangeLabels, Ranges
+from pytorchcocotools.internal.entities import IoUType, Range, RangeLabels, Ranges
 from pytorchcocotools.utils.dataclass import dataclass_dict
 
 

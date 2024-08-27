@@ -5,7 +5,7 @@ from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
-from pytorchcocotools._entities import RleObjs
+from pytorchcocotools.internal.entities import RleObjs
 import pytorchcocotools.mask as tmask
 
 
@@ -22,52 +22,52 @@ class IoUCases:
     def _build_bbox(self, min1: int, max1: int) -> Tensor:
         return torch.tensor([min1, min1, max1 - min1, max1 - min1], dtype=torch.int32)
 
-    def case_start_area_same(self) -> tuple:
+    def case_start_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(0, 5), self._build_mask(0, 5), [False], True, 1)
 
-    def case_center_area_same(self) -> tuple:
+    def case_center_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(5, 10), self._build_mask(5, 10), [False], True, 1)
 
-    def case_end_area_same(self) -> tuple:
+    def case_end_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(20, 25), self._build_mask(20, 25), [False], True, 1)
 
-    def case_full_area_same(self) -> tuple:
+    def case_full_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(0, 25), self._build_mask(0, 25), [False], True, 1)
 
-    def case_center_area_none(self) -> tuple:
+    def case_center_area_none(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(5, 10), self._build_mask(10, 15), [False], True, 0)
 
-    def case_center_area_partial(self) -> tuple:
+    def case_center_area_partial(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(5, 10), self._build_mask(5, 15), [False], True, 0.25)
 
-    def case_center_area_overlap(self) -> tuple:
+    def case_center_area_overlap(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_mask(5, 10), self._build_mask(8, 13), [False], True, 4 / 46)  # 0.08695652
 
-    def case_bbox_start_area_same(self) -> tuple:
+    def case_bbox_start_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(0, 5), self._build_bbox(0, 5), [False], False, 1)
 
-    def case_bbox_center_area_same(self) -> tuple:
+    def case_bbox_center_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(5, 10), self._build_bbox(5, 10), [False], False, 1)
 
-    def case_bbox_end_area_same(self) -> tuple:
+    def case_bbox_end_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(20, 25), self._build_bbox(20, 25), [False], False, 1)
 
-    def case_bbox_full_area_same(self) -> tuple:
+    def case_bbox_full_area_same(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(0, 25), self._build_bbox(0, 25), [False], False, 1)
 
-    def case_bbox_center_area_none(self) -> tuple:
+    def case_bbox_center_area_none(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(5, 10), self._build_bbox(10, 15), [False], False, 0)
 
-    def case_bbox_center_area_partial(self) -> tuple:
+    def case_bbox_center_area_partial(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(5, 10), self._build_bbox(5, 15), [False], False, 0.25)
 
-    def case_bbox_center_area_overlap(self) -> tuple:
+    def case_bbox_center_area_overlap(self) -> tuple[Tensor, Tensor, list[bool], bool, float]:
         return (self._build_bbox(5, 10), self._build_bbox(8, 13), [False], False, 4 / 46)  # 0.08695652
 
 
 @pytest.mark.benchmark(group="iou", warmup=True)
 @parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
-def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float):
+def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
     # encode
     if encode:
         rle_pt1 = tmask.encode(obj1)
@@ -85,7 +85,7 @@ def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], enco
 
 @pytest.mark.benchmark(group="iou", warmup=True)
 @parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
-def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float):
+def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
     obj1 = np.asfortranarray(obj1.numpy())
     obj2 = np.asfortranarray(obj2.numpy())
     # encode
@@ -104,7 +104,7 @@ def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], enco
 
 
 @parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
-def test_iou(obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float):
+def test_iou(obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
     # create two masks
     mask_pt1 = obj1
     mask_pt2 = obj2
@@ -128,7 +128,7 @@ def test_iou(obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, resu
         obj_pt2 = mask_pt2.unsqueeze(0)
 
     # compute the iou
-    iscrowd = [int(c) for c in iscrowd]
+    iscrowd = [bool(c) for c in iscrowd]
     iou_np = mask.iou(obj_np1, obj_np2, iscrowd)
     iou_pt = tmask.iou(obj_pt1, obj_pt2, iscrowd)
     # compare the results

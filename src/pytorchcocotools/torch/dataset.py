@@ -12,6 +12,7 @@ from torchvision.tv_tensors._dataset_wrapper import list_of_dicts_to_dict_of_lis
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
+from pytorchcocotools.internal.entities import RleObjs
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
@@ -63,16 +64,16 @@ class CocoDetection(VisionDataset):
     def _load_image(self, id: int) -> tvt.Image:
         path = self.coco.loadImgs(id)[0]["file_name"]
         img = read_image(str(Path(self.root) / path))
-        return tvt.Image(img, dtype=torch.uint8)  # type: ignore
+        return tvt.Image(img)
 
     def _load_target(self, id: int) -> list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]:
         return self.coco.loadAnns(self.coco.getAnnIds(id))
 
-    def _segmentation_to_mask(self, segmentation, *, canvas_size):
+    def _segmentation_to_mask(self, segmentation, *, canvas_size) -> torch.Tensor:
         segmentation = (
             mask.frPyObjects(segmentation, *canvas_size)
             if isinstance(segmentation, dict) and "counts" in segmentation
-            else mask.merge(mask.frPyObjects(segmentation, *canvas_size))
+            else mask.merge(cast(RleObjs, mask.frPyObjects(segmentation, *canvas_size)))
         )
         return mask.decode(segmentation)
 
@@ -93,7 +94,7 @@ class CocoDetection(VisionDataset):
                 batched_target["bbox"],
                 format=tvt.BoundingBoxFormat.XYWH,
                 canvas_size=canvas_size,
-            ),  # type: ignore
+            ),  # pyright: ignore[reportCallIssue]
             new_format=self.out_bbox_fmt,
         )
         target["masks"] = tvt.Mask(

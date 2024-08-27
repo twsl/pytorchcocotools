@@ -8,7 +8,6 @@ import json
 from pathlib import Path
 import time
 from typing import cast
-from urllib.request import urlretrieve
 
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
@@ -17,6 +16,7 @@ import torch
 from torch import Tensor
 
 from pytorchcocotools import mask
+from pytorchcocotools.internal.entities import RleObj, RleObjs
 from pytorchcocotools.internal.structure import CocoDetectionDataset
 from pytorchcocotools.internal.structure.additional import ResultAnnotation
 from pytorchcocotools.internal.structure.annotations import (
@@ -147,9 +147,9 @@ class COCO:
         Returns:
             Integer array of cat ids.
         """
-        cat_nms: list = catNms if isinstance(catNms, list) else [catNms] if catNms else []  # type: ignore
-        sup_nms: list = supNms if isinstance(supNms, list) else [supNms] if supNms else []  # type: ignore
-        cat_ids: list = catIds if isinstance(catIds, list) else [catIds] if catIds else []  # type: ignore
+        cat_nms: list = catNms if isinstance(catNms, list) else [catNms] if catNms else []
+        sup_nms: list = supNms if isinstance(supNms, list) else [supNms] if supNms else []
+        cat_ids: list = catIds if isinstance(catIds, list) else [catIds] if catIds else []
 
         cats = self.dataset.categories
         if not len(cat_nms) == len(sup_nms) == len(cat_ids) == 0:
@@ -168,8 +168,8 @@ class COCO:
         Returns:
             Integer array of img ids.
         """
-        img_ids: list = imgIds if isinstance(imgIds, list) else [imgIds] if imgIds else []  # type: ignore
-        cat_ids: list = catIds if isinstance(catIds, list) else [catIds] if catIds else []  # type: ignore
+        img_ids: list = imgIds if isinstance(imgIds, list) else [imgIds] if imgIds else []
+        cat_ids: list = catIds if isinstance(catIds, list) else [catIds] if catIds else []
 
         if len(img_ids) == len(cat_ids) == 0:
             ids = self.imgs.keys()
@@ -264,6 +264,7 @@ class COCO:
             for ann in annotations:
                 c = (torch.rand((1, 3)) * 0.6 + 0.4).tolist()[0]
                 if "segmentation" in ann:  # isinstance(ann, CocoAnnotationObjectDetection)
+                    ann = cast(CocoAnnotationObjectDetection, ann)
                     if isinstance(ann.segmentation, list):
                         # polygon
                         for seg in ann.segmentation:
@@ -360,6 +361,7 @@ class COCO:
             The result api object.
         """
         res = COCO()
+        res.dataset.info = copy.deepcopy(self.dataset.info)
         res.dataset.images = list(self.dataset.images)
 
         self.logger.info("Loading and preparing results...")
@@ -384,7 +386,7 @@ class COCO:
         new_anns = []
         for id, ann in enumerate(anns):
             if "bbox" in ann and ann["bbox"] != []:
-                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # type: ignore
+                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
                 bb = ann.bbox
                 x1, x2, y1, y2 = [bb[0], bb[0] + bb[2], bb[1], bb[1] + bb[3]]
                 new_ann.segmentation = ann.get("segmentation", [[x1, y1, x1, y2, x2, y2, x2, y1]])
@@ -393,7 +395,7 @@ class COCO:
                 new_ann.iscrowd = False
                 new_anns.append(new_ann)
             elif "segmentation" in ann:
-                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # type: ignore
+                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
                 # now only support compressed RLE format as segmentation results
                 new_ann.area = float(mask.area(ann.segmentation))
                 if "bbox" not in ann:
@@ -404,7 +406,7 @@ class COCO:
                 new_ann.iscrowd = False
                 new_anns.append(new_ann)
             elif "keypoints" in ann:
-                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(ann))  # type: ignore
+                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
                 # keypoints
                 s = ann["keypoints"]
                 x = s[::3]
@@ -427,10 +429,9 @@ class COCO:
         Args:
             tarDir: COCO results directory name.
             imgIds: Images to be downloaded.
-
-        Returns:
-            _description_
         """
+        from urllib.request import urlretrieve
+
         imgIds = imgIds if imgIds else []  # noqa: N806
         target_dir = Path(tarDir or ".")
         if target_dir is None:
@@ -449,7 +450,7 @@ class COCO:
 
     def annToRLE(  # noqa: N802
         self, ann: CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection
-    ) -> mask.RleObjs | mask.RleObj:
+    ) -> RleObjs | RleObj:
         """Convert annotation which can be polygons, uncompressed RLE to RLE.
 
         Args:
@@ -464,7 +465,7 @@ class COCO:
         if isinstance(segm, list):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
-            rles = mask.frPyObjects(segm, h, w)
+            rles = cast(RleObjs, mask.frPyObjects(segm, h, w))
             merged = mask.merge(rles)
             return merged
         elif isinstance(segm["counts"], list):
@@ -483,6 +484,6 @@ class COCO:
         Returns:
             _description_
         """
-        rle = self.annToRLE(ann)
+        rle = self.annToRLE(CocoDetectionDataset._get_annotation(ann))
         decoded = mask.decode(rle)
         return decoded

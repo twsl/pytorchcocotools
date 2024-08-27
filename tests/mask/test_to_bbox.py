@@ -11,19 +11,19 @@ from .base_cases import BaseCases
 
 
 class BboxCases(BaseCases):
-    def case_start_area(self):
+    def case_start_area(self) -> tuple[Tensor, list[int]]:
         return (self._build_mask(0, 5), [0, 0, 5, 5])
 
-    def case_center_area(self):
+    def case_center_area(self) -> tuple[Tensor, list[int]]:
         return (self._build_mask(5, 10), [5, 5, 5, 5])
 
-    def case_end_area(self):
+    def case_end_area(self) -> tuple[Tensor, list[int]]:
         return (self._build_mask(20, 25), [20, 20, 5, 5])
 
-    def case_full_area(self):
+    def case_full_area(self) -> tuple[Tensor, list[int]]:
         return (self._build_mask(0, 25), [0, 0, 25, 25])
 
-    def case_rect_area(self):
+    def case_rect_area(self) -> tuple[Tensor, list[int]]:
         mask = torch.zeros((self.h, self.w + 10), dtype=torch.uint8)
         mask[10:25, 10:30] = 1
         return (mask, [10, 10, 20, 15])
@@ -31,7 +31,7 @@ class BboxCases(BaseCases):
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]):  # noqa: N802
+def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
     mask_pt = mask
     # compute the bounding box
@@ -43,7 +43,7 @@ def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]):  # noqa: N802
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox_np(benchmark, mask: Tensor, result: list[int]):  # noqa: N802
+def test_toBbox_np(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # compute the bounding box
@@ -54,7 +54,7 @@ def test_toBbox_np(benchmark, mask: Tensor, result: list[int]):  # noqa: N802
 
 
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox(mask: Tensor, result: list[int]):  # noqa: N802
+def test_toBbox(mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
     mask_pt = mask
     mask_np = np.asfortranarray(mask_pt.numpy())
