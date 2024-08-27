@@ -138,9 +138,9 @@ class PyObjectsCases:
 
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
-def test_frPyObjects_pt(
+def test_frPyObjects_pt(  # noqa: N802
     benchmark, h: int, w: int, obj: list[int] | list[list[int]] | list[dict] | dict, result
-) -> None:  # noqa: N802
+) -> None:
     # convert the polygon to a mask
     # mask_pt = benchmark(tmask.frPyObjects, obj, h, w)
     mask_pt = tmask.frPyObjects(obj, h, w)
@@ -157,9 +157,9 @@ def test_frPyObjects_pt(
 
 @pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
-def test_frPyObjects_np(
+def test_frPyObjects_np(  # noqa: N802
     benchmark, h: int, w: int, obj: list[int] | list[list[int]] | list[dict] | dict, result
-) -> None:  # noqa: N802
+) -> None:
     # fix input
     if isinstance(obj, list):
         obj = [o.numpy() if isinstance(o, Tensor) else o for o in obj]

@@ -12,7 +12,8 @@ from torch import Tensor
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
-from pytorchcocotools.internal.eval_types import EvalImgResult, EvalResult, IoUType, Params, Range, RangeLabel
+from pytorchcocotools.internal.entities import IoUType, Range, RangeLabel
+from pytorchcocotools.internal.eval_types import EvalImgResult, EvalResult, Params
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,

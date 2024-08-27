@@ -19,7 +19,7 @@ BB: TypeAlias = Tensor
 
 Mask: TypeAlias = Tensor  # hxwxn binary mask, in column-major order
 
-IsCrowd: TypeAlias = list[bool | Literal[0, 1]]
+IsCrowd: TypeAlias = list[bool] | list[Literal[0, 1]]
 
 Poly: TypeAlias = list[float]
 

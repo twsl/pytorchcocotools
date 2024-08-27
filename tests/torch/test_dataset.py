@@ -10,7 +10,7 @@ from pytorchcocotools.torch.dataset import CocoDetection as CocoDetectionpt
 
 
 class DatasetCases:
-    def case_example(self) -> tuple:
+    def case_example(self) -> tuple[str, str, int, int]:
         return ("./data/coco", "./data/example.json", 0, 1)
 
 

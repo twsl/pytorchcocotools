@@ -62,7 +62,8 @@
                 "python.testing.cwd": "${workspaceFolder}",
                 "python.testing.pytestArgs": [
                     "tests",
-                    "-v"
+                    "-v",
+                    "--benchmark-disable"
                 ],
                 "[python]": {
                     "editor.formatOnSave": true,

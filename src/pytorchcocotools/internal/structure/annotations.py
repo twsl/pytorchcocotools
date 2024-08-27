@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import field
+from typing import TypeAlias
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -69,3 +70,6 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
             num_keypoints=data.get("num_keypoints"),
         )
         return instance
+
+
+CocoDetectionAnnotation: TypeAlias = CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection

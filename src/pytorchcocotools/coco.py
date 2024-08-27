@@ -22,6 +22,7 @@ from pytorchcocotools.internal.structure.additional import ResultAnnotation
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
+    CocoDetectionAnnotation,
 )
 from pytorchcocotools.internal.structure.categories import (
     CocoCategoriesKeypointDetection,
@@ -44,9 +45,7 @@ class COCO:
         ] = {}
         self.cats: dict[int, CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = {}
         self.imgs: dict[int, CocoImage] = {}
-        self.imgToAnns: defaultdict[int, list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]] = (
-            defaultdict(list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection])
-        )
+        self.imgToAnns: defaultdict[int, list[CocoDetectionAnnotation]] = defaultdict(list[CocoDetectionAnnotation])
         self.catToImgs: defaultdict[int, list[int]] = defaultdict(list[int])
         self.logger = get_logger(__name__)
         if annotation_file is not None:
@@ -67,9 +66,7 @@ class COCO:
         anns: dict[int, CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection] = {}
         cats: dict[int, CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = {}
         imgs: dict[int, CocoImage] = {}
-        img_to_anns: defaultdict[int, list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]] = (
-            defaultdict(list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection])
-        )
+        img_to_anns: defaultdict[int, list[CocoDetectionAnnotation]] = defaultdict(list[CocoDetectionAnnotation])
         cat_to_imgs: defaultdict[int, list[int]] = defaultdict(list[int])
         for ann in self.dataset.annotations:
             img_to_anns[ann.image_id].append(ann)
@@ -184,7 +181,7 @@ class COCO:
 
     def loadAnns(  # noqa: N802
         self, ids: int | list[int] | None = None
-    ) -> list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]:
+    ) -> list[CocoDetectionAnnotation]:
         """Load anns with the specified ids.
 
         Args:
@@ -233,7 +230,7 @@ class COCO:
 
     def showAnns(  # noqa: N802
         self,
-        anns: list[dict | CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection],
+        anns: list[dict] | list[CocoDetectionAnnotation],
         draw_bbox: bool = False,
     ) -> None:
         """Display the specified annotations.
@@ -253,7 +250,7 @@ class COCO:
             if isinstance(anns, list) and all(isinstance(ann, dict) for ann in anns)
             else anns
         )
-        annotations = cast(list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection], annotations)
+        annotations = cast(list[CocoDetectionAnnotation], annotations)
         if len(annotations) == 0:
             return
         if "segmentation" in annotations[0] or "keypoints" in annotations[0]:

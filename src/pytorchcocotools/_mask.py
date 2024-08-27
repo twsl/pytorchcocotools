@@ -92,7 +92,7 @@ def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
         _description_
     """
     rs = _frString(rleObjs)
-    r = rleMerge(rs, len(rs), intersect)
+    r = rleMerge(rs, intersect)
     obj = _toString([r])[0]
     return obj
 

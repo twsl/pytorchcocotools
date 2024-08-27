@@ -4,25 +4,24 @@ from torch import Tensor
 from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
 
 
-def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLE:  # noqa: N802, N803
+def rleMerge(Rs: RLEs, intersect: bool) -> RLE:  # noqa: N802, N803
     """Compute union or intersection of encoded masks.
 
     Args:
-        Rs: _description_
-        n: _description_
-        intersect: _description_
+        Rs: The masks to merge.
+        intersect: Whether to compute the intersection.
 
     Returns:
-        _description_
+        The merged mask.
     """
-    if not Rs or len({r.w for r in Rs}) != 1 or len({r.w for r in Rs}) != 1:
-        return RLE()  # Return an empty RLE if empty or dimensions don't match
     n = len(Rs)
+    if not Rs or n == 0:
+        return RLE()  # Return an empty RLE if empty
     if n == 1:
-        return Rs[0]
+        return Rs[0]  # Return the RLE if only one is provided
 
     # Rs[0].cnts.device
-    h, w = Rs[0].h, Rs[0].w
+    # h, w = Rs[0].h, Rs[0].w
 
     # se_inds = torch.cat([torch.cumsum(r.cnts[:-1], 0).reshape(-1, 2) for r in Rs])
     # seq_lens = (se_inds[:, 1] - se_inds[:, 0]).unsqueeze(-1)
@@ -79,7 +78,7 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLE:  # noqa: N802, N803
         b = 1
         cc = 0
         ct = 1
-        cnts = []
+        cnts_out = []
         while ct > 0:
             c = torch.min(ca, cb).clone()
             cc += c
@@ -89,17 +88,18 @@ def rleMerge(Rs: RLEs, n: int, intersect: bool) -> RLE:  # noqa: N802, N803
                 ca = A.cnts[a].clone()
                 a += 1
                 va = not va
-            ct += ca
             cb -= c
             if not cb and b < B.m:
                 cb = B.cnts[b].clone()
                 b += 1
                 vb = not vb
+            ct += ca
             ct += cb
             vp = v
             v = va and vb if intersect else va or vb
             if v != vp or ct == 0:
-                cnts.append(cc)
+                cnts_out.append(cc)
                 cc = 0
+        cnts = torch.stack(cnts_out)
 
-    return RLE(h, w, len(cnts), torch.stack(cnts))
+    return RLE(h, w, len(cnts), cnts)

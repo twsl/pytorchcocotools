@@ -10,6 +10,7 @@ from pytorchcocotools.internal.structure.additional import (
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
+    CocoDetectionAnnotation,
 )
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.internal.structure.categories import (
@@ -28,9 +29,7 @@ class CocoDetectionDataset(BaseCocoEntity):
     info: CocoInfo = field(default_factory=CocoInfo)
     licenses: list[CocoLicense] = field(default_factory=list[CocoLicense])
     images: list[CocoImage] = field(default_factory=list[CocoImage])
-    annotations: list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection] = field(
-        default_factory=list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]
-    )
+    annotations: list[CocoDetectionAnnotation] = field(default_factory=list[CocoDetectionAnnotation])
     categories: list[CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = field(
         default_factory=list[CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection]
     )

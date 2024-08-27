@@ -1,8 +1,11 @@
+from typing import cast
+
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
+from pytorchcocotools.internal.structure.images import CocoImage
 
 
 class LoadImgsCases:
@@ -28,18 +31,20 @@ class LoadImgsCases:
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
 def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
     # get the image with id
-    cat_pt = benchmark(coco_pt.loadImgs, img_ids)
+    imgs_pt = cast(list[CocoImage], benchmark(coco_pt.loadImgs, img_ids))
     # compare the results
-    assert cat_pt == result
+    # assert cat_pt == result
+    for img_np, img_pt in zip(result, imgs_pt, strict=False):
+        assert img_np == img_pt.__dict__
 
 
 @pytest.mark.benchmark(group="loadImgs", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
 def test_loadImgs_np(benchmark, coco_np: COCOnp, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
     # get the image with id
-    cat_np = benchmark(coco_np.loadImgs, img_ids)
+    imgs_np = benchmark(coco_np.loadImgs, img_ids)
     # compare the results
-    assert cat_np == result
+    assert imgs_np == result
 
 
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)

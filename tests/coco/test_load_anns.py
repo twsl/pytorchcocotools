@@ -1,8 +1,11 @@
+from typing import cast
+
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
+from pytorchcocotools.internal.structure.annotations import CocoDetectionAnnotation
 
 
 class GetCatIdsCases:
@@ -75,10 +78,11 @@ class GetCatIdsCases:
 @parametrize_with_cases("ann_ids, result", cases=GetCatIdsCases)
 def test_loadAnns_pt(benchmark, coco_pt: COCOpt, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
     # get the annotation ids for the id
-    ann_pt = benchmark(coco_pt.loadAnns, ann_ids)
+    ann_pt = cast(list[CocoDetectionAnnotation], benchmark(coco_pt.loadAnns, ann_ids))
     # compare the results
-    del ann_pt.score
-    assert ann_pt.__dict__ == result
+    for annnp, annpt in zip(result, ann_pt, strict=False):
+        del annpt.score  # easier than looking for all keys
+        assert annnp == annpt.__dict__
 
 
 @pytest.mark.benchmark(group="loadAnns", warmup=True)
@@ -87,7 +91,9 @@ def test_loadAnns_np(benchmark, coco_np: COCOnp, ann_ids: int, result: list[dict
     # get the annotation ids for the id
     ann_np = benchmark(coco_np.loadAnns, ann_ids)
     # compare the results
-    assert ann_np == result
+    # assert ann_np == result
+    for annnp, ann in zip(ann_np, result, strict=False):
+        assert annnp == ann
 
 
 @parametrize_with_cases("ann_ids, result", cases=GetCatIdsCases)

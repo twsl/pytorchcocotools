@@ -4,10 +4,10 @@ import torch
 from torch import Tensor
 
 import pytorchcocotools._mask as _mask
-from pytorchcocotools.internal.entities import RleObj, RleObjs
+from pytorchcocotools.internal.entities import IsCrowd, RleObj, RleObjs
 
 
-def iou(dt: Tensor, gt: Tensor, pyiscrowd: list[bool | Literal[0, 1]]) -> Tensor:  # TODO: add better type hints
+def iou(dt: Tensor, gt: Tensor, pyiscrowd: IsCrowd) -> Tensor:  # TODO: add better type hints
     """Compute intersection over union between masks.
 
     Note:

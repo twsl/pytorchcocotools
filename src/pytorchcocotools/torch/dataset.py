@@ -16,6 +16,7 @@ from pytorchcocotools.internal.entities import RleObjs
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
+    CocoDetectionAnnotation,
 )
 
 
@@ -66,7 +67,7 @@ class CocoDetection(VisionDataset):
         img = read_image(str(Path(self.root) / path))
         return tvt.Image(img)
 
-    def _load_target(self, id: int) -> list[CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection]:
+    def _load_target(self, id: int) -> list[CocoDetectionAnnotation]:
         return self.coco.loadAnns(self.coco.getAnnIds(id))
 
     def _segmentation_to_mask(self, segmentation, *, canvas_size) -> torch.Tensor:
