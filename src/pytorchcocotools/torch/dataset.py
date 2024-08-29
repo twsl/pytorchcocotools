@@ -39,15 +39,15 @@ class CocoDetection(VisionDataset):
     def __init__(
         self,
         root: str,
-        annFile: str,  # noqa: N803
+        annotation_file: str,
         transforms: Callable | None = None,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
         out_bbox_fmt: tvt.BoundingBoxFormat = tvt.BoundingBoxFormat.XYXY,
     ) -> None:
         super().__init__(root, transforms, transform, target_transform)
-
-        self.coco = COCO(annFile)
+        file_path = Path(root) / annotation_file
+        self.coco = COCO(file_path.absolute().as_posix())
         self.ids = sorted(self.coco.imgs.keys())
         self.out_bbox_fmt = out_bbox_fmt
 
@@ -57,20 +57,20 @@ class CocoDetection(VisionDataset):
 
     @property
     def version(self) -> str:
-        info = self.coco.dataset["info"]
+        info = self.coco.dataset.info
         # https://semver.org/lang/de/
-        build_identifier = re.sub("[^0-9a-zA-Z]+", "_", info["date_created"])
-        return f"{info['version']}+{build_identifier}"
+        build_identifier = re.sub("[^0-9a-zA-Z]+", "_", info.date_created)
+        return f"{info.version}+{build_identifier}"
 
     def _load_image(self, id: int) -> tvt.Image:
-        path = self.coco.loadImgs(id)[0]["file_name"]
+        path = self.coco.loadImgs(id)[0].file_name
         img = read_image(str(Path(self.root) / path))
         return tvt.Image(img)
 
     def _load_target(self, id: int) -> list[CocoAnnotationDetection]:
         return self.coco.loadAnns(self.coco.getAnnIds(id))
 
-    def _segmentation_to_mask(self, segmentation, *, canvas_size) -> torch.Tensor:
+    def _segmentation_to_mask(self, segmentation, *, canvas_size: tuple[int, int]) -> torch.Tensor | tvt.Mask:
         segmentation = (
             mask.frPyObjects(segmentation, *canvas_size)
             if isinstance(segmentation, dict) and "counts" in segmentation
