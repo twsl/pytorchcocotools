@@ -4,25 +4,25 @@ from torch import Tensor
 from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
 
 
-def rleToBbox(R: RLEs, n: int) -> BB:  # noqa: N802, N803
+def rleToBbox(rles: RLEs) -> BB:  # noqa: N802, N803
     """Get bounding boxes surrounding encoded masks.
 
     Args:
-        R: The RLE encoded masks.
-        n: The number of encoded masks.
+        rles: The RLE encoded masks.
 
     Returns:
         List of bounding boxes in format [x y w h]
     """
-    device = R[0].cnts.device
+    n = len(rles)
+    device = rles[0].cnts.device
     bb = torch.zeros((n, 4), dtype=torch.int32, device=device)
     for i in range(n):
-        if R[i].m == 0:
+        if rles[i].m == 0:
             continue
-        h, _w, m = R[i].h, R[i].w, R[i].m
+        h, _w, m = rles[i].h, rles[i].w, rles[i].m
         m = (m // 2) * 2
 
-        cc = torch.cumsum(R[i].cnts[:m], dim=0)
+        cc = torch.cumsum(rles[i].cnts[:m], dim=0)
         # Calculate x, y coordinates
         t = cc - torch.arange(m) % 2
         y = t % h

@@ -17,10 +17,6 @@ IoUType: TypeAlias = Literal["segm", "bbox", "keypoints"]
 
 BB: TypeAlias = Tensor
 
-Mask: TypeAlias = Tensor  # hxwxn binary mask, in column-major order
-
-IsCrowd: TypeAlias = list[bool] | list[Literal[0, 1]]
-
 Poly: TypeAlias = list[float]
 
 
@@ -34,6 +30,10 @@ class RLE:
 
 RLEs: TypeAlias = list[RLE]
 
+IoUObject: TypeAlias = RLEs | list[float] | Tensor | BB
+
+Mask: TypeAlias = Tensor  # hxwxn binary mask, in column-major order
+
 
 class Masks(list[Mask]):
     def __init__(self, masks: list[Mask], h: int | None = None, w: int | None = None, n: int | None = None):
@@ -46,7 +46,9 @@ class Masks(list[Mask]):
 @dataclass_dict
 class RleObj(dict):
     size: tuple[int, int]
-    counts: bytes
+    counts: bytes | str
 
 
 RleObjs: TypeAlias = list[RleObj]
+
+PyObj: TypeAlias = BB | Tensor | list[list[int]] | list[list[float]] | Poly | list[Poly] | RleObjs | RleObj

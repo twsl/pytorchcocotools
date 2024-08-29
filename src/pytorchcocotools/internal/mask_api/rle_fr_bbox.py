@@ -6,18 +6,18 @@ from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
 
 
 # TODO: fix input tensor form
-def rleFrBbox(bb: BB, h: int, w: int, n: int) -> RLEs:  # noqa: N802
+def rleFrBbox(bb: BB, h: int, w: int) -> RLEs:  # noqa: N802
     """Convert bounding boxes to encoded masks.
 
     Args:
         bb: The bounding boxes.
         h: The height of the image.
         w: The width of the image.
-        n: The number of bounding boxes.
 
     Returns:
         The RLE encoded masks.
     """
+    n = bb.shape[0]
     # Precompute the xy coordinates for all bounding boxes
     xs = bb[:, 0]
     ys = bb[:, 1]

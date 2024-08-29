@@ -63,6 +63,6 @@ def rleIou(dt: RLEs, gt: RLEs, m: int, n: int, iscrowd: list[bool]) -> Tensor:  
                 if i == 0:
                     u = 1
                 elif crowd:
-                    u = rleArea([dt[d]], 1)[0]
+                    u = rleArea([dt[d]])[0]
                 o[d, g] = i / u
     return o

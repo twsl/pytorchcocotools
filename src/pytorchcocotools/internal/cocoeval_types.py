@@ -62,13 +62,13 @@ class EvalImgResult(dict):
     category_id: int = -1
     aRng: Range = field(default_factory=Range)  # noqa: N815
     maxDet: int = 0  # noqa: N815
-    dtIds: list[int] = field(default_factory=list[int])  # noqa: N815
-    gtIds: list[int] = field(default_factory=list[int])  # noqa: N815
-    dtMatches: list[int] = field(default_factory=list[int])  # noqa: N815
-    gtMatches: list[int] = field(default_factory=list[int])  # noqa: N815
-    dtScores: list[float] = field(default_factory=list[float])  # noqa: N815
-    gtIgnore: list[int] = field(default_factory=list[int])  # noqa: N815
-    dtIgnore: list[int] = field(default_factory=list[int])  # noqa: N815
+    dtIds: torch.Tensor  # noqa: N815
+    gtIds: torch.Tensor  # noqa: N815
+    dtMatches: torch.Tensor  # noqa: N815
+    gtMatches: torch.Tensor  # noqa: N815
+    dtScores: torch.Tensor  # noqa: N815
+    gtIgnore: torch.Tensor  # noqa: N815
+    dtIgnore: torch.Tensor  # noqa: N815
 
 
 @dataclass_dict
@@ -76,8 +76,8 @@ class EvalResult(dict):
     """Accumulated evaluation results."""
 
     params: Params = field(default_factory=Params)
-    counts: list[int] = field(default_factory=list[int])
+    counts: torch.Tensor
     date: datetime = datetime.now()
-    precision: torch.Tensor | None = None
-    recall: torch.Tensor | None = None
-    scores: torch.Tensor | None = None
+    precision: torch.Tensor
+    recall: torch.Tensor
+    scores: torch.Tensor

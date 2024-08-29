@@ -20,11 +20,12 @@ from pytorchcocotools.internal.entities import RleObj, RleObjs
 from pytorchcocotools.internal.structure import CocoDetectionDataset
 from pytorchcocotools.internal.structure.additional import ResultAnnotation
 from pytorchcocotools.internal.structure.annotations import (
+    CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
-    CocoDetectionAnnotation,
 )
 from pytorchcocotools.internal.structure.categories import (
+    CocoCategoriesDetection,
     CocoCategoriesKeypointDetection,
     CocoCategoriesObjectDetection,
 )
@@ -39,13 +40,10 @@ class COCO:
         Args:
             annotation_file: The location of annotation file. Defaults to None.
         """
-        self.anns: dict[
-            int,
-            CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection,
-        ] = {}
-        self.cats: dict[int, CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = {}
+        self.anns: dict[int, CocoAnnotationDetection] = {}
+        self.cats: dict[int, CocoCategoriesDetection] = {}
         self.imgs: dict[int, CocoImage] = {}
-        self.imgToAnns: defaultdict[int, list[CocoDetectionAnnotation]] = defaultdict(list[CocoDetectionAnnotation])
+        self.imgToAnns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         self.catToImgs: defaultdict[int, list[int]] = defaultdict(list[int])
         self.logger = get_logger(__name__)
         if annotation_file is not None:
@@ -63,10 +61,10 @@ class COCO:
 
     def createIndex(self) -> None:  # noqa: N802
         self.logger.info("creating index...")
-        anns: dict[int, CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection] = {}
-        cats: dict[int, CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = {}
+        anns: dict[int, CocoAnnotationDetection] = {}
+        cats: dict[int, CocoCategoriesDetection] = {}
         imgs: dict[int, CocoImage] = {}
-        img_to_anns: defaultdict[int, list[CocoDetectionAnnotation]] = defaultdict(list[CocoDetectionAnnotation])
+        img_to_anns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         cat_to_imgs: defaultdict[int, list[int]] = defaultdict(list[int])
         for ann in self.dataset.annotations:
             img_to_anns[ann.image_id].append(ann)
@@ -179,9 +177,7 @@ class COCO:
                     ids &= set(self.catToImgs[cat_id])
         return list(ids)
 
-    def loadAnns(  # noqa: N802
-        self, ids: int | list[int] | None = None
-    ) -> list[CocoDetectionAnnotation]:
+    def loadAnns(self, ids: int | list[int] | None = None) -> list[CocoAnnotationDetection]:  # noqa: N802
         """Load anns with the specified ids.
 
         Args:
@@ -196,9 +192,7 @@ class COCO:
         elif isinstance(ann_ids, int):
             return [self.anns[ann_ids]]
 
-    def loadCats(  # noqa: N802
-        self, ids: int | list[int] | None = None
-    ) -> list[CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection]:
+    def loadCats(self, ids: int | list[int] | None = None) -> list[CocoCategoriesDetection]:  # noqa: N802
         """Load cats with the specified ids.
 
         Args:
@@ -228,11 +222,7 @@ class COCO:
         elif isinstance(img_ids, int):
             return [self.imgs[img_ids]]
 
-    def showAnns(  # noqa: N802
-        self,
-        anns: list[dict] | list[CocoDetectionAnnotation],
-        draw_bbox: bool = False,
-    ) -> None:
+    def showAnns(self, anns: list[CocoAnnotationDetection], draw_bbox: bool = False) -> None:  # noqa: N802
         """Display the specified annotations.
 
         Args:
@@ -250,7 +240,6 @@ class COCO:
             if isinstance(anns, list) and all(isinstance(ann, dict) for ann in anns)
             else anns
         )
-        annotations = cast(list[CocoDetectionAnnotation], annotations)
         if len(annotations) == 0:
             return
         if "segmentation" in annotations[0] or "keypoints" in annotations[0]:
@@ -343,12 +332,7 @@ class COCO:
             ]
         return ann
 
-    def loadRes(  # noqa: N802, N803
-        self,
-        resFile: str  # noqa: N802, N803
-        | Tensor
-        | list[ResultAnnotation | CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection],
-    ) -> COCO:
+    def loadRes(self, resFile: str | Tensor | list[ResultAnnotation | CocoAnnotationDetection]) -> COCO:  # noqa: N802, N803
         """Load result file and return a result api object.
 
         Args:
@@ -369,7 +353,7 @@ class COCO:
                 anns = [CocoDetectionDataset._get_annotation(ann) for ann in anns]
         elif isinstance(resFile, torch.Tensor):
             self.logger.warning("Converting torch.Tensor to list of ResultAnnotation")
-            anns = self.loadPyTorchAnnotations(resFile)  # is gonna cause issues
+            anns = self.loadPyTorchAnnotations(resFile)  # TODO: is gonna cause issues
         else:
             anns = resFile
 
@@ -445,9 +429,7 @@ class COCO:
                 urlretrieve(img.coco_url, fname)  # noqa: S310
             self.logger.info(f"downloaded {i}/{num_imgs} images (t={time.time() - tic:0.1f}s)")
 
-    def annToRLE(  # noqa: N802
-        self, ann: CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection
-    ) -> RleObjs | RleObj:
+    def annToRLE(self, ann: CocoAnnotationDetection) -> RleObjs | RleObj:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE to RLE.
 
         Args:
@@ -465,7 +447,7 @@ class COCO:
             rles = cast(RleObjs, mask.frPyObjects(segm, h, w))
             merged = mask.merge(rles)
             return merged
-        elif isinstance(segm["counts"], list):
+        elif isinstance(segm, dict) and isinstance(segm["counts"], list):
             # uncompressed RLE
             objs = mask.frPyObjects(segm, h, w)
             return objs

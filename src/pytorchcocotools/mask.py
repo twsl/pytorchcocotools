@@ -4,10 +4,12 @@ import torch
 from torch import Tensor
 
 import pytorchcocotools._mask as _mask
-from pytorchcocotools.internal.entities import IsCrowd, RleObj, RleObjs
+from pytorchcocotools.internal.entities import BB, IoUObject, Mask, PyObj, RleObj, RleObjs
 
 
-def iou(dt: Tensor, gt: Tensor, pyiscrowd: IsCrowd) -> Tensor:  # TODO: add better type hints
+def iou(
+    dt: IoUObject, gt: IoUObject, pyiscrowd: list[bool] | list[Literal[0, 1]]
+) -> Tensor:  # TODO: add better type hints
     """Compute intersection over union between masks.
 
     Note:
@@ -48,7 +50,7 @@ def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
     return _mask.merge(rleObjs, intersect)
 
 
-def frPyObjects(pyobj: Tensor | list | dict, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
+def frPyObjects(pyobj: PyObj, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
     """Convert (list of) polygon, bbox, or uncompressed RLE to encoded RLE mask.
 
     Args:
@@ -62,7 +64,7 @@ def frPyObjects(pyobj: Tensor | list | dict, h: int, w: int) -> RleObjs | RleObj
     return _mask.frPyObjects(pyobj, h, w)
 
 
-def encode(bimask: Tensor) -> RleObj | RleObjs:
+def encode(bimask: Mask) -> RleObj | RleObjs:
     """Encode binary masks using RLE.
 
     Note:
@@ -83,7 +85,7 @@ def encode(bimask: Tensor) -> RleObj | RleObjs:
         raise ValueError("encode expects a binary mask or batch of binary masks")
 
 
-def decode(rleObjs: RleObj | RleObjs) -> Tensor:  # noqa: N803
+def decode(rleObjs: RleObj | RleObjs) -> Mask:  # noqa: N803
     """Decode binary masks encoded via RLE.
 
     Note:
@@ -103,6 +105,6 @@ def area(rleObjs: RleObj | RleObjs) -> list[int] | int:  # noqa: N803
     return _mask.area(rleObjs) if isinstance(rleObjs, list) else _mask.area([rleObjs])[0]
 
 
-def toBbox(rleObjs: RleObj | RleObjs) -> Tensor:  # noqa: N803, N802
+def toBbox(rleObjs: RleObj | RleObjs) -> BB:  # noqa: N803, N802
     """Get bounding boxes surrounding encoded masks."""
     return _mask.toBbox(rleObjs) if isinstance(rleObjs, list) else _mask.toBbox([rleObjs])[0]

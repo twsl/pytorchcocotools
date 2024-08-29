@@ -12,11 +12,13 @@ from torch import Tensor
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
-from pytorchcocotools.internal.entities import IoUType, Range, RangeLabel
-from pytorchcocotools.internal.eval_types import EvalImgResult, EvalResult, Params
+from pytorchcocotools.internal.cocoeval_types import EvalImgResult, EvalResult, Params
+from pytorchcocotools.internal.entities import IoUType, Range, RangeLabel, RLEs
 from pytorchcocotools.internal.structure.annotations import (
+    CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
+    Segment,
 )
 from pytorchcocotools.utils.logging import get_logger
 
@@ -42,18 +44,14 @@ class COCOeval:
             self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt or COCO()  # ground truth COCO API
         self.cocoDt = cocoDt or COCO()  # detections COCO API
-        self.eval_imgs = defaultdict(list)  # per-image per-category evaluation results [KxAxI] elements
+        self.eval_imgs: list[EvalImgResult] = []  # per-image per-category evaluation results [KxAxI] elements
         self.eval = EvalResult()  # accumulated evaluation results
-        self._gts = defaultdict(
-            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
-        )  # gt for evaluation
-        self._dts = defaultdict(
-            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
-        )  # dt for evaluation
+        self._gts = defaultdict(list[CocoAnnotationDetection])  # gt for evaluation
+        self._dts = defaultdict(list[CocoAnnotationDetection])  # dt for evaluation
         self.params: Params = Params(iouType=iouType)  # parameters
         self._paramsEval: Params = Params(iouType=iouType)  # parameters for evaluation
-        self.stats = []  # result summarization
-        self.ious = {}  # ious between all gts and dts
+        self.stats: Tensor = torch.Tensor()  # result summarization
+        self.ious: dict[tuple[int, int], Tensor] = {}  # ious between all gts and dts
         if cocoGt is not None:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
@@ -61,11 +59,12 @@ class COCOeval:
     def _prepare(self) -> None:
         """Prepare ._gts and ._dts for evaluation based on params."""
 
-        def _toMask(anns, coco: COCO):  # noqa: N802
+        def _toMask(anns: list[CocoAnnotationDetection], coco: COCO) -> list[CocoAnnotationDetection]:  # noqa: N802
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
-                ann["segmentation"] = rle
+                ann.segmentation = cast(list[Segment], rle)  # TODO: fix and validate
+            return anns
 
         p = self.params
         if p.useCats:
@@ -77,25 +76,20 @@ class COCOeval:
 
         # convert ground truth to mask if iouType == 'segm'
         if p.iouType == "segm":
-            _toMask(gts, self.cocoGt)
-            _toMask(dts, self.cocoDt)
+            gts = _toMask(gts, self.cocoGt)
+            dts = _toMask(dts, self.cocoDt)
         # set ignore flag
         for gt in gts:
-            gt["ignore"] = gt.get("ignore", 0)
-            gt["ignore"] = "iscrowd" in gt and gt.iscrowd
+            gt.ignore = gt.iscrowd
             if p.iouType == "keypoints":
-                gt["ignore"] = (gt["num_keypoints"] == 0) or gt["ignore"]
-        self._gts = defaultdict(
-            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
-        )  # gt for evaluation
-        self._dts = defaultdict(
-            list[CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection]
-        )  # dt for evaluation
+                gt.ignore = (gt["num_keypoints"] == 0) or gt.ignore
+        self._gts = defaultdict(list[CocoAnnotationDetection])  # gt for evaluation
+        self._dts = defaultdict(list[CocoAnnotationDetection])  # dt for evaluation
         for gt in gts:
             self._gts[gt.image_id, gt.category_id].append(gt)
         for dt in dts:
             self._dts[dt.image_id, dt.category_id].append(dt)
-        self.eval_imgs = defaultdict(list)  # per-image per-category evaluation results
+        self.eval_imgs: list[EvalImgResult] = []  # per-image per-category evaluation results
         self.eval = EvalResult()
 
     def evaluate(self) -> None:
@@ -149,8 +143,11 @@ class COCOeval:
             gt = self._gts[imgId, catId]
             dt = self._dts[imgId, catId]
         else:
-            gt = [_ for cId in p.catIds for _ in self._gts[imgId, cId]]
-            dt = [_ for cId in p.catIds for _ in self._dts[imgId, cId]]
+            gt = [_ for c_id in p.catIds for _ in self._gts[imgId, c_id]]
+            dt = [_ for c_id in p.catIds for _ in self._dts[imgId, c_id]]
+
+        gt = cast(list[CocoAnnotationObjectDetection], gt)
+        dt = cast(list[CocoAnnotationObjectDetection], dt)
         if len(gt) == 0 and len(dt) == 0:
             return Tensor([])
         inds = torch.argsort(Tensor([-d.score for d in dt]))
@@ -159,8 +156,8 @@ class COCOeval:
             dt = dt[0 : p.maxDets[-1]]
 
         if p.iouType == "segm":
-            g = [g.segmentation for g in gt]
-            d = [d.segmentation for d in dt]
+            g = cast(RLEs, [g.segmentation for g in gt])
+            d = cast(RLEs, [d.segmentation for d in dt])
         elif p.iouType == "bbox":
             g = Tensor([g.bbox for g in gt])
             d = Tensor([d.bbox for d in dt])
@@ -191,18 +188,18 @@ class COCOeval:
         # compute oks between each detection and ground truth object
         for j, gt in enumerate(gts):
             # create bounds for ignore regions(double the gt bbox)
-            g = torch.Tensor(gt["keypoints"])
+            g = torch.Tensor(gt.keypoints)
             xg = g[0::3]
             yg = g[1::3]
             vg = g[2::3]
             k1 = torch.count_nonzero(vg > 0)
-            bb = gt.bbox
+            bb = torch.Tensor(gt.bbox)
             x0 = bb[0] - bb[2]
             x1 = bb[0] + bb[2] * 2
             y0 = bb[1] - bb[3]
             y1 = bb[1] + bb[3] * 2
             for i, dt in enumerate(dts):
-                d = torch.Tensor(dt["keypoints"])
+                d = torch.Tensor(dt.keypoints)
                 xd = d[0::3]
                 yd = d[1::3]
                 if k1 > 0:
@@ -212,9 +209,9 @@ class COCOeval:
                 else:
                     # measure minimum distance to keypoints in (x0,y0) & (x1,y1)
                     z = torch.zeros(k)
-                    dx = torch.max((z, x0 - xd), axis=0) + torch.max((z, xd - x1), axis=0)
-                    dy = torch.max((z, y0 - yd), axis=0) + torch.max((z, yd - y1), axis=0)
-                e = (dx**2 + dy**2) / vars / (gt.area + torch.spacing(1)) / 2
+                    dx = torch.max(torch.stack([z, x0 - xd]), dim=0) + torch.max(torch.stack([z, xd - x1]), dim=0)
+                    dy = torch.max(torch.stack([z, y0 - yd]), dim=0) + torch.max(torch.stack([z, yd - y1]), dim=0)
+                e = (torch.pow(dx, 2) + torch.pow(dy, 2)) / vars / (gt.area + torch.finfo(torch.float32).eps) / 2
                 if k1 > 0:
                     e = e[vg > 0]
                 ious[i, j] = torch.sum(torch.exp(-e)) / e.shape[0]
@@ -224,13 +221,13 @@ class COCOeval:
         """Perform evaluation for single category and image.
 
         Args:
-            imgId: _description_
-            catId: _description_
-            aRng: _description_
-            maxDet: _description_
+            imgId: The image id.
+            catId: The category id.
+            aRng: The area range.
+            maxDet: The maximum number of detections.
 
         Returns:
-            _description_
+            The image evaluation result.
         """
         p = self.params
         if p.useCats:
@@ -242,14 +239,11 @@ class COCOeval:
         if len(gt) == 0 and len(dt) == 0:
             return EvalImgResult()
 
-        for g in gt:
-            if g["ignore"] or (g.area < aRng[0] or g.area > aRng[1]):
-                g["_ignore"] = 1
-            else:
-                g["_ignore"] = 0
+        ignored = [1 if g.ignore or (g.area < aRng[0] or g.area > aRng[1]) else 0 for g in gt]
 
+        gt_ig = torch.Tensor(ignored)
         # sort dt highest score first, sort gt ignore last
-        gtind = torch.argsort(Tensor([g["_ignore"] for g in gt]))
+        gtind = torch.argsort(gt_ig)
         gt = [gt[i] for i in gtind]
         dtind = torch.argsort(Tensor([-d.score for d in dt]))
         dt = [dt[i] for i in dtind[0:maxDet]]
@@ -262,19 +256,18 @@ class COCOeval:
         num_dt = len(dt)  # D
         gtm = torch.zeros((num_iou_thrs, num_gt))
         dtm = torch.zeros((num_iou_thrs, num_dt))
-        gt_ig = torch.Tensor([g["_ignore"] for g in gt])
         dt_ig = torch.zeros((num_iou_thrs, num_dt))
         if len(ious) != 0:
             for tind, t in enumerate(p.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = min([t, 1 - torch.finfo(torch.float32).eps])
+                    iou = torch.min(t, torch.Tensor(1) - torch.finfo(torch.float32).eps)
                     m = -1
                     #############################################################################
                     # Vectorize the comparison and selection process
                     mask = (gtm[tind] <= 0) | iscrowd
                     valid_ious = ious[dind] * mask
-                    m = torch.argmax(valid_ious).item()
+                    m = int(torch.argmax(valid_ious).item())
                     #############################################################################
 
                     for gind, g in enumerate(gt):  # noqa: B007
@@ -294,11 +287,11 @@ class COCOeval:
                     if m == -1:
                         continue
                     dt_ig[tind, dind] = gt_ig[m]
-                    dtm[tind, dind] = gt[m]["id"]
+                    dtm[tind, dind] = gt[m].id
                     gtm[tind, m] = d.id
         # set unmatched detections outside of area range to ignore
         a = torch.Tensor([d.area < aRng[0] or d.area > aRng[1] for d in dt]).reshape((1, len(dt)))
-        dt_ig = torch.logical_or(dt_ig, torch.logical_and(dtm == 0, torch.repeat(a, num_iou_thrs, 0)))
+        dt_ig = torch.logical_or(dt_ig, torch.logical_and(dtm == 0, a.repeat(num_iou_thrs, 0)))
         # store results for given image and category
         return EvalImgResult(
             image_id=imgId,
@@ -322,7 +315,7 @@ class COCOeval:
         """
         self.logger.info("Accumulating evaluation results...")
         tic = time.time()
-        if not self.eval_imgs:
+        if not self.eval_imgs or len(self.eval_imgs) == 0:
             self.logger.info("Please run evaluate() first")
         # allows input customized parameters
         p = p or self.params
@@ -373,16 +366,16 @@ class COCOeval:
                     e = [e for e in e if e is not None]
                     if len(e) == 0:
                         continue
-                    dt_scores = torch.concatenate([e["dtScores"][0:max_det] for e in e])
+                    dt_scores = torch.concatenate([torch.Tensor(e.dtScores[0:max_det]) for e in e])
 
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
                     inds = torch.argsort(Tensor(-dt_scores))
                     dt_scores_sorted = dt_scores[inds]
 
-                    dt_matches = torch.cat([Tensor(e["dtMatches"][:, 0:max_det]) for e in e], dim=1)[:, inds]
-                    dt_ig = torch.cat([Tensor(e["dtIgnore"][:, 0:max_det]) for e in e], dim=1)[:, inds]
-                    gt_ig = torch.cat([Tensor(e["gtIgnore"]) for e in e])
+                    dt_matches = torch.cat([Tensor(e.dtMatches[:, 0:max_det]) for e in e], dim=1)[:, inds]
+                    dt_ig = torch.cat([Tensor(e.dtIgnore[:, 0:max_det]) for e in e], dim=1)[:, inds]
+                    gt_ig = torch.cat([Tensor(e.gtIgnore) for e in e])
                     npig = torch.count_nonzero(gt_ig == 0)
                     if npig == 0:
                         continue
@@ -446,7 +439,7 @@ class COCOeval:
             iouThr: float | None = None,  # noqa: N803
             areaRng: RangeLabel = "all",  # noqa: N803
             maxDets: int = 100,  # noqa: N803
-        ) -> int | Tensor:
+        ) -> Tensor:
             ap = bool(ap)
             template = " {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}"
             title = "Average Precision" if ap else "Average Recall"

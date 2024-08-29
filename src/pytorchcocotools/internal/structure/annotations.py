@@ -18,16 +18,20 @@ class CocoRLE(BaseCocoEntity):
         return instance
 
 
+Segment: TypeAlias = list[float] | CocoRLE
+
+
 @dataclass_dict
 class CocoAnnotationObjectDetection(BaseCocoEntity):
     id: int = -1
     image_id: int = -1
     category_id: int = -1
-    segmentation: list[CocoRLE | list[float]] = field(default_factory=list[CocoRLE | list[float]])
+    segmentation: list[Segment] = field(default_factory=list[Segment])
     area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
     iscrowd: bool = False
     score: float = 0  # TODO: consider putting this in a subclass, only used in results/coco eval
+    ignore: bool = False  # TODO: consider putting this in a subclass, only used in results/coco eval
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationObjectDetection:
@@ -72,4 +76,4 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
         return instance
 
 
-CocoDetectionAnnotation: TypeAlias = CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection
+CocoAnnotationDetection: TypeAlias = CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection

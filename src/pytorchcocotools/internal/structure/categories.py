@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import field
+from typing import TypeAlias
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -33,3 +34,6 @@ class CocoCategoriesKeypointDetection(CocoCategoriesObjectDetection):
             skeleton=data.get("skeleton", []),
         )
         return instance
+
+
+CocoCategoriesDetection: TypeAlias = CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection

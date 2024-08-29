@@ -8,12 +8,13 @@ from pytorchcocotools.internal.structure.additional import (
     CocoCategoriesPanopticSegmentation,
 )
 from pytorchcocotools.internal.structure.annotations import (
+    CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
-    CocoDetectionAnnotation,
 )
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.internal.structure.categories import (
+    CocoCategoriesDetection,
     CocoCategoriesKeypointDetection,
     CocoCategoriesObjectDetection,
 )
@@ -29,19 +30,17 @@ class CocoDetectionDataset(BaseCocoEntity):
     info: CocoInfo = field(default_factory=CocoInfo)
     licenses: list[CocoLicense] = field(default_factory=list[CocoLicense])
     images: list[CocoImage] = field(default_factory=list[CocoImage])
-    annotations: list[CocoDetectionAnnotation] = field(default_factory=list[CocoDetectionAnnotation])
-    categories: list[CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection] = field(
-        default_factory=list[CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection]
-    )
+    annotations: list[CocoAnnotationDetection] = field(default_factory=list[CocoAnnotationDetection])
+    categories: list[CocoCategoriesDetection] = field(default_factory=list[CocoCategoriesDetection])
 
     @classmethod
-    def _get_annotation(cls, annotation: dict) -> CocoAnnotationKeypointDetection | CocoAnnotationObjectDetection:
+    def _get_annotation(cls, annotation: dict) -> CocoAnnotationDetection:
         if "keypoints" in annotation:
             return CocoAnnotationKeypointDetection.from_dict(annotation)
         return CocoAnnotationObjectDetection.from_dict(annotation)
 
     @classmethod
-    def _get_category(cls, category: dict) -> CocoCategoriesKeypointDetection | CocoCategoriesObjectDetection:
+    def _get_category(cls, category: dict) -> CocoCategoriesDetection:
         if "keypoints" in category:
             return CocoCategoriesKeypointDetection.from_dict(category)
         return CocoCategoriesObjectDetection.from_dict(category)
