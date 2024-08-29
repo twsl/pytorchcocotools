@@ -45,7 +45,7 @@ class COCO:
         self.imgs: dict[int, CocoImage] = {}
         self.imgToAnns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         self.catToImgs: defaultdict[int, list[int]] = defaultdict(list[int])
-        self.logger = get_logger(__name__)
+        self.logger = get_logger(self.__class__.__name__)
         if annotation_file is not None:
             self.logger.info("loading annotations into memory...")
             tic = time.time()

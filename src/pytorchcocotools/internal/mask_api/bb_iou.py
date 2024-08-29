@@ -4,14 +4,12 @@ from torch import Tensor
 from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
 
 
-def bbIou(dt: BB, gt: BB, m: int, n: int, iscrowd: list[bool]) -> Tensor:  # noqa: N802
+def bbIou(dt: BB, gt: BB, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """Compute intersection over union between bounding boxes.
 
     Args:
         dt: Detection bounding boxes (shape: [m, 4]).
         gt: Ground truth bounding boxes (shape: [n, 4]).
-        m: Number of detection bounding boxes.
-        n: Number of ground truth bounding boxes.
         iscrowd: List indicating if a ground truth bounding box is a crowd.
 
     Returns:

@@ -158,20 +158,11 @@ def iou(dt: IoUObject, gt: IoUObject, pyiscrowd: list[bool]) -> Tensor:
             )
         return objs
 
-    def _len(obj: list | Tensor) -> int:
-        if isinstance(obj, list):  # RLEs
-            return len(obj)
-        elif isinstance(obj, Tensor):
-            return obj.shape[0]
-        elif len(obj) == 0:
-            return 0
-        return 0
-
     is_crowd = pyiscrowd
     dt = _preproc(dt)
     gt = _preproc(gt)
-    m = _len(dt)
-    n = _len(gt)
+    m = len(dt)
+    n = len(gt)
     crowd_length = len(is_crowd)
     assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101
     if m == 0 or n == 0:
@@ -179,9 +170,9 @@ def iou(dt: IoUObject, gt: IoUObject, pyiscrowd: list[bool]) -> Tensor:
     if type(dt) is not type(gt):
         raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
     if isinstance(dt, RLEs):
-        return rleIou(dt, gt, m, n, is_crowd)
+        return rleIou(dt, gt, is_crowd)
     if isinstance(dt, Tensor):
-        return bbIou(dt, gt, m, n, is_crowd)
+        return bbIou(dt, gt, is_crowd)
     else:
         raise TypeError("Input data type not allowed.")  # noqa: TRY002
     return Tensor()

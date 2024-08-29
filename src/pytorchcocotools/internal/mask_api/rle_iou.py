@@ -7,22 +7,22 @@ from pytorchcocotools.internal.mask_api.rle_area import rleArea
 from pytorchcocotools.internal.mask_api.rle_to_bbox import rleToBbox
 
 
-def rleIou(dt: RLEs, gt: RLEs, m: int, n: int, iscrowd: list[bool]) -> Tensor:  # noqa: N802
+def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """Compute intersection over union between masks.
 
     Args:
         dt: The RLE encoded detection masks.
         gt: The RLE encoded ground truth masks.
-        m: The number of detection masks.
-        n: The number of ground truth masks.
         iscrowd: The crowd label for each ground truth mask.
 
     Returns:
         The intersection over union between the masks.
     """
-    db = rleToBbox(dt, m)
-    gb = rleToBbox(gt, n)
-    o = bbIou(db, gb, m, n, iscrowd)
+    db = rleToBbox(dt)
+    gb = rleToBbox(gt)
+    m = len(dt)
+    n = len(gt)
+    o = bbIou(db, gb, iscrowd)
     for g in range(n):
         for d in range(m):
             if o[d, g] > 0:
