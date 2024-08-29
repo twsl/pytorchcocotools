@@ -5,7 +5,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
-from pytorchcocotools.internal.structure.annotations import CocoDetectionAnnotation
+from pytorchcocotools.internal.structure.annotations import CocoAnnotationDetection
 
 
 class GetCatIdsCases:
@@ -78,10 +78,11 @@ class GetCatIdsCases:
 @parametrize_with_cases("ann_ids, result", cases=GetCatIdsCases)
 def test_loadAnns_pt(benchmark, coco_pt: COCOpt, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
     # get the annotation ids for the id
-    ann_pt = cast(list[CocoDetectionAnnotation], benchmark(coco_pt.loadAnns, ann_ids))
+    ann_pt = cast(list[CocoAnnotationDetection], benchmark(coco_pt.loadAnns, ann_ids))
     # compare the results
     for annnp, annpt in zip(result, ann_pt, strict=False):
         del annpt.score  # easier than looking for all keys
+        del annpt.ignore
         assert annnp == annpt.__dict__
 
 
@@ -104,6 +105,7 @@ def test_loadAnns(coco_np: COCOnp, coco_pt: COCOpt, ann_ids: int, result: list[d
     # compare the results
     for annnp, annpt in zip(ann_np, ann_pt, strict=False):
         del annpt.score
+        del annpt.ignore
         assert annnp == annpt.__dict__
     for annnp, ann in zip(ann_np, result, strict=False):
         assert annnp == ann

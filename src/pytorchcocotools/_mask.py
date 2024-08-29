@@ -154,7 +154,7 @@ def iou(dt: IoUObject, gt: IoUObject, pyiscrowd: list[bool]) -> Tensor:
                 raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")  # noqa: TRY002
         else:
             raise TypeError(
-                "Unrecognized type.  The following type: RLEs (rle), torch.Tensor (box), and list (box) are supported."
+                "Unrecognized type. The following type: RLEs (rle), torch.Tensor (box), and list (box) are supported."
             )
         return objs
 

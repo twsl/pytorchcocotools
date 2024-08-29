@@ -53,7 +53,7 @@ repos:
         args: [--fix, -v]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.377
+    rev: v1.1.378
     hooks:
       - id: pyright
         args: [--verbose, --project=.]

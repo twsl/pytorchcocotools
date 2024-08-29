@@ -12,12 +12,8 @@ from torchvision.tv_tensors._dataset_wrapper import list_of_dicts_to_dict_of_lis
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
-from pytorchcocotools.internal.entities import RleObjs
-from pytorchcocotools.internal.structure.annotations import (
-    CocoAnnotationDetection,
-    CocoAnnotationKeypointDetection,
-    CocoAnnotationObjectDetection,
-)
+from pytorchcocotools.internal.entities import PyObj, RleObjs
+from pytorchcocotools.internal.structure.annotations import CocoAnnotationDetection
 
 
 class CocoDetection(VisionDataset):
@@ -27,27 +23,22 @@ class CocoDetection(VisionDataset):
 
     Args:
         root: Root directory where images are downloaded to.
-        annFile: Path to json annotation file.
-        transform: A function/transform that takes in a ``torchvision.tv_tensors.Image`` image
-            and returns a transformed version.
-        target_transform: A function/transform that takes in the
-            target and transforms it.
+        annotation_path: Path to json annotation file.
         transforms: A function/transform that takes input sample and its target as entry
             and returns a transformed version.
     """
 
     def __init__(
         self,
-        root: str,
-        annotation_file: str,
+        root: str | Path,
+        annotation_path: str | Path,
         transforms: Callable | None = None,
-        transform: Callable | None = None,
-        target_transform: Callable | None = None,
         out_bbox_fmt: tvt.BoundingBoxFormat = tvt.BoundingBoxFormat.XYXY,
     ) -> None:
-        super().__init__(root, transforms, transform, target_transform)
-        file_path = Path(root) / annotation_file
-        self.coco = COCO(file_path.absolute().as_posix())
+        super().__init__(root, transforms)
+        self.root = Path(root) if isinstance(root, str) else root
+        self.annotation_path = Path(annotation_path) if isinstance(annotation_path, str) else annotation_path
+        self.coco = COCO(self.annotation_path.absolute().as_posix())
         self.ids = sorted(self.coco.imgs.keys())
         self.out_bbox_fmt = out_bbox_fmt
 
@@ -64,19 +55,19 @@ class CocoDetection(VisionDataset):
 
     def _load_image(self, id: int) -> tvt.Image:
         path = self.coco.loadImgs(id)[0].file_name
-        img = read_image(str(Path(self.root) / path))
+        img = read_image(str(self.root / path))
         return tvt.Image(img)
 
     def _load_target(self, id: int) -> list[CocoAnnotationDetection]:
         return self.coco.loadAnns(self.coco.getAnnIds(id))
 
-    def _segmentation_to_mask(self, segmentation, *, canvas_size: tuple[int, int]) -> torch.Tensor | tvt.Mask:
+    def _segmentation_to_mask(self, segmentation: PyObj, *, canvas_size: tuple[int, int]) -> tvt.Mask:
         segmentation = (
             mask.frPyObjects(segmentation, *canvas_size)
             if isinstance(segmentation, dict) and "counts" in segmentation
             else mask.merge(cast(RleObjs, mask.frPyObjects(segmentation, *canvas_size)))
         )
-        return mask.decode(segmentation)
+        return tvt.Mask(mask.decode(segmentation))
 
     def __getitem__(self, index: int) -> tuple[tvt.Image, dict[str, Any]]:
         id = self.ids[index]

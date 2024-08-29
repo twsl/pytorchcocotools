@@ -31,7 +31,7 @@ class COCOeval:
         cocoGt: COCO | None = None,  # noqa: N803
         cocoDt: COCO | None = None,  # noqa: N803
         iouType: IoUType = "segm",  # noqa: N803
-    ):
+    ) -> None:
         """Initialize CocoEval using coco APIs for gt and dt.
 
         Args:
@@ -129,22 +129,21 @@ class COCOeval:
         """Compute the IoU between detections and ground truth for the given :param:`imgId` and :param:`catId`.
 
         Args:
-            imgId: _description_
-            catId: _description_
+            imgId: The image id.
+            catId: The category id.
 
         Raises:
             ValueError: Unknown iouType for iou computation.
 
         Returns:
-            _description_
+            The IoU between detections and ground truth.
         """
-        p = self.params
-        if p.useCats:
+        if self.params.useCats:
             gt = self._gts[imgId, catId]
             dt = self._dts[imgId, catId]
         else:
-            gt = [_ for c_id in p.catIds for _ in self._gts[imgId, c_id]]
-            dt = [_ for c_id in p.catIds for _ in self._dts[imgId, c_id]]
+            gt = [_ for c_id in self.params.catIds for _ in self._gts[imgId, c_id]]
+            dt = [_ for c_id in self.params.catIds for _ in self._dts[imgId, c_id]]
 
         gt = cast(list[CocoAnnotationObjectDetection], gt)
         dt = cast(list[CocoAnnotationObjectDetection], dt)
@@ -152,13 +151,13 @@ class COCOeval:
             return Tensor([])
         inds = torch.argsort(Tensor([-d.score for d in dt]))
         dt = [dt[i] for i in inds]  # TODO: optimize, dt[inds]
-        if len(dt) > p.maxDets[-1]:
-            dt = dt[0 : p.maxDets[-1]]
+        if len(dt) > self.params.maxDets[-1]:
+            dt = dt[0 : self.params.maxDets[-1]]
 
-        if p.iouType == "segm":
+        if self.params.iouType == "segm":
             g = cast(RLEs, [g.segmentation for g in gt])
             d = cast(RLEs, [d.segmentation for d in dt])
-        elif p.iouType == "bbox":
+        elif self.params.iouType == "bbox":
             g = Tensor([g.bbox for g in gt])
             d = Tensor([d.bbox for d in dt])
         else:
@@ -170,19 +169,18 @@ class COCOeval:
         return ious
 
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
-        p = self.params
         # dimention here should be Nxm
         gts = cast(list[CocoAnnotationKeypointDetection], self._gts[imgId, catId])
         dts = cast(list[CocoAnnotationKeypointDetection], self._dts[imgId, catId])
         inds = torch.argsort(Tensor([-d.score for d in dts]))
         dts = [dts[i] for i in inds]
-        if len(dts) > p.maxDets[-1]:
-            dts = dts[0 : p.maxDets[-1]]
+        if len(dts) > self.params.maxDets[-1]:
+            dts = dts[0 : self.params.maxDets[-1]]
         # if len(gts) == 0 and len(dts) == 0:
         if len(gts) == 0 or len(dts) == 0:
             return torch.Tensor([])
         ious = torch.zeros((len(dts), len(gts)))
-        sigmas = p.kpt_oks_sigmas
+        sigmas = self.params.kpt_oks_sigmas
         vars = (sigmas * 2) ** 2
         k = len(sigmas)
         # compute oks between each detection and ground truth object
@@ -229,13 +227,12 @@ class COCOeval:
         Returns:
             The image evaluation result.
         """
-        p = self.params
-        if p.useCats:
+        if self.params.useCats:
             gt = self._gts[imgId, catId]
             dt = self._dts[imgId, catId]
         else:
-            gt = [_ for c_id in p.catIds for _ in self._gts[imgId, c_id]]
-            dt = [_ for c_id in p.catIds for _ in self._dts[imgId, c_id]]
+            gt = [_ for c_id in self.params.catIds for _ in self._gts[imgId, c_id]]
+            dt = [_ for c_id in self.params.catIds for _ in self._dts[imgId, c_id]]
         if len(gt) == 0 and len(dt) == 0:
             return EvalImgResult()
 
@@ -251,14 +248,14 @@ class COCOeval:
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
-        num_iou_thrs = len(p.iouThrs)  # T
+        num_iou_thrs = len(self.params.iouThrs)  # T
         num_gt = len(gt)  # G
         num_dt = len(dt)  # D
         gtm = torch.zeros((num_iou_thrs, num_gt))
         dtm = torch.zeros((num_iou_thrs, num_dt))
         dt_ig = torch.zeros((num_iou_thrs, num_dt))
         if len(ious) != 0:
-            for tind, t in enumerate(p.iouThrs):
+            for tind, t in enumerate(self.params.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
                     iou = torch.min(t, torch.Tensor(1) - torch.finfo(torch.float32).eps)
@@ -298,8 +295,8 @@ class COCOeval:
             category_id=catId,
             aRng=aRng,
             maxDet=maxDet,
-            dtIds=[d.id for d in dt],
-            gtIds=[g.id for g in gt],
+            dtIds=torch.tensor([d.id for d in dt]),
+            gtIds=torch.tensor([g.id for g in gt]),
             dtMatches=dtm,
             gtMatches=gtm,
             dtScores=[d.score for d in dt],
@@ -452,7 +449,7 @@ class COCOeval:
             mind = [i for i, mDet in enumerate(self.params.maxDets) if mDet == maxDets]
             if ap:
                 # dimension of precision: [TxRxKxAxM]
-                prec = self.eval["precision"]
+                prec = self.eval.precision
                 # IoU
                 if iouThr is not None:
                     thr = torch.where(torch.tensor(iouThr) == self.params.iouThrs)[0]
@@ -460,7 +457,7 @@ class COCOeval:
                 prec = prec[:, :, :, aind, mind]
             else:
                 # dimension of recall: [TxKxAxM]
-                prec = self.eval["recall"]
+                prec = self.eval.recall
                 if iouThr is not None:
                     thr = torch.where(torch.tensor(iouThr) == self.params.iouThrs)[0]
                     prec = prec[thr]

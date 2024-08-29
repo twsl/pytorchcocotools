@@ -23,7 +23,7 @@ def bbNms(dt: BB, n: int, thr: float) -> list[bool]:  # noqa: N802
         if keep[i]:
             for j in range(i + 1, n):
                 if keep[j]:
-                    u = bbIou(dt[i], dt[j], 1, 1, [False])
+                    u = bbIou(dt[i], dt[j], [False])
                     if u[0].float() > thr:
                         keep[j] = False
     return keep

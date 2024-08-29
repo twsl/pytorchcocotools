@@ -22,7 +22,7 @@ def rleNms(dt: RLEs, n: int, thr: float) -> list[bool]:  # noqa: N802
         if keep[i]:
             for j in range(i + 1, n):
                 if keep[j]:
-                    u = rleIou([dt[i]], [dt[j]], 1, 1, [False])
+                    u = rleIou([dt[i]], [dt[j]], [False])
                     if u[0].float() > thr:
                         keep[j] = False
     return keep

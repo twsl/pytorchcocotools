@@ -2,7 +2,7 @@ import contextlib
 import io
 import json
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Literal, Sequence
+from typing import Any, Callable, ClassVar, Literal, Sequence, cast
 
 from lightning_utilities import apply_to_collection
 import torch
@@ -11,17 +11,16 @@ from torch import distributed as dist
 from torchmetrics.detection.helpers import _fix_empty_tensors, _input_validator, _validate_iou_type_arg
 from torchmetrics.metric import Metric
 from torchmetrics.utilities import rank_zero_warn
-from torchmetrics.utilities.imports import (
-    _FASTER_COCO_EVAL_AVAILABLE,
-    _MATPLOTLIB_AVAILABLE,
-    _PYCOCOTOOLS_AVAILABLE,
-    _TORCHVISION_GREATER_EQUAL_0_8,
-)
 from torchmetrics.utilities.plot import _AX_TYPE, _PLOT_OUT_TYPE
 
 from pytorchcocotools import mask as mask_utils
 from pytorchcocotools.coco import COCO
 from pytorchcocotools.cocoeval import COCOeval
+from pytorchcocotools.internal.entities import RleObj
+from pytorchcocotools.internal.structure.annotations import CocoAnnotationObjectDetection
+from pytorchcocotools.internal.structure.categories import CocoCategoriesObjectDetection
+from pytorchcocotools.internal.structure.coco import CocoDetectionDataset
+from pytorchcocotools.internal.structure.images import CocoImage
 
 
 class MeanAveragePrecision(Metric):
@@ -366,7 +365,7 @@ class MeanAveragePrecision(Metric):
 
         if average not in ("macro", "micro"):
             raise ValueError(f"Expected argument `average` to be one of ('macro', 'micro') but got {average}")
-        self.average = average
+        self.average: Literal["macro"] | Literal["micro"] = average
 
         self.add_state("detection_box", default=[], dist_reduce_fx=None)
         self.add_state("detection_mask", default=[], dist_reduce_fx=None)
@@ -552,8 +551,7 @@ class MeanAveragePrecision(Metric):
     def coco_to_tm(
         coco_preds: str,
         coco_target: str,
-        iou_type: Union[Literal["bbox", "segm"], list[str]] = "bbox",
-        backend: Literal["pycocotools", "faster_coco_eval"] = "pycocotools",
+        iou_type: Literal["bbox", "segm"] | list[str] = "bbox",
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         """Utility function for converting .json coco format files to the input format of this metric.
 
@@ -564,7 +562,6 @@ class MeanAveragePrecision(Metric):
             coco_preds: Path to the json file containing the predictions in coco format
             coco_target: Path to the json file containing the targets in coco format
             iou_type: Type of input, either `bbox` for bounding boxes or `segm` for segmentation masks
-            backend: Backend to use for the conversion. Either `pycocotools` or `faster_coco_eval`.
 
         Returns:
             A tuple containing the predictions and targets in the input format of this metric. Each element of the
@@ -745,9 +742,9 @@ class MeanAveragePrecision(Metric):
             output[0] = boxes  # type: ignore[call-overload]
         if "segm" in self.iou_type:
             masks = []
-            for i in item["masks"].cpu().numpy():
-                rle = mask_utils.encode(np.asfortranarray(i))
-                masks.append((tuple(rle["size"]), rle["counts"]))
+            for i in item["masks"]:
+                rle = cast(RleObj, mask_utils.encode(i))
+                masks.append((tuple(rle.size), rle.counts))
             output[1] = tuple(masks)  # type: ignore[call-overload]
         if warn and (
             (output[0] is not None and len(output[0]) > self.max_detection_thresholds[-1])
@@ -770,15 +767,14 @@ class MeanAveragePrecision(Metric):
         scores: list[torch.Tensor] | None = None,
         crowds: list[torch.Tensor] | None = None,
         area: list[torch.Tensor] | None = None,
-    ) -> dict:
+    ) -> CocoDetectionDataset:
         """Transforms and returns all cached targets or predictions in COCO format.
 
         Format is defined at
         https://cocodataset.org/#format-data
 
         """
-        images = []
-        annotations = []
+        dataset = CocoDetectionDataset()
         annotation_id = 1  # has to start with 1, otherwise COCOEval results are wrong
 
         for image_id, image_labels in enumerate(labels):
@@ -791,9 +787,10 @@ class MeanAveragePrecision(Metric):
                     continue
             image_labels = image_labels.cpu().tolist()  # type: ignore[assignment]
 
-            images.append({"id": image_id})
+            image = CocoImage(id=image_id)
             if "segm" in self.iou_type and len(image_masks) > 0:
-                images[-1]["height"], images[-1]["width"] = image_masks[0][0][0], image_masks[0][0][1]  # type: ignore[assignment]
+                image.height, image.width = image_masks[0][0][0], image_masks[0][0][1]  # type: ignore[assignment]
+            dataset.images.append(image)
 
             for k, image_label in enumerate(image_labels):
                 if boxes is not None:
@@ -823,21 +820,21 @@ class MeanAveragePrecision(Metric):
                         area_stat_box = image_box[2] * image_box[3]
                         area_stat_mask = mask_utils.area(image_mask)
 
-                annotation = {
-                    "id": annotation_id,
-                    "image_id": image_id,
-                    "area": area_stat,
-                    "category_id": image_label,
-                    "iscrowd": crowds[image_id][k].cpu().tolist() if crowds is not None else 0,
-                }
+                annotation = CocoAnnotationObjectDetection(
+                    id=annotation_id,
+                    image_id=image_id,
+                    area=area_stat,
+                    category_id=image_label,
+                    iscrowd=crowds[image_id][k].cpu().tolist() if crowds is not None else 0,
+                )
                 if area_stat_box is not None:
                     annotation["area_bbox"] = area_stat_box
                     annotation["area_segm"] = area_stat_mask
 
                 if boxes is not None:
-                    annotation["bbox"] = image_box
+                    annotation.bbox = image_box
                 if masks is not None:
-                    annotation["segmentation"] = image_mask
+                    annotation.segmentation = image_mask
 
                 if scores is not None:
                     score = scores[image_id][k].cpu().tolist()
@@ -847,11 +844,12 @@ class MeanAveragePrecision(Metric):
                             f" (expected value of type float, got type {type(score)})"
                         )
                     annotation["score"] = score
-                annotations.append(annotation)
+                dataset.annotations.append(annotation)
                 annotation_id += 1
 
-        classes = [{"id": i, "name": str(i)} for i in self._get_classes()]
-        return {"images": images, "annotations": annotations, "categories": classes}
+        classes = [CocoCategoriesObjectDetection(id=i, name=str(i)) for i in self._get_classes()]
+        dataset.categories = classes
+        return dataset
 
     def plot(
         self,
