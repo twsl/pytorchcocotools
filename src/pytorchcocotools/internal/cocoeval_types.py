@@ -4,6 +4,7 @@ from dataclasses import field
 from datetime import datetime
 from typing import Literal, TypeAlias
 
+from numpy import rec
 import torch
 
 from pytorchcocotools.internal.entities import IoUType, Range, RangeLabels, Ranges
@@ -12,6 +13,33 @@ from pytorchcocotools.utils.dataclass import dataclass_dict
 
 class Params:
     """Params for coco evaluation api."""
+
+    imgIds: list[int]  # noqa: N815
+    catIds: list[int]  # noqa: N815
+    iouThrs: torch.Tensor  # noqa: N815
+    recThrs: torch.Tensor  # noqa: N815
+    maxDets: list[int]  # noqa: N815
+    areaRng: Ranges  # noqa: N815
+    areaRngLbl: RangeLabels  # noqa: N815
+    useCats: int  # noqa: N815
+    kpt_oks_sigmas: torch.Tensor
+
+    def __init__(self, iouType: IoUType = "segm") -> None:  # noqa: N803
+        """Initialize Params with default values.
+
+        Args:
+            iouType: Type of evaluation. The default is "segm".
+
+        Raises:
+            ValueError: If iouType is not supported.
+        """
+        if iouType == "segm" or iouType == "bbox":
+            self.setDetParams()
+        elif iouType == "keypoints":
+            self.setKpParams()
+        else:
+            raise ValueError("iouType not supported.")
+        self.iouType: IoUType = iouType
 
     def setDetParams(self):  # noqa: N802
         self.imgIds: list[int] = []
@@ -45,15 +73,6 @@ class Params:
             )
             / 10.0
         )
-
-    def __init__(self, iouType: IoUType = "segm") -> None:  # noqa: N803
-        if iouType == "segm" or iouType == "bbox":
-            self.setDetParams()
-        elif iouType == "keypoints":
-            self.setKpParams()
-        else:
-            raise ValueError("iouType not supported.")
-        self.iouType: IoUType = iouType
 
 
 @dataclass_dict
