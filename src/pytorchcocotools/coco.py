@@ -16,7 +16,7 @@ import torch
 from torch import Tensor
 
 from pytorchcocotools import mask
-from pytorchcocotools.internal.entities import RleObj, RleObjs
+from pytorchcocotools.internal.entities import Mask, RleObj, RleObjs
 from pytorchcocotools.internal.structure import CocoDetectionDataset
 from pytorchcocotools.internal.structure.additional import ResultAnnotation
 from pytorchcocotools.internal.structure.annotations import (
@@ -378,7 +378,7 @@ class COCO:
             elif "segmentation" in ann:
                 new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
                 # now only support compressed RLE format as segmentation results
-                new_ann.area = float(mask.area(ann.segmentation))
+                new_ann.area = float(mask.area(ann.segmentation)[0])
                 if "bbox" not in ann:
                     new_ann.bbox = mask.toBbox(ann.segmentation)
                 else:
@@ -444,7 +444,7 @@ class COCO:
         if isinstance(segm, list):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
-            rles = cast(RleObjs, mask.frPyObjects(segm, h, w))
+            rles = cast(RleObjs, mask.frPyObjects(cast(list[list[float]], segm), h, w))
             merged = mask.merge(rles)
             return merged
         elif isinstance(segm, dict) and isinstance(segm["counts"], list):
@@ -454,7 +454,7 @@ class COCO:
         else:
             return segm
 
-    def annToMask(self, ann: dict) -> Tensor:  # noqa: N802
+    def annToMask(self, ann: dict) -> Mask:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
 
         Args:

@@ -64,11 +64,14 @@ def frPyObjects(pyobj: PyObj, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
     return _mask.frPyObjects(pyobj, h, w)
 
 
-def encode(bimask: Mask) -> RleObj | RleObjs:
+def encode(bimask: Mask) -> RleObjs:
     """Encode binary masks using RLE.
 
     Note:
     Requires channel last order input.
+
+    Warning:
+    This functions differs from the original implementation and always returns a list of encoded masks.
 
     Args:
         bimask: The binary mask to encode.
@@ -80,7 +83,8 @@ def encode(bimask: Mask) -> RleObj | RleObjs:
         return _mask.encode(bimask)
     elif len(bimask.shape) == 2:
         bimask = torch.unsqueeze(bimask, dim=-1)  # masks expected to be in format [h,w,n]
-        return _mask.encode(bimask)[0]
+        # return _mask.encode(bimask)[0]  # original implementation
+        return _mask.encode(bimask)
     else:
         raise ValueError("encode expects a binary mask or batch of binary masks")
 
@@ -91,20 +95,55 @@ def decode(rleObjs: RleObj | RleObjs) -> Mask:  # noqa: N803
     Note:
     Returns channel last order output.
 
+    Warning:
+    This functions differs from the original implementation and always returns a Tensor batch of decoded masks.
+
     Args:
         rleObjs: The encoded masks.
 
     Returns:
         The decoded mask.
     """
-    return _mask.decode(rleObjs) if isinstance(rleObjs, list) else _mask.decode(RleObjs([rleObjs]))[:, :, 0]
+    if isinstance(rleObjs, list):
+        return _mask.decode(rleObjs)
+    else:
+        # return _mask.decode([rleObjs])[:, :, 0]  # original implementation
+        return _mask.decode([rleObjs])
 
 
-def area(rleObjs: RleObj | RleObjs) -> list[int] | int:  # noqa: N803
-    """Compute area of encoded masks."""
-    return _mask.area(rleObjs) if isinstance(rleObjs, list) else _mask.area([rleObjs])[0]
+def area(rleObjs: RleObj | RleObjs) -> list[int]:  # noqa: N803
+    """Compute area of encoded masks.
+
+    Warning:
+    This functions differs from the original implementation and always returns a list of areas.
+
+    Args:
+        rleObjs: The encoded masks.
+
+    Returns:
+        The areas of the masks.
+    """
+    if isinstance(rleObjs, list):
+        return _mask.area(rleObjs)
+    else:
+        # return _mask.area([rleObjs])[0]  # original implementation
+        return _mask.area([rleObjs])
 
 
 def toBbox(rleObjs: RleObj | RleObjs) -> BB:  # noqa: N803, N802
-    """Get bounding boxes surrounding encoded masks."""
-    return _mask.toBbox(rleObjs) if isinstance(rleObjs, list) else _mask.toBbox([rleObjs])[0]
+    """Get bounding boxes surrounding encoded masks.
+
+    Warning:
+    This functions differs from the original implementation and always returns a Tensor batch of bounding boxes.
+
+    Args:
+        rleObjs: The encoded masks.
+
+    Returns:
+        The bounding boxes.
+    """
+    if isinstance(rleObjs, list):
+        return _mask.toBbox(rleObjs)
+    else:
+        # return _mask.toBbox([rleObjs])[0]  # original implementation
+        return _mask.toBbox([rleObjs])

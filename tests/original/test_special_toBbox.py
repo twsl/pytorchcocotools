@@ -1,10 +1,11 @@
 import torch
 from torch import Tensor
 
+from pytorchcocotools.internal.entities import RleObj, RleObjs
 import pytorchcocotools.mask as mask_util
 
 
-def _encode(x: Tensor) -> Tensor:
+def _encode(x: Tensor) -> RleObj | RleObjs:
     return mask_util.encode(x.to(dtype=torch.uint8))
 
 

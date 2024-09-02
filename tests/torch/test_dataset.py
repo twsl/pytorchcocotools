@@ -28,7 +28,7 @@ def test_dataset_np(benchmark, root: str, annotation_file: str, index: int, resu
 @parametrize_with_cases("root, annotation_file, index, result", cases=DatasetCases)
 def test_dataset_pt(benchmark, root: str, annotation_file: str, index: int, result: Any) -> None:
     benchmark.weave(CocoDetectionpt.__getitem__, lazy=True)
-    dataset = CocoDetectionpt(root=root, annFile=annotation_file)
+    dataset = CocoDetectionpt(root=root, annotation_path=annotation_file)
     image_pt, target_pt = dataset[index]
     # compare the results
     assert target_pt["labels"].item() == result
@@ -37,7 +37,7 @@ def test_dataset_pt(benchmark, root: str, annotation_file: str, index: int, resu
 @parametrize_with_cases("root, annotation_file, index, result", cases=DatasetCases)
 def test_dataset(root: str, annotation_file: str, index: int, result: Any) -> None:
     dataset_np = CocoDetectionnp(root=root, annFile=annotation_file)
-    dataset_pt = CocoDetectionpt(root=root, annFile=annotation_file)
+    dataset_pt = CocoDetectionpt(root=root, annotation_path=annotation_file)
     image_np, target_np = dataset_np[index]
     image_pt, target_pt = dataset_pt[index]
     assert torch.allclose(pil_to_tensor(image_np), image_pt)

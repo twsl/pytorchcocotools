@@ -442,8 +442,8 @@ class MeanAveragePrecision(Metric):
                 coco_eval.evaluate()
                 coco_eval.accumulate()
                 coco_eval.summarize()
-                stats = coco_eval.stats
-                result_dict.update(self._coco_stats_to_tensor_dict(stats, prefix=prefix))
+                stats = self._coco_stats_to_tensor_dict(coco_eval.stats, prefix=prefix)
+                result_dict.update(stats)
 
                 summary = {}
                 if self.extended_summary:
@@ -529,22 +529,22 @@ class MeanAveragePrecision(Metric):
 
         return coco_preds, coco_target
 
-    def _coco_stats_to_tensor_dict(self, stats: list[float], prefix: str) -> dict[str, Tensor]:
+    def _coco_stats_to_tensor_dict(self, stats: Tensor, prefix: str) -> dict[str, Tensor]:
         """Converts the output of COCOeval.stats to a dict of tensors."""
         mdt = self.max_detection_thresholds
         return {
-            f"{prefix}map": torch.tensor([stats[0]], dtype=torch.float32),
-            f"{prefix}map_50": torch.tensor([stats[1]], dtype=torch.float32),
-            f"{prefix}map_75": torch.tensor([stats[2]], dtype=torch.float32),
-            f"{prefix}map_small": torch.tensor([stats[3]], dtype=torch.float32),
-            f"{prefix}map_medium": torch.tensor([stats[4]], dtype=torch.float32),
-            f"{prefix}map_large": torch.tensor([stats[5]], dtype=torch.float32),
-            f"{prefix}mar_{mdt[0]}": torch.tensor([stats[6]], dtype=torch.float32),
-            f"{prefix}mar_{mdt[1]}": torch.tensor([stats[7]], dtype=torch.float32),
-            f"{prefix}mar_{mdt[2]}": torch.tensor([stats[8]], dtype=torch.float32),
-            f"{prefix}mar_small": torch.tensor([stats[9]], dtype=torch.float32),
-            f"{prefix}mar_medium": torch.tensor([stats[10]], dtype=torch.float32),
-            f"{prefix}mar_large": torch.tensor([stats[11]], dtype=torch.float32),
+            f"{prefix}map": stats[0],
+            f"{prefix}map_50": stats[1],
+            f"{prefix}map_75": stats[2],
+            f"{prefix}map_small": stats[3],
+            f"{prefix}map_medium": stats[4],
+            f"{prefix}map_large": stats[5],
+            f"{prefix}mar_{mdt[0]}": stats[6],
+            f"{prefix}mar_{mdt[1]}": stats[7],
+            f"{prefix}mar_{mdt[2]}": stats[8],
+            f"{prefix}mar_small": stats[9],
+            f"{prefix}mar_medium": stats[10],
+            f"{prefix}mar_large": stats[11],
         }
 
     @staticmethod
@@ -780,12 +780,10 @@ class MeanAveragePrecision(Metric):
         for image_id, image_labels in enumerate(labels):
             if boxes is not None:
                 image_boxes = boxes[image_id]
-                image_boxes = image_boxes.cpu().tolist()
             if masks is not None:
                 image_masks = masks[image_id]
                 if len(image_masks) == 0 and boxes is None:
                     continue
-            image_labels = image_labels.cpu().tolist()  # type: ignore[assignment]
 
             image = CocoImage(id=image_id)
             if "segm" in self.iou_type and len(image_masks) > 0:
@@ -797,7 +795,7 @@ class MeanAveragePrecision(Metric):
                     image_box = image_boxes[k]
                 if masks is not None and len(image_masks) > 0:
                     image_mask = image_masks[k]
-                    image_mask = {"size": image_mask[0], "counts": image_mask[1]}
+                    image_mask = RleObj(size=image_mask[0], counts=image_mask[1])
 
                 if "bbox" in self.iou_type and len(image_box) != 4:
                     raise ValueError(
@@ -812,20 +810,24 @@ class MeanAveragePrecision(Metric):
 
                 area_stat_box = None
                 area_stat_mask = None
-                if area is not None and area[image_id][k].cpu().tolist() > 0:  # type: ignore[operator]
-                    area_stat = area[image_id][k].cpu().tolist()
+                if area is not None and area[image_id][k] > 0:
+                    area_stat = area[image_id][k]
                 else:
-                    area_stat = mask_utils.area(image_mask) if "segm" in self.iou_type else image_box[2] * image_box[3]
+                    area_stat = (
+                        mask_utils.area(image_mask)[0]
+                        if "segm" in self.iou_type
+                        else (image_box[2] * image_box[3]).item()
+                    )
                     if len(self.iou_type) > 1:
                         area_stat_box = image_box[2] * image_box[3]
-                        area_stat_mask = mask_utils.area(image_mask)
+                        area_stat_mask = mask_utils.area(image_mask)[0]
 
                 annotation = CocoAnnotationObjectDetection(
                     id=annotation_id,
                     image_id=image_id,
                     area=area_stat,
                     category_id=image_label,
-                    iscrowd=crowds[image_id][k].cpu().tolist() if crowds is not None else 0,
+                    iscrowd=crowds[image_id][k] if crowds is not None else 0,
                 )
                 if area_stat_box is not None:
                     annotation["area_bbox"] = area_stat_box
@@ -843,7 +845,7 @@ class MeanAveragePrecision(Metric):
                             f"Invalid input score of sample {image_id}, element {k}"
                             f" (expected value of type float, got type {type(score)})"
                         )
-                    annotation["score"] = score
+                    annotation.score = score
                 dataset.annotations.append(annotation)
                 annotation_id += 1
 

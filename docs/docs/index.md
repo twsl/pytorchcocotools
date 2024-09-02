@@ -26,10 +26,10 @@ The file format is explained in the [official documentation](https://cocodataset
 
 - Strongly typed COCO data format [represetation](./src/pytorchcocotools/internal/structure/)
 - Drop-in compatible [`COCO`](./coco.md) and [`COCOeval`](./cocoeval.md) classes
+- (Almost) drop-in compatible [`mask`](./mask.md) methods
 - Pure `torch` implementation
 - `torchvision` data set using the latest transformation API
 - fully unit tested and documented
-
 
 ## Installation
 

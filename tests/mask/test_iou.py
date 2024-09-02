@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 import pycocotools.mask as mask
 import pytest
@@ -5,7 +7,7 @@ from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import RleObjs
+from pytorchcocotools.internal.entities import RleObj, RleObjs
 import pytorchcocotools.mask as tmask
 
 
@@ -86,12 +88,12 @@ def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], enco
 @pytest.mark.benchmark(group="iou", warmup=True)
 @parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
 def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
-    obj1 = np.asfortranarray(obj1.numpy())
-    obj2 = np.asfortranarray(obj2.numpy())
+    obj1n = np.asfortranarray(obj1.numpy())
+    obj2n = np.asfortranarray(obj2.numpy())
     # encode
     if encode:
-        rle_np1 = mask.encode(obj1)
-        rle_np2 = mask.encode(obj2)
+        rle_np1 = mask.encode(obj1n)
+        rle_np2 = mask.encode(obj2n)
         obj1 = [rle_np1]
         obj2 = [rle_np2]
     else:
@@ -114,13 +116,13 @@ def test_iou(obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, resu
     if encode:
         rle_np1 = mask.encode(mask_np1)
         rle_np2 = mask.encode(mask_np2)
-        rle_pt1 = tmask.encode(mask_pt1)
-        rle_pt2 = tmask.encode(mask_pt2)
+        rle_pt1 = cast(RleObj, tmask.encode(mask_pt1))
+        rle_pt2 = cast(RleObj, tmask.encode(mask_pt2))
         # make RleObjs/lists
         obj_np1 = [rle_np1]
         obj_np2 = [rle_np2]
-        obj_pt1 = RleObjs([rle_pt1])
-        obj_pt2 = RleObjs([rle_pt2])
+        obj_pt1 = [rle_pt1]
+        obj_pt2 = [rle_pt2]
     else:
         obj_np1 = mask_np1[np.newaxis, ...]
         obj_np2 = mask_np2[np.newaxis, ...]
@@ -130,7 +132,7 @@ def test_iou(obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, resu
     # compute the iou
     iscrowd = [bool(c) for c in iscrowd]
     iou_np = mask.iou(obj_np1, obj_np2, iscrowd)
-    iou_pt = tmask.iou(obj_pt1, obj_pt2, iscrowd)
+    iou_pt = tmask.iou(obj_pt1, obj_pt2, iscrowd)  # pyright: ignore[reportArgumentType]
     # compare the results
     assert iou_np[0][0] == iou_pt[0][0]
     assert iou_np[0][0] == result

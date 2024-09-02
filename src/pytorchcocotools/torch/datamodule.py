@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, TypeVar
 
@@ -11,17 +10,9 @@ from pytorchcocotools.torch.dataset import CocoDetection
 from pytorchcocotools.torch.transform import default_transform
 from pytorchcocotools.utils.download import CocoDownloader
 from pytorchcocotools.utils.logging import get_logger
+from pytorchcocotools.utils.stage import StageStore
 
-StorageType = TypeVar("StorageType")
 TransformsType = Callable[[Any], Any] | torch.nn.Module | Transform
-
-
-@dataclass
-class StageStore(Generic[StorageType]):
-    train: StorageType | None = field(default=None)
-    val: StorageType | None = field(default=None)
-    test: StorageType | None = field(default=None)
-    predict: StorageType | None = field(default=None)
 
 
 class COCODataModule(L.LightningDataModule):
@@ -57,14 +48,9 @@ class COCODataModule(L.LightningDataModule):
     def prepare_data(self) -> None:
         if self.download:
             self.logger.info("Downloading COCO dataset")
-            downloader = CocoDownloader(self.root)
-            downloader.download()
-            self.annotation_files = StageStore[str](
-                train="annotations/instances_train2017.json",
-                val="annotations/instances_val2017.json",
-                test="annotations/image_info_test2017.json",
-                predict="annotations/image_info_unlabeled2017.json",
-            )
+            dl = CocoDownloader(self.root)
+            dl.download()
+            self.annotation_files = dl.annotation_files
 
     def setup(self, stage: str) -> None:
         if stage == "fit":

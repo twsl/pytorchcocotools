@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 import pycocotools.mask as mask
 import pytest
@@ -169,11 +171,11 @@ def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
 def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
-    obj1 = np.asfortranarray(obj1.numpy())
-    obj2 = np.asfortranarray(obj2.numpy())
+    obj1n = np.asfortranarray(obj1.numpy())
+    obj2n = np.asfortranarray(obj2.numpy())
     # encode
-    rle_np1 = mask.encode(obj1)
-    rle_np2 = mask.encode(obj2)
+    rle_np1 = mask.encode(obj1n)
+    rle_np2 = mask.encode(obj2n)
     # compute the iou
     result_np = benchmark(mask.merge, [rle_np1, rle_np2], intersect=intersect)
     # compare the results
@@ -191,8 +193,8 @@ def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
     # compute the iou
     rle_np1 = mask.encode(mask_np1)
     rle_np2 = mask.encode(mask_np2)
-    rle_pt1 = tmask.encode(mask_pt1)
-    rle_pt2 = tmask.encode(mask_pt2)
+    rle_pt1 = cast(RleObj, tmask.encode(mask_pt1))
+    rle_pt2 = cast(RleObj, tmask.encode(mask_pt2))
     # merge the masks
     merged_np = mask.merge([rle_np1, rle_np2], intersect=intersect)
     merged_pt = tmask.merge([rle_pt1, rle_pt2], intersect=intersect)

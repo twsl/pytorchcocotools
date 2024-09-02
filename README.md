@@ -23,6 +23,7 @@ The file format is explained in the [official documentation](https://cocodataset
 
 - Strongly typed COCO data format [represetation](./src/pytorchcocotools/internal/structure/)
 - Drop-in compatible `COCO` and `COCOeval` classes
+- (Almost) drop-in compatible `mask` methods
 - Pure `torch` implementation
 - `torchvision` data set using the latest transformation API
 - fully unit tested and documented
