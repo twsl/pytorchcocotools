@@ -157,7 +157,7 @@ class MergeCases:
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
+def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     # encode
     rle_pt1 = tmask.encode(obj1)
     rle_pt2 = tmask.encode(obj2)
@@ -170,7 +170,7 @@ def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
+def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     obj1n = np.asfortranarray(obj1.numpy())
     obj2n = np.asfortranarray(obj2.numpy())
     # encode
@@ -184,7 +184,7 @@ def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
 
 
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj):
+def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     # create two masks
     mask_pt1 = obj1
     mask_pt2 = obj2

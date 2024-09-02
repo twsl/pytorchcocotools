@@ -1,9 +1,12 @@
+from typing import Any
+
 import pycocotools.mask as mask
 import pytest
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
+from pytorchcocotools.internal.entities import RleObj, RleObjs
 import pytorchcocotools.mask as tmask
 
 
@@ -11,52 +14,52 @@ class PyObjectsCases:
     h = 25
     w = 25
 
-    def case_bbox_tensor(self):
+    def case_bbox_tensor(self) -> tuple[int, int, Tensor, RleObjs]:
         return (
             self.h,
             self.w,
             torch.tensor([[10, 10, 10, 10]], dtype=torch.float64),
-            [{"size": [self.h, self.w], "counts": b"T8:?00000000000000000c3"}],
+            [RleObj(size=[self.h, self.w], counts=b"T8:?00000000000000000c3")],
         )
 
     @pytest.mark.skip(reason="Original pycocotools implementation is wrong")
-    def case_bbox_list(self):
+    def case_bbox_list(self) -> tuple[int, int, list[list[int]], RleObjs]:
         return (
             self.h,
             self.w,
             [
                 [10, 10, 10, 10],
             ],
-            [{"size": [self.h, self.w], "counts": b"T8:?00000000000000000c3"}],
+            [RleObj(size=[self.h, self.w], counts=b"T8:?00000000000000000c3")],
         )
 
     @pytest.mark.skip(reason="Original pycocotools implementation is wrong")
-    def case_bbox(self):
+    def case_bbox(self) -> tuple[int, int, list[int], RleObj]:
         return (
             self.h,
             self.w,
             [10, 10, 10, 10],
-            {"size": [self.h, self.w], "counts": b"T8:?00000000000000000c3"},
+            RleObj(size=[self.h, self.w], counts=b"T8:?00000000000000000c3"),
         )
 
-    def case_poly_list(self):
+    def case_poly_list(self) -> tuple[int, int, list[list[int]], RleObjs]:
         return (
             self.h,
             self.w,
             [[10, 10, 20, 10, 20, 20, 21, 21, 10, 20]],
-            [{"size": [self.h, self.w], "counts": b"T8:?00000000001O00000:F`2"}],
+            [RleObj(size=[self.h, self.w], counts=b"T8:?00000000001O00000:F`2")],
         )
 
     @pytest.mark.skip(reason="Original pycocotools implementation is wrong")
-    def case_poly(self):
+    def case_poly(self) -> tuple[int, int, list[int], RleObj]:
         return (
             self.h,
             self.w,
             [10, 10, 20, 10, 20, 20, 21, 21, 10, 20],
-            {"size": [self.h, self.w], "counts": b"T8:?00000000001O00000:F`2"},
+            RleObj(size=[self.h, self.w], counts=b"T8:?00000000001O00000:F`2"),
         )
 
-    def case_uncompr_list(self):
+    def case_uncompr_list(self) -> tuple[int, int, list[dict], list[dict]]:
         return (
             self.h,
             self.w,
@@ -64,12 +67,12 @@ class PyObjectsCases:
             [{"size": [self.h, self.w], "counts": b"R45d00000000b;"}],
         )
 
-    def case_uncompr(self):
+    def case_uncompr(self) -> tuple[int, int, dict, dict]:
         return (
             self.h,
             self.w,
             {"size": [self.h, self.w], "counts": [130, 5, 20, 5, 20, 5, 20, 5, 20, 5, 390]},
-            {"size": [self.h, self.w], "counts": b"R45d00000000b;"},
+            RleObj(size=[self.h, self.w], counts=b"R45d00000000b;"),
         )
 
     def case_complex(self):

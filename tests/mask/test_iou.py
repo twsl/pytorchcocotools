@@ -72,10 +72,8 @@ class IoUCases:
 def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
     # encode
     if encode:
-        rle_pt1 = tmask.encode(obj1)
-        rle_pt2 = tmask.encode(obj2)
-        obj1 = RleObjs([rle_pt1])
-        obj2 = RleObjs([rle_pt2])
+        obj1 = tmask.encode(obj1)
+        obj2 = tmask.encode(obj2)
     else:
         obj1 = obj1.unsqueeze(0)
         obj2 = obj2.unsqueeze(0)

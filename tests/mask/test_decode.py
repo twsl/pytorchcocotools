@@ -5,6 +5,7 @@ from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
+from pytorchcocotools.internal.entities import RleObj
 import pytorchcocotools.mask as tmask
 
 from .base_cases import BaseCases
@@ -40,11 +41,11 @@ class DecodeCases(BaseCases):
     def case_complex_1_pt(self) -> tuple[Tensor, Tensor]:
         h = 427
         w = 640
-        data = {
-            "size": [h, w],
-            "counts": b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
-        }
-        mask_pt = tmask.decode(data)  # pyright:ignore[reportArgumentType]
+        data = RleObj(
+            size=[h, w],
+            counts=b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
+        )
+        mask_pt = tmask.decode(data)
         return (mask_pt, mask_pt.clone())
 
     def case_complex_2_np(self) -> tuple[Tensor, Tensor]:
@@ -58,9 +59,9 @@ class DecodeCases(BaseCases):
     def case_complex_2_pt(self) -> tuple[Tensor, Tensor]:
         h = 427
         w = 640
-        data = {"size": [h, w], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"}
+        data = RleObj(size=[h, w], counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4")
 
-        mask_pt = tmask.decode(data)  # pyright:ignore[reportArgumentType]
+        mask_pt = tmask.decode(data)
         return (mask_pt, mask_pt.clone())
 
 

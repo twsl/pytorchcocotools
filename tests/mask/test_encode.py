@@ -15,16 +15,16 @@ from .base_cases import BaseCases
 
 class EncodeCases(BaseCases):
     def case_start_area(self) -> tuple[Tensor, RleObj]:
-        return (self._build_mask(0, 5), RleObj({"size": [self.h, self.w], "counts": b"05d00000000d?"}))
+        return (self._build_mask(0, 5), RleObj(size=[self.h, self.w], counts=b"05d00000000d?"))
 
     def case_center_area(self) -> tuple[Tensor, RleObj]:
-        return (self._build_mask(5, 10), RleObj({"size": [self.h, self.w], "counts": b"R45d00000000b;"}))
+        return (self._build_mask(5, 10), RleObj(size=[self.h, self.w], counts=b"R45d00000000b;"))
 
     def case_end_area(self) -> tuple[Tensor, RleObj]:
-        return (self._build_mask(20, 25), RleObj({"size": [self.h, self.w], "counts": b"X`05d00000000"}))
+        return (self._build_mask(20, 25), RleObj(size=[self.h, self.w], counts=b"X`05d00000000"))
 
     def case_full_area(self) -> tuple[Tensor, RleObj]:
-        return (self._build_mask(0, 25), RleObj({"size": [self.h, self.w], "counts": b"0ac0"}))
+        return (self._build_mask(0, 25), RleObj(size=[self.h, self.w], counts=b"0ac0"))
 
     def case_complex_1_np(self) -> tuple[Tensor, RleObj]:
         h = 427
@@ -106,7 +106,7 @@ def test_encode(mask: Tensor, result: RleObj) -> None:  # noqa: N802
     result_np = nmask.encode(mask_np)
     result_pt = tmask.encode(mask_pt)
     # compare the results
-    assert result_np["counts"] == result_pt["counts"]
-    assert result_np["size"] == result_pt["size"]
-    assert result["counts"] == result_pt["counts"]
-    assert result["size"] == result_pt["size"]
+    assert result_np["counts"] == result_pt[0].counts
+    assert result_np["size"] == result_pt[0].size
+    assert result["counts"] == result_pt[0].counts
+    assert result["size"] == result_pt[0].size
