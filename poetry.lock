@@ -2145,13 +2145,13 @@ pytz = "*"
 
 [[package]]
 name = "mkdocs-jupyter"
-version = "0.24.8"
+version = "0.25.0"
 description = "Use Jupyter in mkdocs websites"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "mkdocs_jupyter-0.24.8-py3-none-any.whl", hash = "sha256:36438a0a653eee2c27c6a8f7006e645f18693699c9b8ac44ffde830ddb08fa16"},
-    {file = "mkdocs_jupyter-0.24.8.tar.gz", hash = "sha256:09a762f484d540d9c0e944d34b28cb536a32869e224b460e2fc791b143f76940"},
+    {file = "mkdocs_jupyter-0.25.0-py3-none-any.whl", hash = "sha256:d83d71deef19f0401505945bf92ec3bd5b40615af89308e72d5112929f8ee00b"},
+    {file = "mkdocs_jupyter-0.25.0.tar.gz", hash = "sha256:e26c1d341916bc57f96ea3f93d8d0a88fc77c87d4cee222f66d2007798d924f5"},
 ]
 
 [package.dependencies]
@@ -4562,4 +4562,4 @@ metrics = ["torchmetrics"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "3d7ccfc8103722ed295d1f0526d379ae093301b47c1a8c6a5c8171f563b5de79"
+content-hash = "08d7d5f5b835bfe4fe7184cbdc7f58161346b419609dc1b653aadef6a9039353"
