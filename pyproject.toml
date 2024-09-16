@@ -41,7 +41,7 @@ scikit-image = "^0.24.0"
 faster-coco-eval = "^1.5.7"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.6.4"
+ruff = "^0.6.5"
 bandit = "^1.7.9"
 pre-commit = "^3.8.0"
 pyright = "^1.1.379"
