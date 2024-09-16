@@ -834,19 +834,18 @@ tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipyth
 
 [[package]]
 name = "faster-coco-eval"
-version = "1.5.7"
+version = "1.6.0"
 description = "Faster interpretation of the original COCOEval"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 files = [
-    {file = "faster_coco_eval-1.5.7-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:32ff9e670eeb21295509a90d264e081ec11d9b996108447b5757de05b1941a19"},
-    {file = "faster_coco_eval-1.5.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1954262273e942d3008989a176ac61be46d9e90015a09384583169b932c4c868"},
-    {file = "faster_coco_eval-1.5.7-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8a29dd16c8826dc75e227bdabfc53e8fdf780e61a46b517580ed1c1cce46a1e4"},
-    {file = "faster_coco_eval-1.5.7-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c920d64589bdcd7911137c5b194ab4795ff9aec8408aa446c4dc873966575ed6"},
-    {file = "faster_coco_eval-1.5.7-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b46ca7c0cde8b6ee13b371a6025fb01e14e5fc6b9d45bc663abf0af0bd0eae8f"},
-    {file = "faster_coco_eval-1.5.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cb11bc8e81f49316aadbeec812e2b7c4d18b2d1961c17a285c6c369d08a47f27"},
-    {file = "faster_coco_eval-1.5.7-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e8b2401f05565c816a4183e87d227fc6bb3c2bfb29402f68aeb3193ac7516e5"},
-    {file = "faster_coco_eval-1.5.7.tar.gz", hash = "sha256:893919b43e3781ccef491eaa41743c3754eda85e607c8c6398150677c6e65e00"},
+    {file = "faster_coco_eval-1.6.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c12016702c36beb7d0680d2ab56cd3fb9150c1f520ab826ecdb98e3b6971e278"},
+    {file = "faster_coco_eval-1.6.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f8179404a76cd6daef3f4f19744737ecbfe978a4aa92a51f9a58db468fd9d5bb"},
+    {file = "faster_coco_eval-1.6.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b1bb3c4f4e14de9bcfcccf7e1c23da0de6b44dd4f7a87b0fc98354f4f9a431ce"},
+    {file = "faster_coco_eval-1.6.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:afbfe45e233c9ea290dda9111935c691b77e239b9a0488fa967f99f1962d5169"},
+    {file = "faster_coco_eval-1.6.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6d1ee122713dc9cb3e64e21daa3a7529073cab857550c898c959816f38591e2b"},
+    {file = "faster_coco_eval-1.6.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a9677cc74e2c851bd14bd3c16f91f397b77b05657bf8f9ee5f3c0c41e86aab5c"},
+    {file = "faster_coco_eval-1.6.0.tar.gz", hash = "sha256:26e14cb7de06cf4a3022c10928fbd9c2ef2daa26e5b234d776f64dba2c42036e"},
 ]
 
 [package.dependencies]
@@ -857,7 +856,7 @@ plotly = "*"
 
 [package.extras]
 extra = ["Pillow", "numpy (<2)", "opencv-python-headless", "pandas", "plotly"]
-tests = ["Pillow", "numpy (<2)", "pandas", "parameterized", "plotly", "pycocotools", "pytest"]
+tests = ["Pillow", "numpy (<2)", "pandas", "parameterized", "plotly", "pycocotools", "pytest", "pytest-cov"]
 
 [[package]]
 name = "fastjsonschema"
@@ -4562,4 +4561,4 @@ metrics = ["torchmetrics"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "6a20ca5a913549c284ac2383b5158ea541b9859ed109beeb371635f9e7221435"
+content-hash = "278984c40a8a920397d64f9bfdeb23e03f3d30b14e2748784434324fe56f8b20"
