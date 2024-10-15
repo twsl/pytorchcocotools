@@ -3204,13 +3204,13 @@ histogram = ["pygal", "pygaljs"]
 
 [[package]]
 name = "pytest-cases"
-version = "3.8.5"
+version = "3.8.6"
 description = "Separate test code from test cases in pytest."
 optional = false
 python-versions = "*"
 files = [
-    {file = "pytest-cases-3.8.5.tar.gz", hash = "sha256:c92054187847a7d30d8ab6709fb1670a830e4e19234be700c85c96b6d7102c16"},
-    {file = "pytest_cases-3.8.5-py2.py3-none-any.whl", hash = "sha256:0c8e3727f6494e65b47321adbd94c767277c7b5de1bd40dd518a13f7443b1fff"},
+    {file = "pytest_cases-3.8.6-py2.py3-none-any.whl", hash = "sha256:564c722492ea7e7ec3ac433fd14070180e65866f49fa35bfe938c0d5d9afba67"},
+    {file = "pytest_cases-3.8.6.tar.gz", hash = "sha256:5c24e0ab0cb6f8e802a469b7965906a333d3babb874586ebc56f7e2cbe1a7c44"},
 ]
 
 [package.dependencies]
@@ -4561,4 +4561,4 @@ metrics = ["torchmetrics"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a4a8750c8717174c5960cb15632e72ec8b6cd66cea3e2540a748fc03c26ae644"
+content-hash = "2f983a255ea19f49d55a1c9c48eb1f2796abb709b409c3315ec2ca8fdadb986b"
