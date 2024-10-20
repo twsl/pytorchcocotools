@@ -33,9 +33,10 @@ def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int) -> 
     mask_pt[min:max, min:max] = 1
     # compute the area
     rle_pt = tmask.encode(mask_pt)
-    result_pt = benchmark(tmask.area, rle_pt)
+    with torch.no_grad():
+        result_pt = benchmark(tmask.area, rle_pt[0])
     # compare the results
-    assert result_pt == result
+    assert result_pt[0] == result
 
 
 @pytest.mark.benchmark(group="area", warmup=True)
