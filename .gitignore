@@ -166,3 +166,6 @@ cython_debug/
 
 # pytest-benchmark
 .benchmarks
+
+# tests
+junit/
