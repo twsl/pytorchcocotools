@@ -162,10 +162,10 @@ def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
     rle_pt1 = tmask.encode(obj1)
     rle_pt2 = tmask.encode(obj2)
     # compute the iou
-    result_pt = benchmark(tmask.merge, [rle_pt1, rle_pt2], intersect=intersect)
+    result_pt = cast(RleObj, benchmark(tmask.merge, [rle_pt1[0], rle_pt2[0]], intersect=intersect))
     # compare the results
-    assert result_pt["counts"] == result["counts"]
-    assert result_pt["size"] == result["size"]
+    assert result_pt.counts == result.counts
+    assert result_pt.size == result.size
 
 
 @pytest.mark.benchmark(group="merge", warmup=True)
@@ -179,8 +179,8 @@ def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
     # compute the iou
     result_np = benchmark(mask.merge, [rle_np1, rle_np2], intersect=intersect)
     # compare the results
-    assert result_np["counts"] == result["counts"]
-    assert result_np["size"] == result["size"]
+    assert result_np["counts"] == result.counts
+    assert result_np["size"] == result.size
 
 
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
@@ -193,14 +193,14 @@ def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> N
     # compute the iou
     rle_np1 = mask.encode(mask_np1)
     rle_np2 = mask.encode(mask_np2)
-    rle_pt1 = cast(RleObj, tmask.encode(mask_pt1))
-    rle_pt2 = cast(RleObj, tmask.encode(mask_pt2))
+    rle_pt1 = tmask.encode(mask_pt1)[0]
+    rle_pt2 = tmask.encode(mask_pt2)[0]
     # merge the masks
     merged_np = mask.merge([rle_np1, rle_np2], intersect=intersect)
     merged_pt = tmask.merge([rle_pt1, rle_pt2], intersect=intersect)
     # compare the results
     assert merged_np == merged_pt.__dict__
-    assert merged_pt["counts"] == merged_np["counts"]
-    assert merged_pt["size"] == merged_np["size"]
-    assert merged_pt["counts"] == result["counts"]
-    assert merged_pt["size"] == result["size"]
+    assert merged_pt.counts == merged_np["counts"]
+    assert merged_pt.size == merged_np["size"]
+    assert merged_pt.counts == result.counts
+    assert merged_pt.size == result.size
