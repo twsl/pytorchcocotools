@@ -1,7 +1,7 @@
 default_language_version:
   python: python3
 
-default_stages: [commit, push]
+default_stages: [pre-commit, pre-push]
 
 ci:
   autofix_prs: true
@@ -55,13 +55,13 @@ repos:
       - id: nbstripout
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.7.1
     hooks:
       - id: ruff
         args: [--fix, -v]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.384
+    rev: v1.1.386
     hooks:
       - id: pyright
         args: [--verbose, --project=.]
@@ -70,6 +70,6 @@ repos:
         types: [python]
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.0
+    rev: v8.21.1
     hooks:
       - id: gitleaks
