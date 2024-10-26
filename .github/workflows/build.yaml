@@ -130,7 +130,6 @@ jobs:
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2.9.0
         with:
-          recreate: true
           path: artifacts/pytest-coverage/code-coverage-results.md
 
       - name: Publish Unit Test Results
