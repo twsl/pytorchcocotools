@@ -87,7 +87,9 @@ jobs:
       - name: Run tests
         run: |
           poetry run pytest -c pyproject.toml --cov-report=xml --cov-report=html \
-          --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml --cov=${{ github.event.repository.name }} --benchmark-disable
+          --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml \
+          --cov=${{ github.event.repository.name }} \
+          --benchmark-disable
 
       - name: Coverage Summary Report
         uses: irongut/CodeCoverageSummary@v1.3.0

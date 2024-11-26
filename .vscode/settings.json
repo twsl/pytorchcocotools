@@ -23,7 +23,8 @@
     "python.testing.pytestArgs": [
         "tests",
         "-v",
-        "--benchmark-disable"
+        "--benchmark-disable",
+        "--no-cov"
     ],
     "[python]": {
         "editor.formatOnType": true,

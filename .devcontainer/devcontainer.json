@@ -58,7 +58,8 @@
                 "python.testing.pytestArgs": [
                     "tests",
                     "-v",
-                    "--benchmark-disable"
+                    "--benchmark-disable",
+                    "--no-cov"
                 ],
                 "[python]": {
                     "editor.formatOnSave": true,
@@ -94,6 +95,7 @@
                 "GitHub.copilot",
                 "GitHub.copilot-chat",
                 "github.vscode-github-actions",
+                "SanjulaGanepola.github-local-actions",
                 "charliermarsh.ruff",
                 "esbenp.prettier-vscode",
                 "ms-vscode.test-adapter-converter",

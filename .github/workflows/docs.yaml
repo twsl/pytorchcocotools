@@ -21,11 +21,10 @@ concurrency:
 env:
   ARTIFACT: docs
 
-
 jobs:
   build-docs:
     name: Build docs
-    runs-on: ['ubuntu-latest']
+    runs-on: ["ubuntu-latest"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4 # cant update yet on GHES
         with:
           name: ${{ env.ARTIFACT }}
-          path: ./docs/_build/
+          path: ./_build/
         if: ${{ always() }}
 
   deploy-docs:
@@ -73,7 +72,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
-    runs-on: ['ubuntu-latest']
+    runs-on: ["ubuntu-latest"]
     if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
@@ -83,15 +82,15 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4 # cant update yet on GHES
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3 # cant update yet on GHES
+        uses: actions/upload-pages-artifact@v3
         with:
           path: artifacts/${{ env.ARTIFACT }}/
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 # cant update yet on GHES
+        uses: actions/deploy-pages@v4
