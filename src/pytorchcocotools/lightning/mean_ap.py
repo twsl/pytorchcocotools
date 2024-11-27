@@ -1,8 +1,9 @@
+from collections.abc import Sequence
 import contextlib
 import io
 import json
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Literal, Sequence, cast
+from typing import Any, Callable, ClassVar, Literal, cast
 
 from lightning_utilities import apply_to_collection
 import torch
