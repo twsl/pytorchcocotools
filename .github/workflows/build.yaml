@@ -108,8 +108,8 @@ jobs:
         if: ${{ always() }}
 
       - name: Read code coverage file
-        id: getversion
-        run: echo "::set-output name=coverage::$(cat code-coverage-results.md)"
+        id: coverage-file
+        run: echo "CODE_COVERAGE=$(cat code-coverage-results.md)" >> "$GITHUB_OUTPUT"
         if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
 
       - name: Add coverage PR comment
@@ -117,8 +117,8 @@ jobs:
         with:
           header: Code Coverage ${{ runner.os }} ${{ matrix.python-version }}
           message: |
-            ## Code Coverage ${{ runner.os }} ${{ matrix.python-version }}.
-            ${{ steps.getversion.outputs.coverage }}
+            ## Code Coverage ${{ runner.os }} ${{ matrix.python-version }}
+            ${{ steps.coverage-file.outputs.CODE_COVERAGE }}
 
             Results for commit ${{ github.sha }}.
         if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
