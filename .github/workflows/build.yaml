@@ -110,14 +110,17 @@ jobs:
       - name: Read code coverage file
         id: getversion
         run: echo "::set-output name=coverage::$(cat code-coverage-results.md)"
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
 
       - name: Add coverage PR comment
         uses: marocchino/sticky-pull-request-comment@v2.9.0
         with:
           header: Code Coverage ${{ runner.os }} ${{ matrix.python-version }}
           message: |
-            # Code Coverage ${{ runner.os }} ${{ matrix.python-version }} at ${{ github.sha }}.
+            ## Code Coverage ${{ runner.os }} ${{ matrix.python-version }}.
             ${{ steps.getversion.outputs.coverage }}
+
+            Results for commit ${{ github.sha }}.
         if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
 
       - name: Upload test results
