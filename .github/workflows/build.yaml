@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pytest-results-${{ runner.os }}-${{ matrix.python-version }}
-          path: junit/test-results-${{ matrix.python-version }}.xml
+          path: junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
         if: ${{ always() }}
 
       - name: Publish Unit Test Results
