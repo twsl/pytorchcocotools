@@ -40,7 +40,6 @@ With [`poetry`](https://python-poetry.org/):
 poetry add pytorchcocotools
 ```
 
-
 ## How to use it
 
 ```python
