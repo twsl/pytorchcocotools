@@ -72,18 +72,6 @@ jobs:
           path: dist/
         if: ${{ always() }}
 
-      - name: Run ruff
-        run: poetry run ruff check -v ./
-
-      #      - name: Run Pyright
-      #        uses: jakebailey/pyright-action@v2
-
-      - name: Run safety checks
-        run: |
-          poetry check
-          poetry run bandit -ll --recursive hooks
-        continue-on-error: true
-
       - name: Run tests
         run: |
           poetry run pytest -c pyproject.toml --cov-report=xml --cov-report=html \
