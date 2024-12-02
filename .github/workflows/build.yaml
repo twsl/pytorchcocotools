@@ -74,10 +74,12 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest -c pyproject.toml --cov-report=xml --cov-report=html \
+          poetry run pytest -c pyproject.toml --cov=${{ github.event.repository.name }} --cov-report=html \
+          --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
           --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml \
-          --cov=${{ github.event.repository.name }} \
           --benchmark-disable
+
+      # MishaKav/pytest-coverage-comment
 
       - name: Coverage summary report
         uses: irongut/CodeCoverageSummary@v1.3.0
@@ -103,7 +105,7 @@ jobs:
         if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
 
       - name: Add coverage PR comment
-        uses: marocchino/sticky-pull-request-comment@v2.9.0
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: Code Coverage ${{ runner.os }} ${{ matrix.python-version }}
           message: |
@@ -123,5 +125,7 @@ jobs:
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
+          check_name: Test Results ${{ runner.os }} ${{ matrix.python-version }}
+          report_individual_runs: true
           files: junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
         if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}

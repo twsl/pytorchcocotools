@@ -41,18 +41,18 @@ scikit-image = "^0.24.0"
 faster-coco-eval = "^1.6.3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.8.0"
+ruff = "^0.8.1"
 bandit = "^1.8.0"
 pre-commit = "^4.0.1"
 pyright = "^1.1.389"
 ipykernel = "^6.29.5"
 ipywidgets = "^8.1.5"
-ipython = "^8.28.0"
+ipython = "^8.30.0"
 jupytext = " ^1.16.4"
 nbconvert = "^7.16.3"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.3.3"
+pytest = "^8.3.4"
 pytest-cov = "^6.0.0"
 pytest-mock = "^3.12.0"
 pytest-cases = "^3.8.6"
@@ -60,7 +60,7 @@ pytest-benchmark = {extras = ["aspect"], version = "^5.1.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.5.46"
+mkdocs-material = "^9.5.47"
 mkdocs-git-revision-date-localized-plugin = "^1.2.9"
 mkdocs-awesome-pages-plugin = "^2.9.3"
 mkdocs-git-authors-plugin = "^0.9.1"
