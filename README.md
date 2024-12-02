@@ -48,7 +48,6 @@ import pytorchcocotools
 ...
 ```
 
-
 ## Docs
 
 ```bash
