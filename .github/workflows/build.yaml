@@ -84,7 +84,7 @@ jobs:
       - name: Coverage summary report
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: coverage.xml
+          filename: coverage-${{ runner.os }}-${{ matrix.python-version }}.xml
           badge: true
           format: "markdown"
           output: "both"
