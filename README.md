@@ -58,7 +58,7 @@ poetry run mkdocs build -f ./docs/mkdocs.yml -d ./_build/
 ## Update template
 
 ```bash
-copier update --trust
+copier update --trust -A --vcs-ref=HEAD
 ```
 
 ## Credits

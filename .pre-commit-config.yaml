@@ -16,7 +16,7 @@ repos:
       - id: pre-commit-update
 
   - repo: https://github.com/python-poetry/poetry
-    rev: 1.8.4
+    rev: 1.8.5
     hooks:
       - id: poetry-check
       - id: poetry-lock
@@ -55,13 +55,13 @@ repos:
       - id: nbstripout
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.1
+    rev: v0.8.3
     hooks:
       - id: ruff
         args: [--fix, -v]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.389
+    rev: v1.1.391
     hooks:
       - id: pyright
         args: [--verbose, --project=.]

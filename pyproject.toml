@@ -41,10 +41,10 @@ scikit-image = "^0.24.0"
 faster-coco-eval = "^1.6.3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.8.1"
+ruff = "^0.8.3"
 bandit = "^1.8.0"
 pre-commit = "^4.0.1"
-pyright = "^1.1.389"
+pyright = "^1.1.391"
 ipykernel = "^6.29.5"
 ipywidgets = "^8.1.5"
 ipython = "^8.30.0"
@@ -60,7 +60,7 @@ pytest-benchmark = {extras = ["aspect"], version = "^5.1.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.5.47"
+mkdocs-material = "^9.5.48"
 mkdocs-git-revision-date-localized-plugin = "^1.2.9"
 mkdocs-awesome-pages-plugin = "^2.9.3"
 mkdocs-git-authors-plugin = "^0.9.1"
@@ -74,7 +74,7 @@ optional = true
 
 [tool.poetry.group.debug.dependencies]
 ipdb = "^0.13.9"
-line_profiler = "^4.1.3"
+line_profiler = "^4.2.0"
 
 [tool.poetry-dynamic-versioning]
 enable = false
@@ -115,7 +115,7 @@ exclude_lines = [
     # Have to re-enable the standard pragma
     "pragma: no cover",
 
-    # Don ot complain about missing debug-only code:
+    # Don't complain about missing debug-only code:
     "def __repr__",
     "if self.debug:",
     "if debug:",
@@ -134,10 +134,17 @@ exclude_lines = [
 [tool.ruff]
 line-length = 120  # Must agree with Black
 extend-include = ["*.ipynb"]
-lint.extend-select = [
-    "I",
+exclude = [
+    "migrations",
+    "__pycache__",
+    "env",
+    ".env",
+    "venv",
+    ".venv",
 ]
-lint.select = [
+
+[tool.ruff.lint]
+select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "D",  # pydocstyle
@@ -156,15 +163,10 @@ lint.select = [
     "W",  # Warning
     "YTT", # flake8-2020
 ]
-exclude = [
-    "migrations",
-    "__pycache__",
-    "env",
-    ".env",
-    "venv",
-    ".venv",
+extend-select = [
+    "I",
 ]
-lint.ignore = [
+ignore = [
     "D100",
     "D101",
     "D102",
@@ -191,6 +193,10 @@ extend-immutable-calls = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 120
+max-line-length = 120
 
 [tool.ruff.lint.per-file-ignores]
 "test*/**/*.py" = [
@@ -223,10 +229,6 @@ quote-style = "double"
 
 [tool.bandit.assert_used]
 skips = ['*_test.py', '*/test_*.py']
-
-[tool.ruff.lint.pycodestyle]
-max-doc-length = 120
-max-line-length = 120
 
 [tool.pyright]
 pythonVersion = "3.10"

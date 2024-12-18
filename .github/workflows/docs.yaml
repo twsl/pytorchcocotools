@@ -15,8 +15,8 @@ permissions:
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   ARTIFACT: docs
@@ -41,6 +41,7 @@ jobs:
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
+          virtualenvs-path: .venv
 
       - name: Set up cache
         uses: actions/cache@v4
@@ -48,24 +49,25 @@ jobs:
         with:
           path: .venv
           key: venv-Linux-3.10-${{ hashFiles('poetry.lock') }}
+          restore-keys: venv-Linux-3.10-
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction
+        # if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --all-extras
 
       - name: Build dependencies
         run: poetry build
 
       - name: Build MkDocs docs
-        run: poetry run mkdocs build -f ./docs/mkdocs.yml -d ./_build/
         env:
           JUPYTER_PLATFORM_DIRS: 1
+        run: poetry run mkdocs build -f ./docs/mkdocs.yml -d ./_build/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
-          path: ./_build/
+          path: ./docs/_build/
         if: ${{ always() }}
 
   deploy-docs:
