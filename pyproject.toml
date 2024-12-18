@@ -37,7 +37,7 @@ lightning = ["lightning"]
 
 [tool.poetry.group.ref.dependencies]
 pycocotools = "^2.0.8"
-scikit-image = "^0.24.0"
+scikit-image = "^0.25.0"
 faster-coco-eval = "^1.6.3"
 
 [tool.poetry.group.dev.dependencies]
