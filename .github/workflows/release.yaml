@@ -9,7 +9,7 @@ jobs:
   release:
     strategy:
       matrix:
-        python-version: [3.10] # single version deployment
+        python-version: [3.11] # single version deployment
     runs-on: ["ubuntu-latest"]
     defaults:
       run:

@@ -4,6 +4,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
 name = "pytorchcocotools"
+requires-python = ">=3.11"
 
 # TODO: https://github.com/python-poetry/poetry/issues/3332
 [tool.poetry]
@@ -45,7 +46,7 @@ lightning = "^2.5.0"
 torchmetrics = "^1.6.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.8.3"
+ruff = "^0.8.4"
 bandit = "^1.8.0"
 pre-commit = "^4.0.1"
 pyright = "^1.1.391"
