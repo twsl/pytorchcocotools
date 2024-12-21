@@ -1,16 +1,25 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-def rleFrString(s: bytes, h: int, w: int) -> RLE:  # noqa: N802
+def rleFrString(  # noqa: N802
+    s: bytes,
+    h: int,
+    w: int,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLE:
     """Convert from compressed string representation of encoded mask.
 
     Args:
         s: Byte string of run length encoded mask.
         h: Height of the encoded mask.
         w: Width of the encoded mask.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The RLE encoded mask.

@@ -59,11 +59,11 @@ class CocoDetectionDataset(BaseCocoEntity):
 
 @dataclass_dict
 class CocoCaptionDataset(CocoDetectionDataset):
-    annotations: list[CocoAnnotationImageCaptioning] = field(default_factory=list[CocoAnnotationImageCaptioning])
+    annotations: list[CocoAnnotationImageCaptioning] = field(default_factory=list[CocoAnnotationImageCaptioning])  # pyright: ignore[reportIncompatibleVariableOverride]
     categories: list[CocoCategoriesObjectDetection] = field(default_factory=list[CocoCategoriesObjectDetection])
 
     @classmethod
-    def _get_annotation(cls, annotation: dict) -> CocoAnnotationImageCaptioning:
+    def _get_annotation(cls, annotation: dict) -> CocoAnnotationImageCaptioning:  # pyright: ignore[reportIncompatibleMethodOverride]
         return CocoAnnotationImageCaptioning.from_dict(annotation)
 
     @classmethod
@@ -73,15 +73,15 @@ class CocoCaptionDataset(CocoDetectionDataset):
 
 @dataclass_dict
 class CocoPanopticDataset(CocoDetectionDataset):
-    annotations: list[CocoAnnotationPanopticSegmentation] = field(
+    annotations: list[CocoAnnotationPanopticSegmentation] = field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=list[CocoAnnotationPanopticSegmentation]
     )
-    categories: list[CocoCategoriesPanopticSegmentation] = field(
+    categories: list[CocoCategoriesPanopticSegmentation] = field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=list[CocoCategoriesPanopticSegmentation]
     )
 
     @classmethod
-    def _get_annotation(cls, annotation: dict) -> CocoAnnotationPanopticSegmentation:
+    def _get_annotation(cls, annotation: dict) -> CocoAnnotationPanopticSegmentation:  # pyright: ignore[reportIncompatibleMethodOverride]
         return CocoAnnotationPanopticSegmentation.from_dict(annotation)
 
     @classmethod

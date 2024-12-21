@@ -1,15 +1,22 @@
 from typing import Literal
 
+from jaxtyping import Num
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 import pytorchcocotools._mask as _mask
-from pytorchcocotools.internal.entities import BB, IoUObject, Mask, PyObj, RleObj, RleObjs
+from pytorchcocotools.internal.entities import Bool, IoUObject, PyObj, RleObj, RleObjs, TorchDevice
 
 
 def iou(
-    dt: IoUObject, gt: IoUObject, pyiscrowd: list[bool] | list[Literal[0, 1]]
-) -> Tensor:  # TODO: add better type hints
+    dt: IoUObject,
+    gt: IoUObject,
+    pyiscrowd: list[Bool],
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> Tensor:
     """Compute intersection over union between masks.
 
     Note:
@@ -29,42 +36,66 @@ def iou(
         dt: The detected objects.
         gt: The ground truth objects.
         pyiscrowd: A list of booleans indicating whether the ground truth objects are crowds.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The intersection over union between the detected and ground truth objects.
     """
     is_crowd = [bool(is_c) for is_c in pyiscrowd]
-    return _mask.iou(dt, gt, is_crowd)
+    return _mask.iou(dt, gt, is_crowd, device=device, requires_grad=requires_grad)
 
 
-def merge(rleObjs: RleObjs, intersect: bool = False) -> RleObj:  # noqa: N803
+def merge(
+    rleObjs: RleObjs,  # noqa: N803
+    intersect: bool = False,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RleObj:
     """Compute union or intersection of encoded masks.
 
     Args:
         rleObjs: The masks to merge.
         intersect: Whether to compute the intersection.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The merged mask.
     """
-    return _mask.merge(rleObjs, intersect)
+    return _mask.merge(rleObjs, intersect, device=device, requires_grad=requires_grad)
 
 
-def frPyObjects(pyobj: PyObj, h: int, w: int) -> RleObjs | RleObj:  # noqa: N802
+def frPyObjects(  # noqa: N802
+    pyobj: PyObj,
+    h: int,
+    w: int,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RleObjs | RleObj:
     """Convert (list of) polygon, bbox, or uncompressed RLE to encoded RLE mask.
 
     Args:
         pyobj: The object to convert.
         h: The height of the mask.
         w: The width of the mask.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The encoded mask.
     """
-    return _mask.frPyObjects(pyobj, h, w)
+    return _mask.frPyObjects(pyobj, h, w, device=device, requires_grad=requires_grad)
 
 
-def encode(bimask: Mask) -> RleObjs:
+def encode(
+    bimask: tv.Mask,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RleObjs:
     """Encode binary masks using RLE.
 
     Note:
@@ -75,21 +106,30 @@ def encode(bimask: Mask) -> RleObjs:
 
     Args:
         bimask: The binary mask to encode.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The encoded mask.
     """
     if len(bimask.shape) == 3:
-        return _mask.encode(bimask)
+        return _mask.encode(bimask, device=device, requires_grad=requires_grad)
     elif len(bimask.shape) == 2:
-        bimask = torch.unsqueeze(bimask, dim=-1)  # masks expected to be in format [h,w,n]
+        # tv.wrap(bimask, like=bimask)
+        bimask_unsq = tv.wrap(bimask.unsqueeze(0), like=bimask, device=device, requires_grad=requires_grad)
+        # bimask = torch.unsqueeze(bimask, dim=-1)  # masks expected to be in format [h,w,n]
         # return _mask.encode(bimask)[0]  # original implementation
-        return _mask.encode(bimask)
+        return _mask.encode(bimask_unsq, device=device, requires_grad=requires_grad)  # pyright: ignore[reportArgumentType]
     else:
         raise ValueError("encode expects a binary mask or batch of binary masks")
 
 
-def decode(rleObjs: RleObj | RleObjs) -> Mask:  # noqa: N803
+def decode(
+    rleObjs: RleObj | RleObjs,  # noqa: N803
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> tv.Mask:
     """Decode binary masks encoded via RLE.
 
     Note:
@@ -100,18 +140,25 @@ def decode(rleObjs: RleObj | RleObjs) -> Mask:  # noqa: N803
 
     Args:
         rleObjs: The encoded masks.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The decoded mask.
     """
     if isinstance(rleObjs, list):
-        return _mask.decode(rleObjs)
+        return _mask.decode(rleObjs, device=device, requires_grad=requires_grad)
     else:
         # return _mask.decode([rleObjs])[:, :, 0]  # original implementation
-        return _mask.decode([rleObjs])
+        return _mask.decode([rleObjs], device=device, requires_grad=requires_grad)
 
 
-def area(rleObjs: RleObj | RleObjs) -> list[int]:  # noqa: N803
+def area(
+    rleObjs: RleObj | RleObjs,  # noqa: N803
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> list[int]:
     """Compute area of encoded masks.
 
     Warning:
@@ -119,18 +166,25 @@ def area(rleObjs: RleObj | RleObjs) -> list[int]:  # noqa: N803
 
     Args:
         rleObjs: The encoded masks.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The areas of the masks.
     """
     if isinstance(rleObjs, list):
-        return _mask.area(rleObjs)
+        return _mask.area(rleObjs, device=device, requires_grad=requires_grad)
     else:
         # return _mask.area([rleObjs])[0]  # original implementation
-        return _mask.area([rleObjs])
+        return _mask.area([rleObjs], device=device, requires_grad=requires_grad)
 
 
-def toBbox(rleObjs: RleObj | RleObjs) -> BB:  # noqa: N803, N802
+def toBbox(  # noqa: N803, N802
+    rleObjs: RleObj | RleObjs,  # noqa: N803, N802
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> tv.BoundingBoxes:
     """Get bounding boxes surrounding encoded masks.
 
     Warning:
@@ -138,12 +192,14 @@ def toBbox(rleObjs: RleObj | RleObjs) -> BB:  # noqa: N803, N802
 
     Args:
         rleObjs: The encoded masks.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The bounding boxes.
     """
     if isinstance(rleObjs, list):
-        return _mask.toBbox(rleObjs)
+        return _mask.toBbox(rleObjs, device=device, requires_grad=requires_grad)
     else:
         # return _mask.toBbox([rleObjs])[0]  # original implementation
-        return _mask.toBbox([rleObjs])
+        return _mask.toBbox([rleObjs], device=device, requires_grad=requires_grad)

@@ -1,24 +1,32 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-def rleMerge(Rs: RLEs, intersect: bool) -> RLE:  # noqa: N802, N803
+def rleMerge(  # noqa: N802
+    rles: RLEs,
+    intersect: bool,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLE:
     """Compute union or intersection of encoded masks.
 
     Args:
-        Rs: The masks to merge.
+        rles: The masks to merge.
         intersect: Whether to compute the intersection.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The merged mask.
     """
-    n = len(Rs)
-    if not Rs or n == 0:
+    n = len(rles)
+    if not rles or n == 0:
         return RLE()  # Return an empty RLE if empty
     if n == 1:
-        return Rs[0]  # Return the RLE if only one is provided
+        return rles[0]  # Return the RLE if only one is provided
 
     # Rs[0].cnts.device
     # h, w = Rs[0].h, Rs[0].w
@@ -61,10 +69,10 @@ def rleMerge(Rs: RLEs, intersect: bool) -> RLE:  # noqa: N802, N803
 
     # return run_values, run_lengths
 
-    h, w, m = Rs[0].h, Rs[0].w, Rs[0].m
-    cnts = Rs[0].cnts.clone()
+    h, w, m = rles[0].h, rles[0].w, len(rles[0].cnts)
+    cnts = rles[0].cnts.clone()
     for i in range(1, n):
-        B = Rs[i]  # noqa: N806
+        B = rles[i]  # noqa: N806
         if B.h != h or B.w != w:
             return RLE()  # Return an empty RLE if dimensions don't match
 
@@ -84,12 +92,12 @@ def rleMerge(Rs: RLEs, intersect: bool) -> RLE:  # noqa: N802, N803
             cc += c
             ct = 0
             ca -= c
-            if not ca and a < A.m:
+            if not ca and a < len(A.cnts):  # m
                 ca = A.cnts[a].clone()
                 a += 1
                 va = not va
             cb -= c
-            if not cb and b < B.m:
+            if not cb and b < len(B.cnts):  # m
                 cb = B.cnts[b].clone()
                 b += 1
                 vb = not vb

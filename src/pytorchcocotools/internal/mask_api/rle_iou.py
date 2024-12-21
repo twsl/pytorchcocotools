@@ -30,8 +30,8 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
                 if dt[d].h != gt[g].h or dt[d].w != gt[g].w:
                     o[d, g] = -1
                     continue
-                ka = dt[d].m
-                kb = gt[g].m
+                ka = len(dt[d].cnts)  # m
+                kb = len(gt[g].cnts)  # m
                 ca = dt[d].cnts[0]
                 cb = gt[g].cnts[0]
                 va = False

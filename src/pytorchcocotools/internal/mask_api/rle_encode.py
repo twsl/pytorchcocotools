@@ -1,18 +1,23 @@
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 # TODO: vectorize
-def rleEncode(mask: Mask, h: int, w: int, n: int) -> RLEs:  # noqa: N802
+def rleEncode(  # noqa: N802
+    mask: tv.Mask,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLEs:
     """Encode binary masks using RLE.
 
     Args:
-        mask: _description_
-        h: _description_
-        w: _description_
-        n: _description_
+        mask: The binary masks to encode.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         _description_

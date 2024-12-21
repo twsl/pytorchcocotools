@@ -1,14 +1,22 @@
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-def rleToBbox(rles: RLEs) -> BB:  # noqa: N802, N803
+def rleToBbox(
+    rles: RLEs,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> tv.BoundingBoxes:  # noqa: N802, N803
     """Get bounding boxes surrounding encoded masks.
 
     Args:
         rles: The RLE encoded masks.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         List of bounding boxes in format [x y w h]
@@ -17,9 +25,9 @@ def rleToBbox(rles: RLEs) -> BB:  # noqa: N802, N803
     device = rles[0].cnts.device
     bb = torch.zeros((n, 4), dtype=torch.int32, device=device)
     for i in range(n):
-        if rles[i].m == 0:
+        if len(rles[i].cnts) == 0:  # m
             continue
-        h, _w, m = rles[i].h, rles[i].w, rles[i].m
+        h, _w, m = rles[i].h, rles[i].w, len(rles[i].cnts)
         m = (m // 2) * 2
 
         cc = torch.cumsum(rles[i].cnts[:m], dim=0)
@@ -40,4 +48,5 @@ def rleToBbox(rles: RLEs) -> BB:  # noqa: N802, N803
             ye = torch.full_like(ye, (h - 1))
 
         bb[i] = torch.stack([xs, ys, xe - xs + 1, ye - ys + 1])
-    return bb
+    data = torch.stack(bb)
+    return tv.BoundingBoxes(data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(rles[0].h, rles[0].w))  # pyright: ignore[reportCallIssue]

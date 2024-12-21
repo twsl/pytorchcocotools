@@ -1,13 +1,13 @@
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 from torchvision.ops.boxes import nms
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
 
 
 # TODO: Note used in python api, call torch nms directly
-def bbNms(dt: BB, n: int, thr: float) -> list[bool]:  # noqa: N802
+def bbNms(dt: tv.BoundingBoxes, n: int, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding boxes.
 
     Args:

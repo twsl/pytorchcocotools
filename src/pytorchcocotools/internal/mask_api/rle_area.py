@@ -1,18 +1,24 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-def rleArea(R: RLEs) -> list[int]:  # noqa: N802, N803
+def rleArea(  # noqa: N802
+    rles: RLEs,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> list[int]:
     """Compute area of encoded masks.
 
     Args:
-        R: _description_
-        n: _description_
+        rles: The run length encoded masks.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         A list of areas of the encoded masks.
     """
-    a = [int(torch.sum(R[i].cnts[1 : R[i].m : 2]).int()) for i in range(len(R))]
+    a = [int(torch.sum(rles[i].cnts[1 : len(rles[i].cnts) : 2]).int()) for i in range(len(rles))]
     return a

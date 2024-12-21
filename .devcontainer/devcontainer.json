@@ -7,7 +7,7 @@
         "dockerfile": "Dockerfile",
         "context": "..",
         "args": {
-            "VARIANT": "3.10-bookworm"
+            "VARIANT": "3.11-bookworm"
         }
     },
     // Features to add to the dev container. More info: https://containers.dev/features.
@@ -117,7 +117,8 @@
                 "ms-azuretools.vscode-docker",
                 "uctakeoff.vscode-counter",
                 "ExecutableBookProject.myst-highlight",
-                "redhat.vscode-yaml"
+                "redhat.vscode-yaml",
+                "ms-vscode.cpptools-extension-pack"
             ]
         }
     },

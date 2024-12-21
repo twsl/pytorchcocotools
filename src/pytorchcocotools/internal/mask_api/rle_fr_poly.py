@@ -1,21 +1,29 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
+from pytorchcocotools.utils.poly import Polygon
 
 
-def rleFrPoly(xy: Tensor, k: int, h: int, w: int) -> RLE:  # noqa: N802
+def rleFrPoly(  # noqa: N802
+    xy: Polygon,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLE:
     """Convert polygon to encoded mask.
 
     Args:
         xy: The polygon vertices.
-        k: The number of vertices.
-        h: The height of the image.
-        w: The width of the image.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The RLE encoded mask.
     """
+    k = xy.num_coordinates
+    h = xy.canvas_size[0]
+    w = xy.canvas_size[1]
     device = xy.device
     # upsample and get discrete points densely along entire boundary
     scale = 5.0

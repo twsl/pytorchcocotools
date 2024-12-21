@@ -1,18 +1,25 @@
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
+from pytorchcocotools.utils.poly import Polygon
 
 
 # TODO: fix input tensor form
-def rleFrBbox(bb: BB, h: int, w: int) -> RLEs:  # noqa: N802
+def rleFrBbox(  # noqa: N802
+    bb: tv.BoundingBoxes,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLEs:
     """Convert bounding boxes to encoded masks.
 
     Args:
         bb: The bounding boxes.
-        h: The height of the image.
-        w: The width of the image.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The RLE encoded masks.
@@ -28,5 +35,14 @@ def rleFrBbox(bb: BB, h: int, w: int) -> RLEs:  # noqa: N802
     xy = torch.stack([xs, ys, xs, ye, xe, ye, xe, ys], dim=1).view(n, 8)
 
     # Apply rleFrPoly (assumed to be vectorized) to each bounding box
-    r = RLEs([rleFrPoly(xy[i], 4, h, w) for i in range(n)])
+    r = RLEs(
+        [
+            rleFrPoly(
+                Polygon(xy[i], canvas_size=bb.canvas_size),  # pyright: ignore[reportCallIssue]
+                device=device,
+                requires_grad=requires_grad,
+            )
+            for i in range(n)
+        ]
+    )
     return r

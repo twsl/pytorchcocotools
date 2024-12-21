@@ -1,14 +1,21 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-def rleToString(R: RLE) -> bytes:  # noqa: N803, N802
+def rleToString(  # noqa: N802
+    rle: RLE,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> bytes:
     """Get compressed string representation of encoded mask.
 
     Args:
-        R: Run length encoded string mask.
+        rle: Run length encoded string mask.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
 
     Note:
         Similar to LEB128 but using 6 bits/char and ascii chars 48-111.
@@ -17,10 +24,10 @@ def rleToString(R: RLE) -> bytes:  # noqa: N803, N802
         Byte string of run length encoded mask.
     """
     s = bytearray()
-    cnts = R.cnts
+    cnts = rle.cnts
     cnts = cnts.ceil().int()  # make sure it's integers
 
-    for i in range(R.m):  # len(cnts)
+    for i in range(len(rle.cnts)):  # len(cnts)
         x = int(cnts[i])  # make sure its not a reference
         if i > 2:
             x -= int(cnts[i - 2])

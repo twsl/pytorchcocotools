@@ -25,11 +25,13 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 torch = "^2.5.0"
 torchvision = "^0.20.0"
-torchmetrics = { version = "^1.5.0", optional = true }
-lightning = { version = "^2.4.0", optional = true }
+torchmetrics = { version = "^1.6.0", optional = true }
+lightning = { version = "^2.5.0", optional = true }
+jaxtyping = "^0.2.36"
+tensordict = "^0.6.2"
 
 [tool.poetry.extras]
 metrics = ["torchmetrics"]
@@ -39,6 +41,8 @@ lightning = ["lightning"]
 pycocotools = "^2.0.8"
 scikit-image = "^0.25.0"
 faster-coco-eval = "^1.6.3"
+lightning = "^2.5.0"
+torchmetrics = "^1.6.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.3"
@@ -180,6 +184,7 @@ ignore = [
     "E402",
     "E501",
     "F401",
+    "F722", # https://docs.kidger.site/jaxtyping/faq/#flake8-or-ruff-are-throwing-an-error
     "TRY002", # Allow default exceptions
     "TRY003",  # Avoid specifying messages outside exception class; overly strict, especially for ValueError
 ]
@@ -231,7 +236,7 @@ quote-style = "double"
 skips = ['*_test.py', '*/test_*.py']
 
 [tool.pyright]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 pythonPlatform = "Linux"
 include = ["src"]
 reportMissingImports = true
