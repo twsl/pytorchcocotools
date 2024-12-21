@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import BB, RLE, Mask, RLEs
+from pytorchcocotools.internal.entities import RLE, RLEs
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
 from pytorchcocotools.internal.mask_api.rle_area import rleArea
 from pytorchcocotools.internal.mask_api.rle_to_bbox import rleToBbox

@@ -14,9 +14,10 @@ from matplotlib.patches import Polygon
 import matplotlib.pyplot as plt
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools import mask
-from pytorchcocotools.internal.entities import Mask, RleObj, RleObjs
+from pytorchcocotools.internal.entities import RleObj, RleObjs
 from pytorchcocotools.internal.structure import CocoDetectionDataset
 from pytorchcocotools.internal.structure.additional import ResultAnnotation
 from pytorchcocotools.internal.structure.annotations import (
@@ -454,7 +455,7 @@ class COCO:
         else:
             return segm
 
-    def annToMask(self, ann: dict) -> Mask:  # noqa: N802
+    def annToMask(self, ann: dict) -> tv.Mask:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
 
         Args:

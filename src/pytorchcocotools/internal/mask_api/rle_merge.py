@@ -24,7 +24,7 @@ def rleMerge(  # noqa: N802
     """
     n = len(rles)
     if not rles or n == 0:
-        return RLE()  # Return an empty RLE if empty
+        return RLE(0, 0, Tensor())  # Return an empty RLE if empty
     if n == 1:
         return rles[0]  # Return the RLE if only one is provided
 
