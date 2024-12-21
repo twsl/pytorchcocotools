@@ -4,6 +4,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 import pytorchcocotools.mask as tmask
 
@@ -33,7 +34,7 @@ class BboxCases(BaseCases):
 @parametrize_with_cases("mask, result", cases=BboxCases)
 def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
-    mask_pt = mask
+    mask_pt = tv.Mask(mask)
     # compute the bounding box
     rle_pt = tmask.encode(mask_pt)
     result_pt: Tensor = benchmark(tmask.toBbox, rle_pt)
@@ -56,7 +57,7 @@ def test_toBbox_np(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa:
 @parametrize_with_cases("mask, result", cases=BboxCases)
 def test_toBbox(mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
-    mask_pt = mask
+    mask_pt = tv.Mask(mask)
     mask_np = np.asfortranarray(mask_pt.numpy())
     # compute the bounding box
     rle_np = nmask.encode(mask_np)

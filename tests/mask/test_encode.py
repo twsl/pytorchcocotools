@@ -6,6 +6,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools.internal.entities import RleObj
 import pytorchcocotools.mask as tmask
@@ -76,7 +77,7 @@ class EncodeCases(BaseCases):
 @parametrize_with_cases("mask, result", cases=EncodeCases)
 def test_encode_pt(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
-    mask_pt = mask
+    mask_pt = tv.Mask(mask)
     # encode the mask
     result_pt: Tensor = benchmark(tmask.encode, mask_pt)
     # compare the results
@@ -97,7 +98,7 @@ def test_encode_np(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N8
 @parametrize_with_cases("mask, result", cases=EncodeCases)
 def test_encode(mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
-    mask_pt = mask
+    mask_pt = tv.Mask(mask)
     mask_np = np.asfortranarray(mask_pt.numpy())
     # encode the mask
     result_np = nmask.encode(mask_np)

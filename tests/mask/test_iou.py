@@ -6,6 +6,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools.internal.entities import RleObj, RleObjs
 import pytorchcocotools.mask as tmask
@@ -72,13 +73,13 @@ class IoUCases:
 def test_iou_pt(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
     # encode
     if encode:
-        obj1 = tmask.encode(obj1)
-        obj2 = tmask.encode(obj2)
+        obj1_ = tmask.encode(tv.Mask(obj1))
+        obj2_ = tmask.encode(tv.Mask(obj2))
     else:
-        obj1 = obj1.unsqueeze(0)
-        obj2 = obj2.unsqueeze(0)
+        obj1_ = obj1.unsqueeze(0)
+        obj2_ = obj2.unsqueeze(0)
     # compute the iou
-    result_pt = benchmark(tmask.iou, obj1, obj2, iscrowd)
+    result_pt = benchmark(tmask.iou, obj1_, obj2_, iscrowd)
     # compare the results
     assert result_pt == result
 
@@ -92,13 +93,13 @@ def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], enco
     if encode:
         rle_np1 = mask.encode(obj1n)
         rle_np2 = mask.encode(obj2n)
-        obj1 = [rle_np1]
-        obj2 = [rle_np2]
+        obj1_ = [rle_np1]
+        obj2_ = [rle_np2]
     else:
-        obj1 = obj1[np.newaxis, ...]
-        obj2 = obj2[np.newaxis, ...]
+        obj1_ = obj1[np.newaxis, ...]
+        obj2_ = obj2[np.newaxis, ...]
     # compute the iou
-    result_np = benchmark(mask.iou, obj1, obj2, [int(c) for c in iscrowd])
+    result_np = benchmark(mask.iou, obj1_, obj2_, [int(c) for c in iscrowd])
     # compare the results
     assert result_np == result
 
@@ -106,8 +107,8 @@ def test_iou_np(benchmark, obj1: Tensor, obj2: Tensor, iscrowd: list[bool], enco
 @parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
 def test_iou(obj1: Tensor, obj2: Tensor, iscrowd: list[bool], encode: bool, result: float) -> None:
     # create two masks
-    mask_pt1 = obj1
-    mask_pt2 = obj2
+    mask_pt1 = tv.Mask(obj1)
+    mask_pt2 = tv.Mask(obj2)
     mask_np1 = np.asfortranarray(obj1.numpy())
     mask_np2 = np.asfortranarray(obj2.numpy())
     # encode the masks

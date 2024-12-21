@@ -6,7 +6,7 @@ from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import RleObj, RleObjs
+from pytorchcocotools.internal.entities import PyObj, RleObj, RleObjs
 import pytorchcocotools.mask as tmask
 
 
@@ -142,7 +142,7 @@ class PyObjectsCases:
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_pt(  # noqa: N802
-    benchmark, h: int, w: int, obj: list[int] | list[list[int]] | list[dict] | dict, result
+    benchmark, h: int, w: int, obj: PyObj, result
 ) -> None:
     # convert the polygon to a mask
     # mask_pt = benchmark(tmask.frPyObjects, obj, h, w)
@@ -161,16 +161,18 @@ def test_frPyObjects_pt(  # noqa: N802
 @pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_np(  # noqa: N802
-    benchmark, h: int, w: int, obj: list[int] | list[list[int]] | list[dict] | dict, result
+    benchmark, h: int, w: int, obj: PyObj, result
 ) -> None:
     # fix input
     if isinstance(obj, list):
-        obj = [o.numpy() if isinstance(o, Tensor) else o for o in obj]
+        obj_ = [o.numpy() if isinstance(o, Tensor) else o for o in obj]
     elif isinstance(obj, Tensor):
-        obj = obj.numpy()
+        obj_ = obj.numpy()
+    else:
+        obj_ = obj
 
     # convert the polygon to a mask
-    mask_np = benchmark(mask.frPyObjects, obj, h, w)
+    mask_np = benchmark(mask.frPyObjects, obj_, h, w)
 
     # fix output
     if not isinstance(mask_np, list):
@@ -183,7 +185,7 @@ def test_frPyObjects_np(  # noqa: N802
 
 
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
-def test_frPyObjects(h: int, w: int, obj: list[int] | list[list[int]] | list[dict] | dict, result) -> None:  # noqa: N802
+def test_frPyObjects(h: int, w: int, obj: PyObj, result) -> None:  # noqa: N802
     if isinstance(obj, list):
         obj_np = [o.numpy() if isinstance(o, Tensor) else o for o in obj]
     elif isinstance(obj, Tensor):

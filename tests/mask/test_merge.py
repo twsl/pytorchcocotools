@@ -6,6 +6,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools.internal.entities import RleObj
 import pytorchcocotools.mask as tmask
@@ -159,8 +160,8 @@ class MergeCases:
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
 def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     # encode
-    rle_pt1 = tmask.encode(obj1)
-    rle_pt2 = tmask.encode(obj2)
+    rle_pt1 = tmask.encode(tv.Mask(obj1))
+    rle_pt2 = tmask.encode(tv.Mask(obj2))
     # compute the iou
     result_pt = cast(RleObj, benchmark(tmask.merge, [rle_pt1[0], rle_pt2[0]], intersect=intersect))
     # compare the results
@@ -186,8 +187,8 @@ def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
 def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     # create two masks
-    mask_pt1 = obj1
-    mask_pt2 = obj2
+    mask_pt1 = tv.Mask(obj1)
+    mask_pt2 = tv.Mask(obj2)
     mask_np1 = np.asfortranarray(mask_pt1.numpy())
     mask_np2 = np.asfortranarray(mask_pt2.numpy())
     # compute the iou
