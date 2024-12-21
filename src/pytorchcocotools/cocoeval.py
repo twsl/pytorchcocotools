@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 import copy
 import datetime
 from logging import Logger
@@ -108,6 +109,7 @@ class COCOeval:
         # loop through images, area range, max detection number
         cat_ids = p.catIds if p.useCats else [-1]
 
+        compute_iou: Callable[[int, int], Tensor] = lambda img_id, cat_id: torch.Tensor()  # noqa: E731
         if p.iouType == "segm" or p.iouType == "bbox":
             compute_iou = self.computeIoU
         elif p.iouType == "keypoints":
@@ -149,7 +151,7 @@ class COCOeval:
         dt = cast(list[CocoAnnotationObjectDetection], dt)
         if len(gt) == 0 and len(dt) == 0:
             return Tensor([])
-        inds = torch.argsort(Tensor([-d.score for d in dt]))
+        inds = torch.argsort(Tensor([-d.score if d.score is not None else 0 for d in dt]))
         dt = [dt[i] for i in inds]  # TODO: optimize, dt[inds]
         if len(dt) > self.params.maxDets[-1]:
             dt = dt[0 : self.params.maxDets[-1]]
@@ -165,14 +167,14 @@ class COCOeval:
 
         # compute iou between each dt and gt region
         iscrowd = [bool(o.iscrowd) for o in gt]
-        ious = mask.iou(d, g, iscrowd)
+        ious = mask.iou(d, g, iscrowd)  # pyright: ignore[reportArgumentType]
         return ious
 
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         # dimention here should be Nxm
         gts = cast(list[CocoAnnotationKeypointDetection], self._gts[imgId, catId])
         dts = cast(list[CocoAnnotationKeypointDetection], self._dts[imgId, catId])
-        inds = torch.argsort(Tensor([-d.score for d in dts]))
+        inds = torch.argsort(Tensor([-d.score if d.score is not None else 0 for d in dts]))
         dts = [dts[i] for i in inds]
         if len(dts) > self.params.maxDets[-1]:
             dts = dts[0 : self.params.maxDets[-1]]
@@ -207,8 +209,8 @@ class COCOeval:
                 else:
                     # measure minimum distance to keypoints in (x0,y0) & (x1,y1)
                     z = torch.zeros(k)
-                    dx = torch.max(torch.stack([z, x0 - xd]), dim=0) + torch.max(torch.stack([z, xd - x1]), dim=0)
-                    dy = torch.max(torch.stack([z, y0 - yd]), dim=0) + torch.max(torch.stack([z, yd - y1]), dim=0)
+                    dx, _ = torch.max(torch.stack([z, x0 - xd]), dim=0) + torch.max(torch.stack([z, xd - x1]), dim=0)
+                    dy, _ = torch.max(torch.stack([z, y0 - yd]), dim=0) + torch.max(torch.stack([z, yd - y1]), dim=0)
                 e = (torch.pow(dx, 2) + torch.pow(dy, 2)) / vars / (gt.area + torch.finfo(torch.float32).eps) / 2
                 if k1 > 0:
                     e = e[vg > 0]
@@ -242,7 +244,7 @@ class COCOeval:
         # sort dt highest score first, sort gt ignore last
         gtind = torch.argsort(gt_ig)
         gt = [gt[i] for i in gtind]
-        dtind = torch.argsort(Tensor([-d.score for d in dt]))
+        dtind = torch.argsort(Tensor([-d.score if d.score is not None else 0 for d in dt]))
         dt = [dt[i] for i in dtind[0:maxDet]]
         iscrowd = [int(o.iscrowd) for o in gt]
         # load computed ious
@@ -499,11 +501,15 @@ class COCOeval:
         if not self.eval:
             raise Exception("Please run accumulate() first")  # noqa: TRY002
         iou_type = self.params.iouType
+
+        summarize: Callable[[], Tensor] = lambda: torch.Tensor()  # noqa: E731
+
         if iou_type == "segm" or iou_type == "bbox":
             summarize = _summarizeDets
         elif iou_type == "keypoints":
             summarize = _summarizeKps
         self.stats = summarize()
 
-    def __str__(self) -> None:
-        self.summarize()  # should return a string but just calculates it
+    def __str__(self) -> str:
+        self.summarize()
+        return str(self.stats)  # should return a string but just calculates it

@@ -30,6 +30,8 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
     area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
     iscrowd: bool = False
+    score: float | None = None  # Only used in results
+    ignore: bool | None = None  # Only used in results
 
     @classmethod
     def from_dict(cls, data: dict) -> CocoAnnotationObjectDetection:
@@ -47,12 +49,6 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
             score=data.get("score"),
         )
         return instance
-
-
-@dataclass_dict
-class CocoAnnotationObjectDetectionResult(CocoAnnotationObjectDetection):
-    score: float = 0  # TODO: consider putting this in a subclass, only used in results/coco eval
-    ignore: bool = False  # TODO: consider putting this in a subclass, only used in results/coco eval
 
 
 @dataclass_dict
