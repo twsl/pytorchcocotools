@@ -146,8 +146,8 @@ class MergeCases:
         data2 = RleObj(size=[h, w], counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4")
 
         return (
-            decode(data1),
-            decode(data2),
+            decode(data1).squeeze(-1),
+            decode(data2).squeeze(-1),
             False,
             RleObj(
                 size=[h, w],

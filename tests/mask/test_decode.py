@@ -14,19 +14,19 @@ from .base_cases import BaseCases
 
 class DecodeCases(BaseCases):
     def case_start_area(self) -> tuple[Tensor, Tensor]:
-        mask_pt = self._build_mask(0, 5)
+        mask_pt = self._build_mask(0, 5).unsqueeze(-1)
         return (mask_pt, mask_pt.clone())
 
     def case_center_area(self) -> tuple[Tensor, Tensor]:
-        mask_pt = self._build_mask(5, 10)
+        mask_pt = self._build_mask(5, 10).unsqueeze(-1)
         return (mask_pt, mask_pt.clone())
 
     def case_end_area(self) -> tuple[Tensor, Tensor]:
-        mask_pt = self._build_mask(20, 25)
+        mask_pt = self._build_mask(20, 25).unsqueeze(-1)
         return (mask_pt, mask_pt.clone())
 
     def case_full_area(self) -> tuple[Tensor, Tensor]:
-        mask_pt = self._build_mask(0, 25)
+        mask_pt = self._build_mask(0, 25).unsqueeze(-1)
         return (mask_pt, mask_pt.clone())
 
     def case_complex_1_np(self) -> tuple[Tensor, Tensor]:
@@ -36,7 +36,7 @@ class DecodeCases(BaseCases):
             size=[h, w],
             counts=b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
         )
-        mask_pt = torch.from_numpy(nmask.decode(data))  # pyright:ignore[reportArgumentType]
+        mask_pt = torch.from_numpy(nmask.decode(data)).unsqueeze(-1)  # pyright:ignore[reportArgumentType]
         return (mask_pt, mask_pt.clone())
 
     def case_complex_1_pt(self) -> tuple[Tensor, Tensor]:
@@ -54,7 +54,7 @@ class DecodeCases(BaseCases):
         w = 640
         data = RleObj(size=[h, w], counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4")
 
-        mask_pt = torch.from_numpy(nmask.decode(data))  # pyright:ignore[reportArgumentType]
+        mask_pt = torch.from_numpy(nmask.decode(data)).unsqueeze(-1)  # pyright:ignore[reportArgumentType]
         return (mask_pt, mask_pt.clone())
 
     def case_complex_2_pt(self) -> tuple[Tensor, Tensor]:

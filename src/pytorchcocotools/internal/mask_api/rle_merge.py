@@ -69,14 +69,15 @@ def rleMerge(  # noqa: N802
 
     # return run_values, run_lengths
 
-    h, w, m = rles[0].h, rles[0].w, len(rles[0].cnts)
+    h, w = rles[0].h, rles[0].w
+    # m = len(rles[0].cnts)
     cnts = rles[0].cnts.clone()
     for i in range(1, n):
         B = rles[i]  # noqa: N806
         if B.h != h or B.w != w:
-            return RLE()  # Return an empty RLE if dimensions don't match
+            return RLE(0, 0, torch.tensor([]))  # Return an empty RLE if dimensions don't match
 
-        A = RLE(h, w, m, cnts)  # noqa: N806
+        A = RLE(h, w, cnts)  # noqa: N806
         ca = A.cnts[0].clone()
         cb = B.cnts[0].clone()
         v = False
@@ -110,4 +111,4 @@ def rleMerge(  # noqa: N802
                 cc = 0
         cnts = torch.stack(cnts_out)
 
-    return RLE(h, w, len(cnts), cnts)
+    return RLE(h, w, cnts)

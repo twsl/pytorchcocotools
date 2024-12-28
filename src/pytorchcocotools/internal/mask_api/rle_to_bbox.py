@@ -5,12 +5,12 @@ from torchvision import tv_tensors as tv
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-def rleToBbox(
+def rleToBbox(  # noqa: N802,
     rles: RLEs,
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> tv.BoundingBoxes:  # noqa: N802, N803
+) -> tv.BoundingBoxes:
     """Get bounding boxes surrounding encoded masks.
 
     Args:
@@ -48,5 +48,5 @@ def rleToBbox(
             ye = torch.full_like(ye, (h - 1))
 
         bb[i] = torch.stack([xs, ys, xe - xs + 1, ye - ys + 1])
-    data = torch.stack(bb)
-    return tv.BoundingBoxes(data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(rles[0].h, rles[0].w))  # pyright: ignore[reportCallIssue]
+
+    return tv.BoundingBoxes(bb, format=tv.BoundingBoxFormat.XYWH, canvas_size=(rles[0].h, rles[0].w))  # pyright: ignore[reportCallIssue]

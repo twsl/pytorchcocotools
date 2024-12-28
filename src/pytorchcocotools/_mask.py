@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Annotated, cast
 
 import torch
 from torch import Tensor
@@ -18,7 +18,8 @@ from pytorchcocotools.internal.mask_api import (
     rleToBbox,
     rleToString,
 )
-from pytorchcocotools.utils.poly import Polygon
+from pytorchcocotools.utils.list import is_list_of_type
+from pytorchcocotools.utils.poly import Polygon, Polygons
 
 
 def _toString(  # noqa: N802
@@ -81,7 +82,7 @@ def _frString(  # noqa: N802
 
 
 def encode(
-    mask: tv.Mask,
+    mask: Annotated[tv.Mask, "N H W"],
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
@@ -107,7 +108,7 @@ def decode(
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> tv.Mask:
+) -> Annotated[tv.Mask, "H W N"]:
     """Decode mask from compressed list of RLE string or RLEs object.
 
     Args:
@@ -175,7 +176,7 @@ def iou(
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> Tensor:
+) -> Annotated[Tensor, "M N"]:
     """Compute intersection over union between objects.
 
     Note:
@@ -192,35 +193,35 @@ def iou(
         The intersection over union between the detected and ground truth objects.
     """
 
-    def _preproc(objs: IoUObject) -> Tensor | RLEs:
-        if len(objs) == 0:
-            return Tensor(objs)
-        if isinstance(objs, Tensor):
-            if len(objs.shape) == 1:
-                # TODO: figure out, why pycocotools didn't use the shape, propably just another error?
-                # objs = objs.reshape((objs[0], 1))
-                objs = objs.reshape((objs.shape[0], 1))
-            # check if it's Nx4 bbox
-            if not len(objs.shape) == 2 or not objs.shape[1] == 4:
-                raise Exception("Tensor input is only for *bounding boxes* and should have Nx4 dimension")  # noqa: TRY002
-            objs = objs.to(dtype=torch.float32)  # TODO: originally double is used, why???
+    def _preproc(objs: IoUObject) -> tv.BoundingBoxes | RLEs:
+        if isinstance(objs, tv.BoundingBoxes):
+            return objs
         elif isinstance(objs, list):
             # check if list is in box format and convert it to torch.Tensor
             isbox = all((isinstance(obj, list | Tensor)) and (len(obj) == 4) for obj in objs)
             isrle = all(isinstance(obj, dict) for obj in objs)
             if isbox:
-                objs = torch.tensor(objs, dtype=torch.float32)
-                if len(objs.shape) == 1:
-                    objs = objs.reshape((1, objs.shape[0]))
+                result = torch.tensor(
+                    objs, dtype=torch.float32, device=device, requires_grad=requires_grad if requires_grad else False
+                )
+                if len(result.shape) == 1:
+                    result = result.reshape((1, result.shape[0]))
+                return tv.BoundingBoxes(
+                    result,
+                    format=tv.BoundingBoxFormat.XYWH,
+                    canvas_size=(0, 0),
+                    device=device,
+                    requires_grad=requires_grad,
+                )  # pyright: ignore[reportCallIssue]
             elif isrle:
-                objs = _frString(objs)  # pyright: ignore[reportArgumentType]
+                return _frString(objs)  # pyright: ignore[reportArgumentType]
             else:
                 raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")  # noqa: TRY002
         else:
             raise TypeError(
                 "Unrecognized type. The following type: RLEs (rle), torch.Tensor (box), and list (box) are supported."
             )
-        return objs
+        return []
 
     is_crowd = pyiscrowd
     dt = _preproc(dt)
@@ -228,18 +229,18 @@ def iou(
     m = len(dt)
     n = len(gt)
     crowd_length = len(is_crowd)
-    assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101
+    assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101, B101 # nosec B101
     if m == 0 or n == 0:
         return Tensor()
     if type(dt) is not type(gt):
         raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
-    if isinstance(dt, RLEs) and isinstance(gt, RLEs):  # pyright: ignore[reportArgumentType] # TODO: fix check
-        return rleIou(dt, gt, is_crowd)
+    if is_list_of_type(dt, RLE) and is_list_of_type(gt, RLE):
+        return rleIou(dt, gt, is_crowd)  # pyright: ignore[reportArgumentType]
     if isinstance(dt, tv.BoundingBoxes) and isinstance(gt, tv.BoundingBoxes):
         return bbIou(dt, gt, is_crowd)
     else:
         raise TypeError("Input data type not allowed.")  # noqa: TRY002
-    return Tensor()
+    return torch.tensor([])
 
 
 def toBbox(  # noqa: N802
@@ -285,9 +286,7 @@ def frBbox(  # noqa: N802
 
 
 def frPoly(  # noqa: N802
-    poly: list[Poly] | Polygon,
-    h: int,
-    w: int,
+    poly: list[Polygon],
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
@@ -296,33 +295,19 @@ def frPoly(  # noqa: N802
 
     Args:
         poly: The polygon to convert.
-        h: The height of the mask.
-        w: The width of the mask.
         device: The desired device of the bounding boxes.
         requires_grad: Whether the bounding boxes require gradients.
 
     Returns:
         The RLE encoded objects.
     """
-    rs = []  # RLEs(n)
-    for p in poly:
-        np_poly = (
-            p
-            if isinstance(p, Polygon)
-            else Polygon(
-                torch.tensor(p, dtype=torch.float64),
-                canvas_size=(h, w),
-            )  # pyright: ignore[reportCallIssue]
-        )
-        rs.append(rleFrPoly(np_poly, device=device, requires_grad=requires_grad))
+    rs = [rleFrPoly(p, device=device, requires_grad=requires_grad) for p in poly]
     objs = _toString(RLEs(rs))
     return RleObjs(objs)
 
 
 def frUncompressedRLE(  # noqa: N803, N802
     uc_rles: RleObjs,
-    h: int,
-    w: int,
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
@@ -330,9 +315,7 @@ def frUncompressedRLE(  # noqa: N803, N802
     """Convert uncompressed RLE to run length encoded objects.
 
     Args:
-        uc_rles: The uncompressed RLE to convert.
-        h: The height of the mask.
-        w: The width of the mask.
+        uc_rles: The uncompressed RLEs to convert.
         device: The desired device of the bounding boxes.
         requires_grad: Whether the bounding boxes require gradients.
 
@@ -342,7 +325,12 @@ def frUncompressedRLE(  # noqa: N803, N802
     n = len(uc_rles)
     objs = []
     for i in range(n):
-        cnts = torch.tensor(uc_rles[i].counts, dtype=torch.int)
+        cnts = torch.tensor(
+            uc_rles[i].counts,
+            dtype=torch.int,
+            device=device,
+            requires_grad=requires_grad if requires_grad is not None else False,
+        )
         r = RLE(uc_rles[i].size[0], uc_rles[i].size[1], cnts)
         objs.append(_toString(RLEs([r]), device=device, requires_grad=requires_grad)[0])
     return objs
@@ -374,22 +362,67 @@ def frPyObjects(  # noqa: N802
     # encode rle from a list of python objects
     if isinstance(py_obj, tv.BoundingBoxes):
         return frBbox(py_obj)
+    elif isinstance(py_obj, Tensor):
+        bbox = tv.BoundingBoxes(
+            py_obj,
+            format=tv.BoundingBoxFormat.XYWH,
+            canvas_size=(h, w),
+            device=device,
+            requires_grad=requires_grad,
+        )  # pyright: ignore[reportCallIssue]
+        return frBbox(bbox)
     elif isinstance(py_obj, list) and isinstance(py_obj[0], list) and len(py_obj[0]) == 4:  # not working in pycocotools
-        data = torch.stack([torch.tensor(obj, dtype=torch.int32) for obj in py_obj])
-        boxes = tv.BoundingBoxes(data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(h, w))  # pyright: ignore[reportCallIssue]
+        bbox_list = [
+            torch.tensor(obj, dtype=torch.int32, device=device, requires_grad=requires_grad if requires_grad else False)
+            for obj in py_obj
+        ]
+        data = torch.stack(bbox_list)
+        boxes = tv.BoundingBoxes(
+            data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(h, w), device=device, requires_grad=requires_grad
+        )  # pyright: ignore[reportCallIssue]
         return frBbox(boxes, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, list) and isinstance(py_obj[0], list) and len(py_obj[0]) > 4:
-        return frPoly(cast(list[Poly], py_obj), h, w, device=device, requires_grad=requires_grad)
-    elif isinstance(py_obj, list) and isinstance(py_obj[0], RleObj):
-        return frUncompressedRLE(cast(RleObjs, py_obj), h, w, device=device, requires_grad=requires_grad)
+        poly_list = [
+            Polygon(
+                torch.tensor(
+                    obj, dtype=torch.float64, device=device, requires_grad=requires_grad if requires_grad else False
+                ).view(-1, 2),
+                canvas_size=(h, w),
+                device=device,
+                requires_grad=requires_grad,
+            )  # pyright: ignore[reportCallIssue]
+            for obj in py_obj
+        ]
+        polygons = poly_list  # Polygons(poly_list)  # pyright: ignore[reportCallIssue]
+        return frPoly(polygons, device=device, requires_grad=requires_grad)
+    elif isinstance(py_obj, list) and any(
+        isinstance(obj, RleObj | dict) and ("counts" in obj) and ("size" in obj) for obj in py_obj
+    ):
+        rle_objs = [RleObj(size=obj["size"], counts=obj["counts"]) for obj in cast(list, py_obj)]
+        return frUncompressedRLE(rle_objs, device=device, requires_grad=requires_grad)
     # encode rle from single python object
     elif isinstance(py_obj, list) and len(py_obj) == 4:  # not working in pycocotools
-        data = Tensor([py_obj])
-        boxes = tv.BoundingBoxes(data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(h, w))  # pyright: ignore[reportCallIssue]
+        data = torch.tensor(
+            [py_obj], dtype=torch.int32, device=device, requires_grad=requires_grad if requires_grad else False
+        )
+        boxes = tv.BoundingBoxes(
+            data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(h, w), device=device, requires_grad=requires_grad
+        )  # pyright: ignore[reportCallIssue]
         return frBbox(boxes, device=device, requires_grad=requires_grad)[0]
     elif isinstance(py_obj, list) and len(py_obj) > 4:
-        return frPoly([cast(Poly, py_obj)], h, w, device=device, requires_grad=requires_grad)[0]
-    elif isinstance(py_obj, dict) and "counts" in py_obj and "size" in py_obj:
-        return frUncompressedRLE([RleObj(py_obj)], h, w, device=device, requires_grad=requires_grad)[0]
+        poly = Polygon(
+            torch.tensor(
+                py_obj, dtype=torch.float64, device=device, requires_grad=requires_grad if requires_grad else False
+            ).view(-1, 2),
+            canvas_size=(h, w),
+            device=device,
+            requires_grad=requires_grad,
+        )  # pyright: ignore[reportCallIssue]
+        polygons = [poly]  # Polygons([poly])  # pyright: ignore[reportCallIssue]
+        return frPoly(polygons, device=device, requires_grad=requires_grad)[0]
+    elif isinstance(py_obj, RleObj | dict) and "counts" in py_obj and "size" in py_obj:
+        return frUncompressedRLE(
+            [RleObj(size=py_obj["size"], counts=py_obj["counts"])], device=device, requires_grad=requires_grad
+        )[0]
     else:
         raise Exception("Input type is not supported.")  # noqa: TRY002

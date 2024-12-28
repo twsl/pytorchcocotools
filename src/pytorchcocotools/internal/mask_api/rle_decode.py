@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import torch
 from torch import Tensor
 from torchvision import tv_tensors as tv
@@ -13,7 +15,7 @@ def rleDecode(  # noqa: N802
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> tv.Mask:
+) -> Annotated[tv.Mask, "H W N"]:
     """Decode binary masks encoded via RLE.
 
     Args:
@@ -47,5 +49,4 @@ def rleDecode(  # noqa: N802
         mask_tensor = mask_tensor.view(w, h).t()
         objs.append(mask_tensor)
     data = torch.stack(objs, dim=-1)
-    return data
-    # return tv.Mask(data)
+    return tv.Mask(data, device=device, requires_grad=requires_grad)  # pyright: ignore[reportCallIssue]

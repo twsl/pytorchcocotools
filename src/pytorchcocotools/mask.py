@@ -1,18 +1,17 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from jaxtyping import Num
 import torch
 from torch import Tensor
 from torchvision import tv_tensors as tv
 
 import pytorchcocotools._mask as _mask
-from pytorchcocotools.internal.entities import Bool, IoUObject, PyObj, RleObj, RleObjs, TorchDevice
+from pytorchcocotools.internal.entities import Bool, Bools, IoUObject, PyObj, RleObj, RleObjs, TorchDevice
 
 
 def iou(
     dt: IoUObject,
     gt: IoUObject,
-    pyiscrowd: list[Bool],
+    pyiscrowd: Bools,
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
@@ -91,7 +90,8 @@ def frPyObjects(  # noqa: N802
 
 
 def encode(
-    bimask: tv.Mask,
+    bimask: Annotated[tv.Mask, "H W N"] | Annotated[tv.Mask, "N H W"] | Annotated[tv.Mask, "H W"],
+    channel_last: bool = True,
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
@@ -106,6 +106,7 @@ def encode(
 
     Args:
         bimask: The binary mask to encode.
+        channel_last: Whether the mask is in channel last order (h,w,n). Requires (n,h,w) if False.
         device: The desired device of the bounding boxes.
         requires_grad: Whether the bounding boxes require gradients.
 
@@ -113,11 +114,11 @@ def encode(
         The encoded mask.
     """
     if len(bimask.shape) == 3:
+        if channel_last:
+            bimask = tv.wrap(bimask.permute(2, 0, 1), like=bimask, device=device, requires_grad=requires_grad)  # pyright: ignore[reportAssignmentType]
         return _mask.encode(bimask, device=device, requires_grad=requires_grad)
     elif len(bimask.shape) == 2:
-        # tv.wrap(bimask, like=bimask)
-        bimask_unsq = tv.wrap(bimask.unsqueeze(0), like=bimask, device=device, requires_grad=requires_grad)
-        # bimask = torch.unsqueeze(bimask, dim=-1)  # masks expected to be in format [h,w,n]
+        bimask_unsq = tv.wrap(bimask.unsqueeze(dim=0), like=bimask, device=device, requires_grad=requires_grad)
         # return _mask.encode(bimask)[0]  # original implementation
         return _mask.encode(bimask_unsq, device=device, requires_grad=requires_grad)  # pyright: ignore[reportArgumentType]
     else:
@@ -129,7 +130,7 @@ def decode(
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> tv.Mask:
+) -> Annotated[tv.Mask, "H W N"]:
     """Decode binary masks encoded via RLE.
 
     Note:

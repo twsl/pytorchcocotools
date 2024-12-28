@@ -48,4 +48,8 @@ def rleFrString(  # noqa: N802
     # if len(cnts) % 2 != 0:
     #     cnts.append(0)
 
-    return RLE(h, w, len(cnts), Tensor(cnts))
+    result = torch.tensor(cnts, device=device, requires_grad=requires_grad if requires_grad else False)
+
+    # uneven number of values means we cant reshape
+    # result = result.view(-1, 2)
+    return RLE(h, w, result)

@@ -130,11 +130,11 @@ class PyObjectsCases:
                 ],
             ],
             [
-                {
-                    "size": [427, 640],
-                    "counts": b"\\`_3;j<6B@nCc0Q<@kCc0S<;01N10001O001O00001O001O0000O1L4K6K4L4B]COh<O<O001O0O2Omk^4",
-                },
-                {"size": [427, 640], "counts": b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"},
+                RleObj(
+                    size=[427, 640],
+                    counts=b"\\`_3;j<6B@nCc0Q<@kCc0S<;01N10001O001O00001O001O0000O1L4K6K4L4B]COh<O<O001O0O2Omk^4",
+                ),
+                RleObj(size=[427, 640], counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4"),
             ],
         )
 

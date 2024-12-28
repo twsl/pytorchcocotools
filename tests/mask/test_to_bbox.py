@@ -39,7 +39,7 @@ def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa:
     rle_pt = tmask.encode(mask_pt)
     result_pt: Tensor = benchmark(tmask.toBbox, rle_pt)
     # compare the results
-    assert list(result_pt.numpy()) == result
+    assert result_pt.tolist()[0] == result
 
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
@@ -65,5 +65,5 @@ def test_toBbox(mask: Tensor, result: list[int]) -> None:  # noqa: N802
     result_np = nmask.toBbox(rle_np)
     result_pt = tmask.toBbox(rle_pt)
     # compare the results
-    assert np.all(result_np == result_pt.numpy())  # np.allclose(bbox1, bbox2.numpy())
+    assert np.all(result_np == result_pt.numpy()[0])  # np.allclose(bbox1, bbox2.numpy())
     assert list(result_np) == result

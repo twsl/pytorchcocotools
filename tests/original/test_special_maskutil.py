@@ -1,5 +1,5 @@
-import numpy as np
 import pytest
+import torch
 
 from pytorchcocotools.internal.entities import RleObj
 import pytorchcocotools.mask as mask_util
@@ -17,7 +17,7 @@ def test_invalid_rle_counts() -> None:
     assert str(error.value) == "upper bound and larger bound inconsistent with step sign"
 
 
-def test_zero_leading_rle():
+def test_zero_leading_rle() -> None:
     # A foreground segment of length 0 was not previously handled correctly.
     # This input rle has 3 leading zeros.
     rle = RleObj(
@@ -27,5 +27,6 @@ def test_zero_leading_rle():
     orig_bbox = mask_util.toBbox(rle)
     mask = mask_util.decode(rle)
     rle_new = mask_util.encode(mask)
+    assert rle.counts[2:] == rle_new[0].counts
     new_bbox = mask_util.toBbox(rle_new)
-    assert np.equal(orig_bbox, new_bbox).all()
+    assert torch.equal(orig_bbox, new_bbox)

@@ -22,8 +22,8 @@ def rleEncode(  # noqa: N802
     Returns:
         _description_
     """
-    h, w, n = mask.shape
-    mask_p = mask.permute(2, 1, 0)
+    n, h, w = mask.shape
+    mask_p = mask.permute(0, 2, 1)
     flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
     start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask.device)
     # torch.ones((1, n), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0] # TODO: ???
@@ -43,5 +43,5 @@ def rleEncode(  # noqa: N802
         # Results in the possibility of an uneven number of values
         diff = torch.diff(values, prepend=zero, dim=0)
         rle = diff
-        rles.append(RLE(h, w, len(rle), rle))
+        rles.append(RLE(h, w, rle))
     return RLEs(rles)

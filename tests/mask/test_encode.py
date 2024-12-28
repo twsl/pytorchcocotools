@@ -34,11 +34,8 @@ class EncodeCases(BaseCases):
             size=[h, w],
             counts=b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
         )
-
-        return (
-            torch.from_numpy(nmask.decode(data)),  # pyright: ignore[reportArgumentType]
-            data,
-        )
+        decoded = torch.from_numpy(nmask.decode(data))  # pyright: ignore[reportArgumentType]
+        return (decoded, data)
 
     def case_complex_1_pt(self) -> tuple[Tensor, RleObj]:
         h = 427
@@ -47,30 +44,22 @@ class EncodeCases(BaseCases):
             size=[h, w],
             counts=b"\\`_3;j<6M3E_OjCd0T<:O1O2O001O00001O00001O001O0000O1K6J5J6A^C0g<N=O001O0O2Omk^4",
         )
-        return (
-            tmask.decode(data),  # pyright: ignore[reportArgumentType]
-            data,
-        )
+        decoded = tmask.decode(data).squeeze(-1)
+        return (decoded, data)
 
     def case_complex_2_np(self) -> tuple[Tensor, RleObj]:
         h = 427
         w = 640
         data = RleObj(size=[h, w], counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4")
-
-        return (
-            torch.from_numpy(nmask.decode(data)),  # pyright: ignore[reportArgumentType]
-            data,
-        )
+        decoded = torch.from_numpy(nmask.decode(data))  # pyright: ignore[reportArgumentType]
+        return (decoded, data)
 
     def case_complex_2_pt(self) -> tuple[Tensor, RleObj]:
         h = 427
         w = 640
         data = RleObj(size=[h, w], counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4")
-
-        return (
-            tmask.decode(data),  # pyright: ignore[reportArgumentType]
-            data,
-        )
+        decoded = tmask.decode(data).squeeze(-1)
+        return (decoded, data)
 
 
 @pytest.mark.benchmark(group="encode", warmup=True)
@@ -81,7 +70,7 @@ def test_encode_pt(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N8
     # encode the mask
     result_pt: Tensor = benchmark(tmask.encode, mask_pt)
     # compare the results
-    assert result_pt == result
+    assert result_pt[0] == result
 
 
 @pytest.mark.benchmark(group="encode", warmup=True)
@@ -92,7 +81,7 @@ def test_encode_np(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N8
     # encode the mask
     result_np = benchmark(nmask.encode, mask_np)
     # compare the results
-    assert result_np == result
+    assert result_np == result.__dict__
 
 
 @parametrize_with_cases("mask, result", cases=EncodeCases)

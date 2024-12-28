@@ -10,6 +10,7 @@ from typing import cast
 
 import torch
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
@@ -160,14 +161,16 @@ class COCOeval:
             g = cast(RLEs, [g.segmentation for g in gt])
             d = cast(RLEs, [d.segmentation for d in dt])
         elif self.params.iouType == "bbox":
-            g = Tensor([g.bbox for g in gt])
-            d = Tensor([d.bbox for d in dt])
+            img = self.cocoGt.loadImgs(imgId)[0]
+            size = img.height, img.width
+            g = tv.BoundingBoxes(torch.tensor([g.bbox for g in gt], dtype=torch.float32), canvas_size=size)  # pyright: ignore[reportCallIssue]
+            d = tv.BoundingBoxes(torch.tensor([d.bbox for d in dt], dtype=torch.float32), canvas_size=size)  # pyright: ignore[reportCallIssue]
         else:
             raise ValueError("Unknown iouType for iou computation.")  # noqa: TRY002
 
         # compute iou between each dt and gt region
         iscrowd = [bool(o.iscrowd) for o in gt]
-        ious = mask.iou(d, g, iscrowd)  # pyright: ignore[reportArgumentType]
+        ious = mask.iou(d, g, iscrowd)
         return ious
 
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
@@ -411,8 +414,8 @@ class COCOeval:
                             for ri, pi in enumerate(inds):
                                 q[ri] = pr[pi]
                                 ss[ri] = dt_scores_sorted[pi]
-                        except:  # noqa: S110, E722
-                            pass
+                        except:  # noqa: S110, E722 # nosec B110
+                            pass  # TODO: fix this
                         precision[t, :, k, a, m] = torch.Tensor(q)
                         scores[t, :, k, a, m] = torch.Tensor(ss)
         self.eval = EvalResult(

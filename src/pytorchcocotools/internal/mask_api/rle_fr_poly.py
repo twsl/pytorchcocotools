@@ -21,15 +21,15 @@ def rleFrPoly(  # noqa: N802
     Returns:
         The RLE encoded mask.
     """
-    k = xy.num_coordinates
+    # k = xy.num_coordinates
     h = xy.canvas_size[0]
     w = xy.canvas_size[1]
     device = xy.device
     # upsample and get discrete points densely along entire boundary
     scale = 5.0
-    x = ((scale * xy[0::2]) + 0.5).int()
+    x = ((scale * xy[:, 0]) + 0.5).int()
     x = torch.cat((x, x[0:1]))
-    y = ((scale * xy[1::2]) + 0.5).int()
+    y = ((scale * xy[:, 1]) + 0.5).int()
     y = torch.cat((y, y[0:1]))
 
     max_diff = torch.maximum(torch.abs(torch.diff(x)), torch.abs(torch.diff(y))) + 1
@@ -114,5 +114,5 @@ def rleFrPoly(  # noqa: N802
     b = b[:m]
 
     # Initialize RLE with the counts
-    r = RLE(h=h, w=w, m=len(b), cnts=b)
+    r = RLE(h=h, w=w, cnts=b)
     return r

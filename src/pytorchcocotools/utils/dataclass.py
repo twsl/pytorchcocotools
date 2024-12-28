@@ -5,7 +5,7 @@ _T = TypeVar("_T")
 
 
 def dataclass_dict(cls=None) -> type[_T]:  # pyright: ignore[reportInvalidTypeVarUse]
-    cls = dataclass(cls)
+    cls = dataclass(cls, order=True)  # pyright: ignore[reportCallIssue]
     cls.__len__ = lambda self: len(self.__dict__)  # pyright: ignore[reportFunctionMemberAccess]
     cls.__iter__ = lambda self: iter(self.__dict__)  # pyright: ignore[reportFunctionMemberAccess]
     cls.__getitem__ = lambda self, key: self.__dict__[key]  # pyright: ignore[reportFunctionMemberAccess]

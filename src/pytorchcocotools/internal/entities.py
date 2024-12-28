@@ -25,15 +25,12 @@ class RLE:
         self.h = h
         self.w = w
         self.canvas_size = (h, w)
-        self.cnts = cnts
+        self.cnts = cnts  # rle tensor [N, 2] consecutive (start, length) pairs
 
 
 RLEs: TypeAlias = list[RLE]
 
-IoUObject: TypeAlias = RLEs | list[float] | Tensor | tv.BoundingBoxes
-
-# hxwxn binary mask, in column-major order
-# tv.Mask
+IoUObject: TypeAlias = RLEs | list[float] | tv.BoundingBoxes
 
 
 @dataclass_dict
@@ -51,3 +48,5 @@ PyObj: TypeAlias = (
 TorchDevice: TypeAlias = torch.device | str | int
 
 Bool: TypeAlias = bool | Literal[0, 1]
+
+Bools: TypeAlias = list[Bool] | list[bool]

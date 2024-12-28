@@ -1,10 +1,11 @@
-from jaxtyping import Num
+from typing import Annotated
+
 from torch import Tensor
 
 
 def reorder_mask_tensor_orig(
-    x: Num[Tensor, "N H W"] | Num[Tensor, "B N H W"],
-) -> Num[Tensor, "H W N"] | Num[Tensor, "B H W N"]:
+    x: Annotated[Tensor, "N H W"] | Annotated[Tensor, "B N H W"],
+) -> Annotated[Tensor, "H W N"] | Annotated[Tensor, "B H W N"]:
     """Reorders a PyTorch mask tensor so that the format matches og implementation.
 
     - (N, H, W) becomes (H, W, N)
