@@ -13,7 +13,7 @@ def _encode(x: tv.Mask) -> RleObj | RleObjs:
 def test_tobbox_full_image():
     mask = tv.Mask(torch.tensor([[0, 1], [1, 1]]))
     bbox = mask_util.toBbox(_encode(mask))
-    assert torch.equal(bbox, torch.tensor([0, 0, 2, 2], dtype=torch.float32))
+    assert torch.allclose(bbox, torch.tensor([0, 0, 2, 2], dtype=torch.int32))
 
 
 # bugfix by piotr in ff4a47150bf66
@@ -21,4 +21,4 @@ def test_tobbox_non_full_image():
     mask = tv.Mask(torch.zeros((10, 10), dtype=torch.uint8))
     mask[2:4, 3:6] = 1
     bbox = mask_util.toBbox(_encode(mask))
-    assert torch.equal(bbox, torch.tensor([3, 2, 3, 2], dtype=torch.float32))
+    assert torch.allclose(bbox, torch.tensor([3, 2, 3, 2], dtype=torch.int32))
