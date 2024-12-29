@@ -42,18 +42,18 @@ def test_invalid_rle_counts_pt(rle) -> None:
 
 @pytest.mark.parametrize("rle", [get_zero_leading_rle()])
 def test_zero_leading_rle_np(rle) -> None:
-    orig_bbox = mask_util_np.toBbox(rle)
+    orig_bbox = mask_util_np.toBbox(rle)  # [  0.,   0., 331., 776.]
     mask = mask_util_np.decode(rle)
     rle_new = mask_util_np.encode(mask)
-    new_bbox = mask_util_np.toBbox(rle_new)
+    new_bbox = mask_util_np.toBbox(rle_new)  # [  0.,   0., 331., 776.]
     assert np.equal(orig_bbox, new_bbox).all()
 
 
 @pytest.mark.parametrize("rle", [get_zero_leading_rle()])
 def test_zero_leading_rle_pt(rle) -> None:
-    orig_bbox = mask_util_pt.toBbox(rle)
+    orig_bbox = mask_util_pt.toBbox(rle)  # [  0.,   0., 331., 776.]
     mask = mask_util_pt.decode(rle)
     rle_new = mask_util_pt.encode(mask)
     assert rle.counts[2:] == rle_new[0].counts
-    new_bbox = mask_util_pt.toBbox(rle_new)
+    new_bbox = mask_util_pt.toBbox(rle_new)  # [  0.,   0., 331., 776.]
     assert torch.equal(orig_bbox, new_bbox)
