@@ -5,6 +5,7 @@ from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
 from torch import Tensor
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
@@ -27,10 +28,10 @@ def test_annToMask_pt(benchmark, coco_pt: COCOpt, img_ids: int, result) -> None:
     # test with an annotation dict object
     ann_pt = coco_pt.loadAnns(img_ids)
     # get the mask for the annotation
-    mask_pt = cast(Tensor, benchmark(coco_pt.annToMask, ann_pt[0]))
+    mask_pt = cast(tv.Mask, benchmark(coco_pt.annToMask, ann_pt[0]))
     # compare the results
     # np.nonzero(mask_np)
-    assert np.array_equal(result, mask_pt.numpy())
+    assert np.array_equal(result, mask_pt.squeeze(-1).numpy())
 
 
 @pytest.mark.benchmark(group="annToMask", warmup=True)
@@ -54,5 +55,5 @@ def test_annToMask(coco_np: COCOnp, coco_pt: COCOpt, img_ids: int, result) -> No
     mask_pt = coco_pt.annToMask(ann_pt[0])
     # compare the results
     # np.nonzero(mask_np)
-    assert np.array_equal(mask_np, mask_pt.numpy())
+    assert np.array_equal(mask_np, mask_pt.squeeze(-1).numpy())
     assert np.array_equal(mask_np, result)

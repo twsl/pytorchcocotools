@@ -104,8 +104,10 @@ def test_loadAnns(coco_np: COCOnp, coco_pt: COCOpt, ann_ids: int, result: list[d
     ann_pt = coco_pt.loadAnns(ann_ids)
     # compare the results
     for annnp, annpt in zip(ann_np, ann_pt, strict=False):
-        del annpt.score
-        del annpt.ignore
+        if "score" in annpt:
+            del annpt.score
+        if "ignore" in annpt:
+            del annpt.ignore
         assert annnp == annpt.__dict__
     for annnp, ann in zip(ann_np, result, strict=False):
         assert annnp == ann
