@@ -73,13 +73,9 @@ class IoUCases:
 
 
 @pytest.mark.benchmark(group="iou", warmup=True)
-@parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
+@parametrize_with_cases("obj1, obj2, iscrowd, result", cases=IoUCases)
 def test_iou_pt(
-    benchmark,
-    obj1: tv.Mask | tv.BoundingBoxes,
-    obj2: tv.Mask | tv.BoundingBoxes,
-    iscrowd: list[bool],
-    result: float,
+    benchmark, obj1: tv.Mask | tv.BoundingBoxes, obj2: tv.Mask | tv.BoundingBoxes, iscrowd: list[bool], result: float
 ) -> None:
     # encode
     if isinstance(obj1, tv.Mask) and isinstance(obj2, tv.Mask):
@@ -95,14 +91,9 @@ def test_iou_pt(
 
 
 @pytest.mark.benchmark(group="iou", warmup=True)
-@parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
+@parametrize_with_cases("obj1, obj2, iscrowd, result", cases=IoUCases)
 def test_iou_np(
-    benchmark,
-    obj1: tv.Mask | tv.BoundingBoxes,
-    obj2: tv.Mask | tv.BoundingBoxes,
-    iscrowd: list[bool],
-    encode: bool,
-    result: float,
+    benchmark, obj1: tv.Mask | tv.BoundingBoxes, obj2: tv.Mask | tv.BoundingBoxes, iscrowd: list[bool], result: float
 ) -> None:
     obj1n = np.asfortranarray(obj1.numpy())
     obj2n = np.asfortranarray(obj2.numpy())
@@ -121,9 +112,9 @@ def test_iou_np(
     assert result_np == result
 
 
-@parametrize_with_cases("obj1, obj2, iscrowd, encode, result", cases=IoUCases)
+@parametrize_with_cases("obj1, obj2, iscrowd, result", cases=IoUCases)
 def test_iou(
-    obj1: tv.Mask | tv.BoundingBoxes, obj2: tv.Mask | tv.BoundingBoxes, iscrowd: list[bool], encode: bool, result: float
+    obj1: tv.Mask | tv.BoundingBoxes, obj2: tv.Mask | tv.BoundingBoxes, iscrowd: list[bool], result: float
 ) -> None:
     # create two masks
     mask_pt1 = obj1
