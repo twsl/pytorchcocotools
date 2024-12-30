@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 import lightning as L  # noqa: N812
 import torch
@@ -8,7 +9,7 @@ from torchvision.transforms.v2 import Transform
 
 from pytorchcocotools.torch.dataset import CocoDetection
 from pytorchcocotools.torch.transform import default_transform
-from pytorchcocotools.utils.download import CocoDownloader
+from pytorchcocotools.utils.coco.download import CocoDownloader
 from pytorchcocotools.utils.logging import get_logger
 from pytorchcocotools.utils.stage import StageStore
 
