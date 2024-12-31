@@ -5,6 +5,7 @@ import copy
 import dataclasses
 import itertools
 import json
+import logging
 from pathlib import Path
 import time
 from typing import cast
@@ -35,25 +36,26 @@ from pytorchcocotools.utils.logging import get_logger
 
 
 class COCO:
-    def __init__(self, annotation_file: str | None = None) -> None:
+    def __init__(self, annotation_file: str | None = None, *, enable_logging: bool = True) -> None:
         """Constructor of Microsoft COCO helper class for reading and visualizing annotations.
 
         Args:
             annotation_file: The location of annotation file. Defaults to None.
+            enable_logging: Whether to enable logging. Defaults to True.
         """
         self.anns: dict[int, CocoAnnotationDetection] = {}
         self.cats: dict[int, CocoCategoriesDetection] = {}
         self.imgs: dict[int, CocoImage] = {}
         self.imgToAnns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         self.catToImgs: defaultdict[int, list[int]] = defaultdict(list[int])
-        self.logger = get_logger(self.__class__.__name__)
+        self.logger = get_logger(self.__class__.__name__) if enable_logging else logging.getLogger(__name__)
         if annotation_file is not None:
             self.logger.info("loading annotations into memory...")
             tic = time.time()
             path = Path(annotation_file)
             with path.open("r") as file:
                 dataset: CocoDetectionDataset = CocoDetectionDataset.from_dict(json.load(file))
-            assert isinstance(dataset, CocoDetectionDataset), f"Annotation file format {type(dataset)} not supported."  # noqa: S101
+            assert isinstance(dataset, CocoDetectionDataset), f"Annotation file format {type(dataset)} not supported."  # noqa: S101 # nosec
             self.logger.info(f"Done (t={time.time() - tic:0.2f}s)")
             self.dataset = dataset
             self.createIndex()
@@ -315,9 +317,9 @@ class COCO:
             _description_
         """
         self.logger.info("Converting ndarray to lists...")
-        assert isinstance(data, torch.Tensor)  # noqa: S101
+        assert isinstance(data, torch.Tensor)  # noqa: S101 # nosec
         self.logger.debug(data.shape)
-        assert data.shape[1] == 7  # noqa: S101
+        assert data.shape[1] == 7  # noqa: S101 # nosec
         n = data.shape[0]
         ann = []
         for i in range(n):
@@ -358,10 +360,10 @@ class COCO:
         else:
             anns = resFile
 
-        assert isinstance(anns, list), "results in not an array of objects"  # noqa: S101
+        assert isinstance(anns, list), "results in not an array of objects"  # noqa: S101 # nosec
 
         anns_img_ids = [ann.image_id for ann in anns]
-        assert set(anns_img_ids) == (  # noqa: S101
+        assert set(anns_img_ids) == (  # noqa: S101 # nosec
             set(anns_img_ids) & set(self.getImgIds())
         ), "Results do not correspond to current coco set"
 
@@ -427,7 +429,7 @@ class COCO:
             tic = time.time()
             fname = target_dir / img.file_name
             if not Path.exists(fname):
-                urlretrieve(img.coco_url, fname)  # noqa: S310
+                urlretrieve(img.coco_url, fname)  # noqa: S310 # nosec
             self.logger.info(f"downloaded {i}/{num_imgs} images (t={time.time() - tic:0.1f}s)")
 
     def annToRLE(self, ann: CocoAnnotationDetection) -> RleObjs | RleObj:  # noqa: N802

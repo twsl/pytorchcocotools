@@ -4,6 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable
 import copy
 import datetime
+import logging
 from logging import Logger
 import time
 from typing import cast
@@ -33,6 +34,8 @@ class COCOeval:
         cocoGt: COCO | None = None,  # noqa: N803
         cocoDt: COCO | None = None,  # noqa: N803
         iouType: IoUType = "segm",  # noqa: N803
+        *,
+        enable_logging: bool = True,
     ) -> None:
         """Initialize CocoEval using coco APIs for gt and dt.
 
@@ -40,8 +43,9 @@ class COCOeval:
             cocoGt: COCO object with ground truth annotations. Defaults to None.
             cocoDt: COCO object with detection results. Defaults to None.
             iouType: _description_. Defaults to "segm".
+            enable_logging: Whether to enable logging. Defaults to True.
         """
-        self.logger = get_logger(__name__)
+        self.logger = get_logger(__name__) if enable_logging else logging.getLogger(__name__)
         if not iouType:
             self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt or COCO()  # ground truth COCO API
@@ -84,7 +88,8 @@ class COCOeval:
         for gt in gts:
             gt.ignore = gt.iscrowd
             if p.iouType == "keypoints":
-                gt.ignore = (gt["num_keypoints"] == 0) or gt.ignore
+                # using dictionary access allows mixed datasets (instances and pose)
+                gt.ignore = (gt.get("num_keypoints", 0) == 0) or gt.ignore
         self._gts = defaultdict(list[CocoAnnotationDetection])  # gt for evaluation
         self._dts = defaultdict(list[CocoAnnotationDetection])  # dt for evaluation
         for gt in gts:
