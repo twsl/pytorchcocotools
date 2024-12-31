@@ -8,7 +8,6 @@ from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
 from pytorchcocotools.utils.poly import Polygon
 
 
-# TODO: fix input tensor form
 def rleFrBbox(  # noqa: N802
     bb: tv.BoundingBoxes,
     *,
