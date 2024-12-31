@@ -1,10 +1,9 @@
-from __future__ import annotations
-
 from dataclasses import field
+from typing import Self
 
-from pytorchcocotools.internal.structure.annotations import CocoRLE
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.internal.structure.categories import CocoCategoriesObjectDetection
+from pytorchcocotools.internal.structure.rle import CocoRLE
 from pytorchcocotools.utils.dataclass import dataclass_dict
 
 
@@ -16,7 +15,7 @@ class ResultAnnotation(BaseCocoEntity):
     category_id: int = -1
 
     @classmethod
-    def from_dict(cls, data: dict) -> ResultAnnotation:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             image_id=data.get("image_id"),
             bbox=data.get("bbox", []),
@@ -35,7 +34,7 @@ class CocoSegmentInfo(BaseCocoEntity):
     iscrowd: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoSegmentInfo:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             id=data.get("id"),
             category_id=data.get("category_id"),
@@ -53,7 +52,7 @@ class CocoAnnotationPanopticSegmentation(BaseCocoEntity):
     segments_info: list[CocoSegmentInfo] = field(default_factory=list[CocoSegmentInfo])
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoAnnotationPanopticSegmentation:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             image_id=data.get("image_id"),
             file_name=data.get("file_name"),
@@ -69,7 +68,7 @@ class CocoAnnotationImageCaptioning(BaseCocoEntity):
     caption: str = ""
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoAnnotationImageCaptioning:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
@@ -94,7 +93,7 @@ class CocoAnnotationDensePose(BaseCocoEntity):
     dp_masks: list[CocoRLE] = field(default_factory=list[CocoRLE])
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoAnnotationDensePose:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
@@ -118,7 +117,7 @@ class CocoCategoriesPanopticSegmentation(CocoCategoriesObjectDetection):
     color: list[int] = field(default_factory=list[int])  # [R,G,B]
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoCategoriesPanopticSegmentation:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             id=data.get("id"),
             name=data.get("name"),

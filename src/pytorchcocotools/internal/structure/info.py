@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from datetime import datetime
+from typing import Self
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -16,7 +15,7 @@ class CocoInfo(BaseCocoEntity):
     date_created: str = ""
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoInfo:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             year=data.get("year"),
             version=data.get("version"),

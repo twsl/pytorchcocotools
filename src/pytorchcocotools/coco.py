@@ -264,7 +264,9 @@ class COCO:
                         # mask
                         t = self.imgs[ann.image_id]
                         if isinstance(ann.segmentation["counts"], list):
-                            rle = mask.frPyObjects([ann.segmentation], t.height, t.width)
+                            rle = mask.frPyObjects(
+                                [cast(RleObj, ann.segmentation)], t.height, t.width
+                            )  # TODO: uncompressed, type hint not perfect
                         else:
                             rle = cast(RleObjs, [ann.segmentation])
                         m = mask.decode(rle)
@@ -452,10 +454,10 @@ class COCO:
             return merged
         elif isinstance(segm, dict) and isinstance(segm["counts"], list):
             # uncompressed RLE
-            objs = mask.frPyObjects(segm, h, w)
+            objs = mask.frPyObjects(cast(RleObj, segm), h, w)
             return objs
         else:
-            return segm
+            return segm  # type: ignore  # noqa: PGH003 # TODO: fix this, shouldn't happen???
 
     def annToMask(self, ann: dict) -> tv.Mask:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.

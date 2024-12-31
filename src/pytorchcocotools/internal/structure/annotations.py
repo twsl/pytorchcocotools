@@ -1,24 +1,10 @@
-from __future__ import annotations
-
 from dataclasses import field
-from typing import TypeAlias
+from typing import Self, TypeAlias
 
+from pytorchcocotools.internal.entities import Poly
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
+from pytorchcocotools.internal.structure.rle import CocoRLE, Segmentation
 from pytorchcocotools.utils.dataclass import dataclass_dict
-
-
-@dataclass_dict
-class CocoRLE(BaseCocoEntity):
-    counts: list[float] = field(default_factory=list[float])
-    size: tuple[int, int] = field(default_factory=tuple[int, int])
-
-    @classmethod
-    def from_dict(cls, data: dict) -> CocoRLE:
-        instance = cls(counts=data.get("counts", []), size=data.get("size", (-1, -1)))
-        return instance
-
-
-Segment: TypeAlias = list[float] | CocoRLE
 
 
 @dataclass_dict
@@ -26,7 +12,7 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
     id: int = -1
     image_id: int = -1
     category_id: int = -1
-    segmentation: list[Segment] = field(default_factory=list[Segment])
+    segmentation: Segmentation = field(default_factory=list[Poly])
     area: float = 0.0
     bbox: list[float] = field(default_factory=list[float])  # [x,y,width,height]
     iscrowd: bool = False
@@ -34,9 +20,10 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
     ignore: bool | None = None  # Only used in results
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoAnnotationObjectDetection:
+    def from_dict(cls, data: dict) -> Self:
+        iscrowd = bool(data.get("iscrowd"))
         segmentations = [
-            CocoRLE.from_dict(seg) if isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
+            CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
         ]
         instance = cls(
             id=data.get("id"),
@@ -45,7 +32,7 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
             segmentation=segmentations,
             area=data.get("area"),
             bbox=data.get("bbox", []),
-            iscrowd=bool(data.get("iscrowd")),
+            iscrowd=iscrowd,
             score=data.get("score"),
         )
         return instance
@@ -57,7 +44,7 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
     num_keypoints: int = 0
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoAnnotationKeypointDetection:
+    def from_dict(cls, data: dict) -> Self:
         segmentations = [
             CocoRLE.from_dict(seg) if isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
         ]

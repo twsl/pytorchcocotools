@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from dataclasses import field
+from typing import Self
 
 from pytorchcocotools.internal.structure.additional import (
     CocoAnnotationImageCaptioning,
@@ -46,7 +45,7 @@ class CocoDetectionDataset(BaseCocoEntity):
         return CocoCategoriesObjectDetection.from_dict(category)
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoDetectionDataset:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             info=CocoInfo.from_dict(data.get("info", {})),
             licenses=[CocoLicense.from_dict(license) for license in data.get("licenses", [])],

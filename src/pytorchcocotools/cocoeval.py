@@ -21,7 +21,7 @@ from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
-    Segment,
+    Segmentation,
 )
 from pytorchcocotools.utils.logging import get_logger
 
@@ -69,7 +69,8 @@ class COCOeval:
             # modify ann['segmentation'] by reference
             for ann in anns:
                 rle = coco.annToRLE(ann)
-                ann.segmentation = cast(list[Segment], rle)  # TODO: fix and validate
+                # TODO: fix and validate
+                ann.segmentation = cast(list[Segmentation], rle)  # type: ignore  # noqa: PGH003
             return anns
 
         p = self.params

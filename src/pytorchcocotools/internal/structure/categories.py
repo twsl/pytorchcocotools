@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from dataclasses import field
-from typing import TypeAlias
+from typing import Self, TypeAlias
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -14,7 +12,7 @@ class CocoCategoriesObjectDetection(BaseCocoEntity):
     supercategory: str = ""
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoCategoriesObjectDetection:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(id=data.get("id"), name=data.get("name"), supercategory=data.get("supercategory"))
         return instance
 
@@ -25,7 +23,7 @@ class CocoCategoriesKeypointDetection(CocoCategoriesObjectDetection):
     skeleton: list[list[int]] = field(default_factory=list[list[int]])
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoCategoriesKeypointDetection:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             id=data.get("id"),
             name=data.get("name"),

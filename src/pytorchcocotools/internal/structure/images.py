@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 from datetime import datetime
+from typing import Self
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -18,7 +17,7 @@ class CocoImage(BaseCocoEntity):
     coco_url: str = ""
 
     @classmethod
-    def from_dict(cls, data: dict) -> CocoImage:
+    def from_dict(cls, data: dict) -> Self:
         instance = cls(
             id=data.get("id"),
             width=data.get("width", 0),
