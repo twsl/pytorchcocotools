@@ -1,5 +1,6 @@
+from typing import Any
+
 import numpy as np
-from pycocotools import _EncodedRLE
 import pycocotools.mask as mask_util_np
 import pytest
 import torch
@@ -20,7 +21,7 @@ def get_non_full_img() -> Tensor:
     return mask
 
 
-def _encode_np(x: np.ndarray) -> _EncodedRLE:
+def _encode_np(x: np.ndarray) -> Any:
     return mask_util_np.encode(np.asfortranarray(x, np.uint8))
 
 
