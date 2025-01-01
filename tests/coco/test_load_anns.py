@@ -90,7 +90,7 @@ def test_loadAnns_pt(benchmark, coco_pt: COCOpt, ann_ids: int, result: list[dict
 @parametrize_with_cases("ann_ids, result", cases=GetCatIdsCases)
 def test_loadAnns_np(benchmark, coco_np: COCOnp, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
     # get the annotation ids for the id
-    ann_np = benchmark(coco_np.loadAnns, ann_ids)
+    ann_np = cast(list[dict], benchmark(coco_np.loadAnns, ann_ids))
     # compare the results
     # assert ann_np == result
     for annnp, ann in zip(ann_np, result, strict=False):

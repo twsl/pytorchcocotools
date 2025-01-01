@@ -40,7 +40,7 @@ def test_annToMask_np(benchmark, coco_np: COCOnp, img_ids: int, result) -> None:
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(img_ids)
     # get the mask for the annotation
-    mask_np = benchmark(coco_np.annToMask, ann_np[0])
+    mask_np = cast(np.ndarray, benchmark(coco_np.annToMask, ann_np[0]))
     # compare the results
     assert np.array_equal(mask_np, result)
 

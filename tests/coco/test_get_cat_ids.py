@@ -1,3 +1,5 @@
+from typing import cast
+
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -16,7 +18,7 @@ def test_getCatIds_pt(  # noqa: N802
     benchmark, coco_pt: COCOpt, cat_nms: str | list[str], sup_nms: str | list[str], cat_ids: int | list[int], result
 ) -> None:
     # get the category ids for the image with id
-    cat_ids_pt = benchmark(coco_pt.getCatIds, cat_nms, sup_nms, cat_ids)
+    cat_ids_pt = cast(list[int], benchmark(coco_pt.getCatIds, cat_nms, sup_nms, cat_ids))
     # compare the results
     assert cat_ids_pt == result
 
@@ -27,7 +29,7 @@ def test_getCatIds_np(  # noqa: N802
     benchmark, coco_np: COCOnp, cat_nms: str | list[str], sup_nms: str | list[str], cat_ids: int | list[int], result
 ) -> None:
     # get the category ids for the image with id
-    cat_ids_np = benchmark(coco_np.getCatIds, cat_nms, sup_nms, cat_ids)
+    cat_ids_np = cast(list[int], benchmark(coco_np.getCatIds, cat_nms, sup_nms, cat_ids))
     # compare the results
     assert cat_ids_np == result
 

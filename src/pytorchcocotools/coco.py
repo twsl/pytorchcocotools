@@ -454,6 +454,7 @@ class COCO:
                 urlretrieve(img.coco_url, fname)  # noqa: S310 # nosec
             self.logger.info(f"downloaded {i}/{num_imgs} images (t={time.time() - tic:0.1f}s)")
 
+    # TODO: fix to single return type
     def annToRLE(self, ann: CocoAnnotationDetection) -> RleObjs | RleObj:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE to RLE.
 

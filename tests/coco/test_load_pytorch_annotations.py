@@ -39,7 +39,7 @@ def test_loadPyTorchAnnotations_pt(benchmark, coco_pt: COCOpt, data: torch.Tenso
 @parametrize_with_cases("data, result", cases=LoadPyTorchAnnotationsCases)
 def test_loadPyTorchAnnotations_np(benchmark, coco_np: COCOnp, data: torch.Tensor, result: list[dict]) -> None:  # noqa: N802
     # get the category ids for the image with id
-    anns_np = benchmark(coco_np.loadNumpyAnnotations, data.numpy())
+    anns_np = cast(list[dict], benchmark(coco_np.loadNumpyAnnotations, data.numpy()))
     # compare the results
     assert anns_np == result
 

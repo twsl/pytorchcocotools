@@ -5,7 +5,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
-from pytorchcocotools.internal.entities import RleObj
+from pytorchcocotools.internal.entities import RleObj, RleObjs
 
 
 class AnnToRLECases:
@@ -23,7 +23,7 @@ def test_annToRLE_pt(benchmark, coco_pt: COCOpt, ann_id: int, result: RleObj) ->
     # test with an annotation dict object
     ann_pt = coco_pt.loadAnns(ann_id)
     # get the mask for the annotation
-    rle_pt = benchmark(coco_pt.annToRLE, ann_pt[0])
+    rle_pt = cast(RleObj, benchmark(coco_pt.annToRLE, ann_pt[0]))
     # compare the results
     assert rle_pt["counts"] == result["counts"]
     assert rle_pt["size"] == result["size"]
@@ -35,7 +35,7 @@ def test_annToRLE_np(benchmark, coco_np: COCOnp, ann_id: int, result: RleObj) ->
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(ann_id)
     # get the mask for the annotation
-    rle_np = benchmark(coco_np.annToRLE, ann_np[0])
+    rle_np = cast(dict, benchmark(coco_np.annToRLE, ann_np[0]))
     # compare the results
     assert rle_np["counts"] == result["counts"]
     assert rle_np["size"] == result["size"]

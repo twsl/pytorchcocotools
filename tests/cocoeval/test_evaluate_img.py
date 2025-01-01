@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
@@ -115,8 +115,8 @@ def test_evaluateImg_np(  # noqa: N802
     result: EvalImgResult,
 ) -> None:
     coco_eval_np.evaluate()
-    result_np = coco_eval_np.evaluateImg(img_id, cat_id, list(range), max_det)
-    # result_np = cast(dict, benchmark(coco_eval_np.evaluateImg, img_id, cat_id, list(range), max_det))
+    # result_np = coco_eval_np.evaluateImg(img_id, cat_id, list(range), max_det)
+    result_np = cast(dict, benchmark(coco_eval_np.evaluateImg, img_id, cat_id, list(range), max_det))
     assert np.allclose(result_np["dtScores"], result.dtScores.tolist())
     # assert result_np == result.__dict__
 
@@ -133,8 +133,8 @@ def test_evaluateImg_pt(  # noqa: N802
     result: EvalImgResult,
 ) -> None:
     coco_eval_pt.evaluate()
-    result_pt: EvalImgResult = coco_eval_pt.evaluateImg(img_id, cat_id, range, max_det)
-    # result_pt = cast(EvalImgResult, benchmark(coco_eval_pt.evaluateImg, img_id, cat_id, list(range), max_det))
+    # result_pt: EvalImgResult = coco_eval_pt.evaluateImg(img_id, cat_id, range, max_det)
+    result_pt = cast(EvalImgResult, benchmark(coco_eval_pt.evaluateImg, img_id, cat_id, list(range), max_det))
     assert torch.allclose(result_pt.dtScores, result.dtScores)
 
 

@@ -1,3 +1,5 @@
+from typing import cast
+
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -20,7 +22,7 @@ def test_getAnnIds_pt(  # noqa: N802
     area_rng: float | list[float],
     result: list[int],
 ) -> None:
-    ann_ids_pt = benchmark(coco_pt.getAnnIds, img_id, cat_ids, area_rng)
+    ann_ids_pt = cast(list[int], benchmark(coco_pt.getAnnIds, img_id, cat_ids, area_rng))
     # compare the results
     assert ann_ids_pt == result
 
@@ -35,7 +37,7 @@ def test_getAnnIds_np(  # noqa: N802
     area_rng: float | list[float],
     result: list[int],
 ) -> None:
-    ann_ids_np = benchmark(coco_np.getAnnIds, img_id, cat_ids, area_rng)
+    ann_ids_np = cast(list[int], benchmark(coco_np.getAnnIds, img_id, cat_ids, area_rng))
     # compare the results
     assert ann_ids_np == result
 

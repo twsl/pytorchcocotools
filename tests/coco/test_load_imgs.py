@@ -42,7 +42,7 @@ def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], resul
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
 def test_loadImgs_np(benchmark, coco_np: COCOnp, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
     # get the image with id
-    imgs_np = benchmark(coco_np.loadImgs, img_ids)
+    imgs_np = cast(list[dict], benchmark(coco_np.loadImgs, img_ids))
     # compare the results
     assert imgs_np == result
 
