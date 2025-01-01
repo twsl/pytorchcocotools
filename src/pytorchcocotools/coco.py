@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 import time
-from typing import cast
+from typing import Annotated, cast
 
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
@@ -18,7 +18,7 @@ from torch import Tensor
 from torchvision import tv_tensors as tv
 
 from pytorchcocotools import mask
-from pytorchcocotools.internal.entities import RleObj, RleObjs
+from pytorchcocotools.internal.entities import RleObj, RleObjs, TorchDevice
 from pytorchcocotools.internal.structure import CocoDetectionDataset
 from pytorchcocotools.internal.structure.additional import ResultAnnotation
 from pytorchcocotools.internal.structure.annotations import (
@@ -36,12 +36,21 @@ from pytorchcocotools.utils.logging import get_logger
 
 
 class COCO:
-    def __init__(self, annotation_file: str | None = None, *, enable_logging: bool = True) -> None:
+    def __init__(
+        self,
+        annotation_file: str | None = None,
+        *,
+        enable_logging: bool = True,
+        device: TorchDevice | None = None,
+        requires_grad: bool | None = None,
+    ) -> None:
         """Constructor of Microsoft COCO helper class for reading and visualizing annotations.
 
         Args:
             annotation_file: The location of annotation file. Defaults to None.
             enable_logging: Whether to enable logging. Defaults to True.
+            device: The desired device of the bounding boxes.
+            requires_grad: Whether the bounding boxes require gradients.
         """
         self.anns: dict[int, CocoAnnotationDetection] = {}
         self.cats: dict[int, CocoCategoriesDetection] = {}
@@ -49,6 +58,8 @@ class COCO:
         self.imgToAnns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         self.catToImgs: defaultdict[int, list[int]] = defaultdict(list[int])
         self.logger = get_logger(self.__class__.__name__) if enable_logging else logging.getLogger(__name__)
+        self.device = device
+        self.requires_grad = requires_grad if requires_grad is not None else False
         if annotation_file is not None:
             self.logger.info("loading annotations into memory...")
             tic = time.time()
@@ -257,8 +268,10 @@ class COCO:
                     if isinstance(ann.segmentation, list):
                         # polygon
                         for seg in ann.segmentation:
-                            poly = torch.Tensor(seg).reshape((int(len(seg) / 2), 2))
-                            polygons.append(Polygon(poly))
+                            poly = torch.tensor(seg, device=self.device, requires_grad=self.requires_grad).reshape(
+                                (int(len(seg) / 2), 2)
+                            )
+                            polygons.append(Polygon(poly.numpy()))
                             color.append(c)
                     else:
                         # mask
@@ -270,8 +283,15 @@ class COCO:
                         else:
                             rle = cast(RleObjs, [ann.segmentation])
                         m = mask.decode(rle)
-                        img = torch.ones((m.shape[0], m.shape[1], 3))
-                        color_mask = torch.tensor([2.0, 166.0, 101.0]) / 255 if ann.iscrowd else torch.rand((1, 3))[0]
+                        img = torch.ones(
+                            (m.shape[0], m.shape[1], 3), device=self.device, requires_grad=self.requires_grad
+                        )
+                        color_mask = (
+                            torch.tensor([2.0, 166.0, 101.0], device=self.device, requires_grad=self.requires_grad)
+                            / 255
+                            if ann.iscrowd
+                            else torch.rand((1, 3))[0]
+                        )
                         for i in range(3):
                             img[:, :, i] = float(color_mask[i])
                         ax.imshow(torch.dstack((img, m * 0.5)))
@@ -300,8 +320,8 @@ class COCO:
                         [bbox_x + bbox_w, bbox_y + bbox_h],
                         [bbox_x + bbox_w, bbox_y],
                     ]
-                    np_poly = torch.Tensor(poly).reshape((4, 2))
-                    polygons.append(Polygon(np_poly))
+                    np_poly = torch.tensor(poly, device=self.device, requires_grad=self.requires_grad).reshape((4, 2))
+                    polygons.append(Polygon(np_poly.numpy()))
                     color.append(c)
 
             p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
@@ -459,7 +479,7 @@ class COCO:
         else:
             return segm  # type: ignore  # noqa: PGH003 # TODO: fix this, shouldn't happen???
 
-    def annToMask(self, ann: dict) -> tv.Mask:  # noqa: N802
+    def annToMask(self, ann: dict) -> Annotated[tv.Mask, "H W N"]:  # noqa: N802
         """Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
 
         Args:
