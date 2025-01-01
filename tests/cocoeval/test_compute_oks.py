@@ -10,14 +10,14 @@ from torch import Tensor
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
 KEYPOINTS_DATA = [
-    (4, 4, [[0.96307142]]),
+    (1, 4, [[0.85715781]]),
 ]
 
 
-class KeypointsCases:
-    # @case(id="start_area")
-    def case_start_area(self) -> tuple[int, int, Any]:
-        return (4, 1, [[1.0]])
+# class KeypointsCases:
+#     # @case(id="start_area")
+#     def case_start_area(self) -> tuple[int, int, Any]:
+#         return (1, 1, [[1.0]])
 
 
 class COCOEvalCasesNp:

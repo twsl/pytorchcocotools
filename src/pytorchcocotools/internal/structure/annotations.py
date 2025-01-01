@@ -22,9 +22,8 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
     @classmethod
     def from_dict(cls, data: dict) -> Self:
         iscrowd = bool(data.get("iscrowd"))
-        segmentations = [
-            CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
-        ]
+        seg = data.get("segmentation", [])
+        segmentations = CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else seg
         instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
@@ -45,9 +44,9 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
 
     @classmethod
     def from_dict(cls, data: dict) -> Self:
-        segmentations = [
-            CocoRLE.from_dict(seg) if isinstance(seg, dict) else seg for seg in data.get("segmentation", [])
-        ]
+        iscrowd = bool(data.get("iscrowd"))
+        seg = data.get("segmentation", [])
+        segmentations = CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else seg
         instance = cls(
             id=data.get("id"),
             image_id=data.get("image_id"),
@@ -55,7 +54,7 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
             segmentation=segmentations,
             area=data.get("area"),
             bbox=data.get("bbox"),
-            iscrowd=bool(data.get("iscrowd")),
+            iscrowd=iscrowd,
             score=data.get("score"),
             keypoints=data.get("keypoints", []),
             num_keypoints=data.get("num_keypoints"),

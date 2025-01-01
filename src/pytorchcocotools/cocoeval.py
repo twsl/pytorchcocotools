@@ -169,8 +169,16 @@ class COCOeval:
         elif self.params.iouType == "bbox":
             img = self.cocoGt.loadImgs(imgId)[0]
             size = img.height, img.width
-            g = tv.BoundingBoxes(torch.tensor([g.bbox for g in gt], dtype=torch.float32), canvas_size=size)  # pyright: ignore[reportCallIssue]
-            d = tv.BoundingBoxes(torch.tensor([d.bbox for d in dt], dtype=torch.float32), canvas_size=size)  # pyright: ignore[reportCallIssue]
+            g = tv.BoundingBoxes(
+                torch.tensor([g.bbox for g in gt], dtype=torch.float32),
+                format=tv.BoundingBoxFormat.XYWH,
+                canvas_size=size,
+            )  # pyright: ignore[reportCallIssue]
+            d = tv.BoundingBoxes(
+                torch.tensor([d.bbox for d in dt], dtype=torch.float32),
+                format=tv.BoundingBoxFormat.XYWH,
+                canvas_size=size,
+            )  # pyright: ignore[reportCallIssue]
         else:
             raise ValueError("Unknown iouType for iou computation.")  # noqa: TRY002
 
