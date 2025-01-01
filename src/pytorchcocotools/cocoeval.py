@@ -106,9 +106,9 @@ class COCOeval:
         self.logger.info("Running per image evaluation...")
         p = self.params
         self.logger.info(f"Evaluate annotation type *{p.iouType}*")
-        p.imgIds = list(torch.unique(p.imgIds))
+        p.imgIds = torch.unique(torch.tensor(p.imgIds)).tolist()
         if p.useCats:
-            p.catIds = list(torch.unique(p.catIds))
+            p.catIds = torch.unique(torch.tensor(p.catIds)).tolist()
         p.maxDets = sorted(p.maxDets)
         self.params = p
 
@@ -263,7 +263,7 @@ class COCOeval:
         gt = [gt[i] for i in gtind]
         dtind = torch.argsort(Tensor([-d.score if d.score is not None else 0 for d in dt]))
         dt = [dt[i] for i in dtind[0:maxDet]]
-        iscrowd = [int(o.iscrowd) for o in gt]
+        iscrowd = torch.tensor([int(o.iscrowd) for o in gt])
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
@@ -318,7 +318,7 @@ class COCOeval:
             gtIds=torch.tensor([g.id for g in gt]),
             dtMatches=dtm,
             gtMatches=gtm,
-            dtScores=[d.score for d in dt],
+            dtScores=torch.tensor([d.score for d in dt]),
             gtIgnore=gt_ig,
             dtIgnore=dt_ig,
         )
