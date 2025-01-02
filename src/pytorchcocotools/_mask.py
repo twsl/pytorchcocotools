@@ -199,7 +199,7 @@ def iou(
         elif isinstance(objs, list):
             # check if list is in box format and convert it to torch.Tensor
             isbox = all((isinstance(obj, list | Tensor)) and (len(obj) == 4) for obj in objs)
-            isrle = all(isinstance(obj, dict) for obj in objs)
+            isrle = all(isinstance(obj, dict | RleObj) for obj in objs)
             if isbox:
                 result = torch.tensor(
                     objs, dtype=torch.float32, device=device, requires_grad=requires_grad if requires_grad else False
@@ -214,7 +214,10 @@ def iou(
                     requires_grad=requires_grad,
                 )  # pyright: ignore[reportCallIssue]
             elif isrle:
-                return _frString(objs)  # pyright: ignore[reportArgumentType]
+                objs_clean = [
+                    RleObj(counts=obj["counts"], size=obj["size"]) if isinstance(obj, dict) else obj for obj in objs
+                ]
+                return _frString(objs_clean)  # pyright: ignore[reportArgumentType]
             else:
                 raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")  # noqa: TRY002
         else:
@@ -224,20 +227,20 @@ def iou(
         return []
 
     is_crowd = pyiscrowd
-    dt = _preproc(dt)
-    gt = _preproc(gt)
-    m = len(dt)
-    n = len(gt)
+    dt_clean = _preproc(dt)
+    gt_clean = _preproc(gt)
+    m = len(dt_clean)
+    n = len(gt_clean)
     crowd_length = len(is_crowd)
     assert crowd_length == n, "iou(iscrowd=) must have the same length as gt"  # noqa: S101, B101 # nosec B101
     if m == 0 or n == 0:
-        return Tensor()
-    if type(dt) is not type(gt):
+        return torch.tensor([], device=device, requires_grad=requires_grad if requires_grad else False)
+    if type(dt_clean) is not type(gt_clean):
         raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
-    if is_list_of_type(dt, RLE) and is_list_of_type(gt, RLE):
-        return rleIou(dt, gt, is_crowd)  # pyright: ignore[reportArgumentType]
-    if isinstance(dt, tv.BoundingBoxes) and isinstance(gt, tv.BoundingBoxes):
-        return bbIou(dt, gt, is_crowd)
+    if is_list_of_type(dt_clean, RLE) and is_list_of_type(gt_clean, RLE):
+        return rleIou(dt_clean, gt_clean, is_crowd)  # pyright: ignore[reportArgumentType]
+    if isinstance(dt_clean, tv.BoundingBoxes) and isinstance(gt_clean, tv.BoundingBoxes):
+        return bbIou(dt_clean, gt_clean, is_crowd)
     else:
         raise TypeError("Input data type not allowed.")  # noqa: TRY002
     return torch.tensor([])

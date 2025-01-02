@@ -16,14 +16,17 @@ from torchvision import tv_tensors as tv
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
 from pytorchcocotools.internal.cocoeval_types import EvalImgResult, EvalResult, Params
-from pytorchcocotools.internal.entities import IoUType, Range, RangeLabel, RLEs, TorchDevice
+from pytorchcocotools.internal.entities import RLE, IoUObject, IoUType, Range, RangeLabel, RleObj, RLEs, TorchDevice
+from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
     Segmentation,
 )
+from pytorchcocotools.internal.structure.rle import CocoRLE
 from pytorchcocotools.utils.logging import get_logger
+from pytorchcocotools.utils.poly import Polygon
 
 
 class COCOeval:
@@ -177,12 +180,37 @@ class COCOeval:
         if len(dt) > self.params.maxDets[-1]:
             dt = dt[0 : self.params.maxDets[-1]]
 
+        # TODO: remove
+        def to_internal_types(segmentation: Segmentation, size: tuple[int, int]) -> RleObj:
+            if isinstance(segmentation, dict):
+                return RleObj(counts=segmentation["counts"], size=segmentation["size"])
+            if isinstance(segmentation, RleObj):
+                return cast(RleObj, segmentation)
+            return segmentation  # type: ignore  # noqa: PGH003 # TODO: fix
+
+        #     if isinstance(segmentation, CocoRLE):
+        #         return RLE(
+        #             segmentation.size[0],
+        #             segmentation.size[1],
+        #             torch.tensor(segmentation.counts, device=self.device, requires_grad=self.requires_grad),
+        #         )
+        #     poly = Polygon(
+        #         torch.tensor(
+        #             segmentation, dtype=torch.float64, device=self.device, requires_grad=self.requires_grad
+        #         ).view(-1, 2),
+        #         canvas_size=(size[0], size[1]),
+        #         device=self.device,
+        #         requires_grad=self.requires_grad,
+        #     )  # pyright: ignore[reportCallIssue]
+        #     return rleFrPoly(poly, device=self.device, requires_grad=self.requires_grad)
+
+        img = self.cocoGt.loadImgs(imgId)[0]
+        size = img.height, img.width
+
         if self.params.iouType == "segm":
-            g = cast(RLEs, [g.segmentation for g in gt])
-            d = cast(RLEs, [d.segmentation for d in dt])
+            g = cast(IoUObject, [to_internal_types(g.segmentation, size) for g in gt])
+            d = cast(IoUObject, [to_internal_types(d.segmentation, size) for d in dt])
         elif self.params.iouType == "bbox":
-            img = self.cocoGt.loadImgs(imgId)[0]
-            size = img.height, img.width
             g = tv.BoundingBoxes(
                 torch.tensor(
                     [g.bbox for g in gt], dtype=torch.float32, device=self.device, requires_grad=self.requires_grad

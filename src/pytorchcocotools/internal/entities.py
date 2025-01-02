@@ -30,8 +30,6 @@ class RLE:
 
 RLEs: TypeAlias = list[RLE]
 
-IoUObject: TypeAlias = RLEs | list[float] | tv.BoundingBoxes
-
 
 @dataclass_dict
 class RleObj(dict):
@@ -40,6 +38,9 @@ class RleObj(dict):
 
 
 RleObjs: TypeAlias = list[RleObj]
+
+IoUObject: TypeAlias = RleObjs | list[float] | tv.BoundingBoxes
+
 
 PyObj: TypeAlias = (
     tv.BoundingBoxes | Tensor | list[list[int]] | list[list[float]] | Poly | list[Poly] | RleObjs | RleObj
