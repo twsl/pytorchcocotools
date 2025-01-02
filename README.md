@@ -15,7 +15,7 @@
 
 
 Unofficial APIs for the MS-COCO dataset using PyTorch.
-Uses the [repository](https://github.com/ppwwyyxx/cocoapi) of the `pycocotools` packages as reference.
+Uses the official [repository](https://github.com/ppwwyyxx/cocoapi) of the `pycocotools` packages as reference.
 
 The file format is explained in the [official documentation](https://cocodataset.org/#format-data) and nicely summarized [here](https://www.youtube.com/watch?v=h6s61a_pqfM).
 
