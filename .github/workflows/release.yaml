@@ -68,9 +68,9 @@ jobs:
       - name: Show
         run: ls -l dist/
 
-      # - name: Publish
-      #   run: |
-      #     poetry publish -u "__token__" -p ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish
+        run: |
+          poetry publish -u "__token__" -p ${{ secrets.PYPI_API_TOKEN }}
 
   upload-packages:
     runs-on: ["ubuntu-latest"]
