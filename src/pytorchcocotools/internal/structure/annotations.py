@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import Self, TypeAlias
+from typing import Self, TypeAlias, cast
 
 from pytorchcocotools.internal.entities import Poly
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
@@ -23,14 +23,14 @@ class CocoAnnotationObjectDetection(BaseCocoEntity):
     def from_dict(cls, data: dict) -> Self:
         iscrowd = bool(data.get("iscrowd"))
         seg = data.get("segmentation", [])
-        segmentations = CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else seg
+        segmentations = CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else cast(list[Poly], seg)
         instance = cls(
-            id=data.get("id"),
-            image_id=data.get("image_id"),
-            category_id=data.get("category_id"),
+            id=int(data.get("id", -1)),
+            image_id=int(data.get("image_id", -1)),
+            category_id=int(data.get("category_id", -1)),
             segmentation=segmentations,
-            area=data.get("area"),
-            bbox=data.get("bbox", []),
+            area=float(data.get("area", 0.0)),
+            bbox=cast(list[float], data.get("bbox", [])),
             iscrowd=iscrowd,
             score=data.get("score"),
         )
@@ -46,18 +46,18 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
     def from_dict(cls, data: dict) -> Self:
         iscrowd = bool(data.get("iscrowd"))
         seg = data.get("segmentation", [])
-        segmentations = CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else seg
+        segmentations = CocoRLE.from_dict(seg) if iscrowd and isinstance(seg, dict) else cast(list[Poly], seg)
         instance = cls(
-            id=data.get("id"),
-            image_id=data.get("image_id"),
-            category_id=data.get("category_id"),
+            id=int(data.get("id", -1)),
+            image_id=int(data.get("image_id", -1)),
+            category_id=int(data.get("category_id", -1)),
             segmentation=segmentations,
-            area=data.get("area"),
-            bbox=data.get("bbox"),
+            area=float(data.get("area", 0.0)),
+            bbox=cast(list[float], data.get("bbox", [])),
             iscrowd=iscrowd,
             score=data.get("score"),
-            keypoints=data.get("keypoints", []),
-            num_keypoints=data.get("num_keypoints"),
+            keypoints=cast(list[float], data.get("keypoints", [])),
+            num_keypoints=int(data.get("num_keypoints", 0)),
         )
         return instance
 
