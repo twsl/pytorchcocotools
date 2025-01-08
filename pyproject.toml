@@ -4,25 +4,37 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
 name = "pytorchcocotools"
-requires-python = ">=3.11"
-
-# TODO: https://github.com/python-poetry/poetry/issues/3332
-[tool.poetry]
-name = "pytorchcocotools"
 version = "0.0.0"
+requires-python = ">=3.11"
 description = "Unofficial APIs for the MS-COCO dataset using PyTorch"
-authors = ["twsl <45483159+twsl@users.noreply.github.com>"]
-license = "MIT"
 readme = "README.md"
-repository = "https://github.com/twsl/pytorchcocotools"
-homepage = "https://twsl.github.io/pytorchcocotools/"
-packages = [ { include = "pytorchcocotools", from = "src" } ]
+license = { text = "MIT" }
+authors = [
+    { name = "twsl", email = "45483159+twsl@users.noreply.github.com" }
+]
 keywords = [
-  "pytorch",
-  "pycocotools",
-  "pytorch-lightning",
-  "lightning",
-  "coco"
+    "pytorchcocotools",
+    "pytorch",
+    "pycocotools",
+    "pytorch-lightning",
+    "lightning",
+    "coco"
+]
+dynamic = [
+    "classifiers",
+    "dependencies"
+]
+
+[project.urls]
+homepage = "https://twsl.github.io/pytorchcocotools/"
+repository = "https://github.com/twsl/pytorchcocotools"
+documentation = "https://twsl.github.io/pytorchcocotools/"
+
+[tool.poetry]
+packages = [
+    { include = "pytorchcocotools", from = "src" }
+]
+classifiers = [
 ]
 
 [tool.poetry.dependencies]
@@ -33,7 +45,7 @@ torchmetrics = { version = "^1.6.0", optional = true }
 lightning = { version = "^2.5.0", optional = true }
 tensordict = "^0.6.2"
 
-[tool.poetry.extras]
+[project.optional-dependencies]
 metrics = ["torchmetrics"]
 lightning = ["lightning"]
 
@@ -45,16 +57,16 @@ lightning = "^2.5.0"
 torchmetrics = "^1.6.0"
 
 [tool.poetry.group.dev.dependencies]
-torchfix = "^0.7.0"
-ruff = "^0.8.5"
+ruff = "^0.8.6"
 bandit = "^1.8.0"
 pre-commit = "^4.0.1"
 pyright = "^1.1.391"
 ipykernel = "^6.29.5"
 ipywidgets = "^8.1.5"
-ipython = "^8.30.0"
-jupytext = " ^1.16.4"
-nbconvert = "^7.16.3"
+ipython = "^8.31.0"
+jupytext = " ^1.16.6"
+nbconvert = "^7.16.5"
+torchfix = "^0.7.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
@@ -65,10 +77,10 @@ pytest-benchmark = {extras = ["aspect"], version = "^5.1.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.5.48"
+mkdocs-material = "^9.5.49"
 mkdocs-git-revision-date-localized-plugin = "^1.2.9"
-mkdocs-awesome-pages-plugin = "^2.9.3"
-mkdocs-git-authors-plugin = "^0.9.1"
+mkdocs-awesome-pages-plugin = "^2.10.1"
+mkdocs-git-authors-plugin = "^0.9.2"
 mkapi = "^3.0.22"
 markdown-callouts = "^0.4.0"
 pygments = "^2.18.0"
