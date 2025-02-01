@@ -1,6 +1,7 @@
 import numpy as np
 import pycocotools.mask as nmask
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
@@ -68,7 +69,7 @@ class DecodeCases(BaseCases):
 
 @pytest.mark.benchmark(group="decode", warmup=True)
 @parametrize_with_cases("mask, result", cases=DecodeCases)
-def test_decode_pt(benchmark, mask: Tensor, result: Tensor) -> None:  # noqa: N802
+def test_decode_pt(benchmark: BenchmarkFixture, mask: Tensor, result: Tensor) -> None:  # noqa: N802
     # create a mask
     mask_pt = tv.Mask(mask)
     # decode the mask
@@ -80,7 +81,7 @@ def test_decode_pt(benchmark, mask: Tensor, result: Tensor) -> None:  # noqa: N8
 
 @pytest.mark.benchmark(group="decode", warmup=True)
 @parametrize_with_cases("mask, result", cases=DecodeCases)
-def test_decode_np(benchmark, mask: Tensor, result: Tensor) -> None:  # noqa: N802
+def test_decode_np(benchmark: BenchmarkFixture, mask: Tensor, result: Tensor) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # decode the mask

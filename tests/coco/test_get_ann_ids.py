@@ -2,6 +2,7 @@ from typing import cast
 
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -15,7 +16,7 @@ class GetAnnIdsCases:
 @pytest.mark.benchmark(group="getAnnIds", warmup=True)
 @parametrize_with_cases("img_id, cat_ids, area_rng, result", cases=GetAnnIdsCases)
 def test_getAnnIds_pt(  # noqa: N802
-    benchmark,
+    benchmark: BenchmarkFixture,
     coco_pt: COCOpt,
     img_id: int | list[int],
     cat_ids: int | list[int],
@@ -30,7 +31,7 @@ def test_getAnnIds_pt(  # noqa: N802
 @pytest.mark.benchmark(group="getAnnIds", warmup=True)
 @parametrize_with_cases("img_id, cat_ids, area_rng, result", cases=GetAnnIdsCases)
 def test_getAnnIds_np(  # noqa: N802
-    benchmark,
+    benchmark: BenchmarkFixture,
     coco_np: COCOnp,
     img_id: int | list[int],
     cat_ids: int | list[int],

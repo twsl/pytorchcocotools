@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 import pycocotools.mask as nmask
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
@@ -64,7 +65,7 @@ class EncodeCases(BaseCases):
 
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("mask, result", cases=EncodeCases)
-def test_encode_pt(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N802
+def test_encode_pt(benchmark: BenchmarkFixture, mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
     mask_pt = tv.Mask(mask)
     # encode the mask
@@ -75,7 +76,7 @@ def test_encode_pt(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N8
 
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("mask, result", cases=EncodeCases)
-def test_encode_np(benchmark, mask: Tensor, result: RleObj) -> None:  # noqa: N802
+def test_encode_np(benchmark: BenchmarkFixture, mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # encode the mask

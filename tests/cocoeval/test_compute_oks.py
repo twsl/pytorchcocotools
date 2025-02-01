@@ -3,6 +3,7 @@ from typing import Any, cast
 import numpy as np
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize, parametrize_with_cases
 import torch
 from torch import Tensor
@@ -50,7 +51,7 @@ class COCOEvalCasesBoth:
 
 @pytest.mark.benchmark(group="computeOks", warmup=True)
 @parametrize_with_cases("coco_eval_np, img_id, cat_id, result", cases=COCOEvalCasesNp)
-def test_computeOks_np(benchmark, coco_eval_np: COCOevalnp, img_id: int, cat_id: int, result) -> None:  # noqa: N802
+def test_computeOks_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, img_id: int, cat_id: int, result) -> None:  # noqa: N802
     ious = cast(np.ndarray, benchmark(coco_eval_np.computeOks, img_id, cat_id))
     result = np.array(result)
     assert ious.shape == result.shape
@@ -59,7 +60,7 @@ def test_computeOks_np(benchmark, coco_eval_np: COCOevalnp, img_id: int, cat_id:
 
 @pytest.mark.benchmark(group="computeOks", warmup=True)
 @parametrize_with_cases("coco_eval_pt, img_id, cat_id, result", cases=COCOEvalCasesPt)
-def test_computeOks_pt(benchmark, coco_eval_pt: COCOevalpt, img_id: int, cat_id: int, result) -> None:  # noqa: N802
+def test_computeOks_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, img_id: int, cat_id: int, result) -> None:  # noqa: N802
     ious = cast(Tensor, benchmark(coco_eval_pt.computeOks, img_id, cat_id))
     assert len(ious) == len(result)
     assert torch.allclose(ious, torch.tensor(result))

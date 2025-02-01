@@ -3,6 +3,7 @@ from typing import cast
 import numpy as np
 import pycocotools.mask as mask
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
@@ -158,7 +159,7 @@ class MergeCases:
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
+def test_merge_pt(benchmark: BenchmarkFixture, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     # encode
     rle_pt1 = tmask.encode(tv.Mask(obj1))
     rle_pt2 = tmask.encode(tv.Mask(obj2))
@@ -171,7 +172,7 @@ def test_merge_pt(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge_np(benchmark, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
+def test_merge_np(benchmark: BenchmarkFixture, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     obj1n = np.asfortranarray(obj1.numpy())
     obj2n = np.asfortranarray(obj2.numpy())
     # encode

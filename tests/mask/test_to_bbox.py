@@ -1,6 +1,7 @@
 import numpy as np
 import pycocotools.mask as nmask
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
@@ -32,7 +33,7 @@ class BboxCases(BaseCases):
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa: N802
+def test_toBbox_pt(benchmark: BenchmarkFixture, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
     mask_pt = tv.Mask(mask)
     # compute the bounding box
@@ -44,7 +45,7 @@ def test_toBbox_pt(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa:
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox_np(benchmark, mask: Tensor, result: list[int]) -> None:  # noqa: N802
+def test_toBbox_np(benchmark: BenchmarkFixture, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # compute the bounding box

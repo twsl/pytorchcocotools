@@ -2,6 +2,7 @@ from typing import Any
 
 import pycocotools.mask as mask
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
@@ -142,7 +143,7 @@ class PyObjectsCases:
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_pt(  # noqa: N802
-    benchmark, h: int, w: int, obj: PyObj, result
+    benchmark: BenchmarkFixture, h: int, w: int, obj: PyObj, result
 ) -> None:
     # convert the polygon to a mask
     # mask_pt = benchmark(tmask.frPyObjects, obj, h, w)
@@ -161,7 +162,7 @@ def test_frPyObjects_pt(  # noqa: N802
 @pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_np(  # noqa: N802
-    benchmark, h: int, w: int, obj: PyObj, result
+    benchmark: BenchmarkFixture, h: int, w: int, obj: PyObj, result
 ) -> None:
     # fix input
     if isinstance(obj, list):

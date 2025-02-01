@@ -2,6 +2,7 @@ from typing import cast
 
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -18,7 +19,7 @@ class GetImgIdsCases:
 @pytest.mark.benchmark(group="getImgIds", warmup=True)
 @parametrize_with_cases("img_ids, cat_ids, result", cases=GetImgIdsCases)
 def test_getImgIds_pt(  # noqa: N802
-    benchmark, coco_pt: COCOpt, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
+    benchmark: BenchmarkFixture, coco_pt: COCOpt, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
 ) -> None:
     # get the category ids for the image with id
     img_ids_pt = cast(list[int], benchmark(coco_pt.getImgIds, img_ids, cat_ids))
@@ -29,7 +30,7 @@ def test_getImgIds_pt(  # noqa: N802
 @pytest.mark.benchmark(group="getImgIds", warmup=True)
 @parametrize_with_cases("img_ids, cat_ids, result", cases=GetImgIdsCases)
 def test_getImgIds_np(  # noqa: N802
-    benchmark, coco_np: COCOnp, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
+    benchmark: BenchmarkFixture, coco_np: COCOnp, img_ids: int | list[int], cat_ids: int | list[int], result: list[int]
 ) -> None:
     # get the category ids for the image with id
     img_ids_np = cast(list[int], benchmark(coco_np.getImgIds, img_ids, cat_ids))

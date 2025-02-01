@@ -2,6 +2,7 @@ from typing import cast
 
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -29,7 +30,9 @@ class LoadImgsCases:
 
 @pytest.mark.benchmark(group="loadImgs", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
-def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
+def test_loadImgs_pt(  # noqa: N802
+    benchmark: BenchmarkFixture, coco_pt: COCOpt, img_ids: int | list[int], result: list[dict]
+) -> None:
     # get the image with id
     imgs_pt = cast(list[CocoImage], benchmark(coco_pt.loadImgs, img_ids))
     # compare the results
@@ -40,7 +43,9 @@ def test_loadImgs_pt(benchmark, coco_pt: COCOpt, img_ids: int | list[int], resul
 
 @pytest.mark.benchmark(group="loadImgs", warmup=True)
 @parametrize_with_cases("img_ids, result", cases=LoadImgsCases)
-def test_loadImgs_np(benchmark, coco_np: COCOnp, img_ids: int | list[int], result: list[dict]) -> None:  # noqa: N802
+def test_loadImgs_np(  # noqa: N802
+    benchmark: BenchmarkFixture, coco_np: COCOnp, img_ids: int | list[int], result: list[dict]
+) -> None:
     # get the image with id
     imgs_np = cast(list[dict], benchmark(coco_np.loadImgs, img_ids))
     # compare the results

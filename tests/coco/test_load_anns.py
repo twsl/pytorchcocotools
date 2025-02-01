@@ -2,6 +2,7 @@ from typing import cast
 
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -76,7 +77,7 @@ class GetCatIdsCases:
 
 @pytest.mark.benchmark(group="loadAnns", warmup=True)
 @parametrize_with_cases("ann_ids, result", cases=GetCatIdsCases)
-def test_loadAnns_pt(benchmark, coco_pt: COCOpt, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
+def test_loadAnns_pt(benchmark: BenchmarkFixture, coco_pt: COCOpt, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
     # get the annotation ids for the id
     ann_pt = cast(list[CocoAnnotationDetection], benchmark(coco_pt.loadAnns, ann_ids))
     # compare the results
@@ -88,7 +89,7 @@ def test_loadAnns_pt(benchmark, coco_pt: COCOpt, ann_ids: int, result: list[dict
 
 @pytest.mark.benchmark(group="loadAnns", warmup=True)
 @parametrize_with_cases("ann_ids, result", cases=GetCatIdsCases)
-def test_loadAnns_np(benchmark, coco_np: COCOnp, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
+def test_loadAnns_np(benchmark: BenchmarkFixture, coco_np: COCOnp, ann_ids: int, result: list[dict]) -> None:  # noqa: N802
     # get the annotation ids for the id
     ann_np = cast(list[dict], benchmark(coco_np.loadAnns, ann_ids))
     # compare the results

@@ -2,6 +2,7 @@ from typing import cast
 
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
@@ -19,7 +20,7 @@ class AnnToRLECases:
 
 @pytest.mark.benchmark(group="annToRLE", warmup=True)
 @parametrize_with_cases("ann_id, result", cases=AnnToRLECases)
-def test_annToRLE_pt(benchmark, coco_pt: COCOpt, ann_id: int, result: RleObj) -> None:  # noqa: N802
+def test_annToRLE_pt(benchmark: BenchmarkFixture, coco_pt: COCOpt, ann_id: int, result: RleObj) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_pt = coco_pt.loadAnns(ann_id)
     # get the mask for the annotation
@@ -31,7 +32,7 @@ def test_annToRLE_pt(benchmark, coco_pt: COCOpt, ann_id: int, result: RleObj) ->
 
 @pytest.mark.benchmark(group="annToRLE", warmup=True)
 @parametrize_with_cases("ann_id, result", cases=AnnToRLECases)
-def test_annToRLE_np(benchmark, coco_np: COCOnp, ann_id: int, result: RleObj) -> None:  # noqa: N802
+def test_annToRLE_np(benchmark: BenchmarkFixture, coco_np: COCOnp, ann_id: int, result: RleObj) -> None:  # noqa: N802
     # test with an annotation dict object
     ann_np = coco_np.loadAnns(ann_id)
     # get the mask for the annotation

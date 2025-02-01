@@ -1,6 +1,7 @@
 import numpy as np
 import pycocotools.mask as mask
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torchvision import tv_tensors as tv
@@ -28,7 +29,7 @@ class AreaCases:
 
 @pytest.mark.benchmark(group="area", warmup=True)
 @parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
-def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int) -> None:
+def test_area_pt(benchmark: BenchmarkFixture, min: int, max: int, h: int, w: int, result: int) -> None:
     # create a mask
     mask_pt = tv.Mask(torch.zeros((h, w), dtype=torch.uint8))
     mask_pt[min:max, min:max] = 1
@@ -42,7 +43,7 @@ def test_area_pt(benchmark, min: int, max: int, h: int, w: int, result: int) -> 
 
 @pytest.mark.benchmark(group="area", warmup=True)
 @parametrize_with_cases("min, max, h, w, result", cases=AreaCases)
-def test_area_np(benchmark, min: int, max: int, h: int, w: int, result: int) -> None:
+def test_area_np(benchmark: BenchmarkFixture, min: int, max: int, h: int, w: int, result: int) -> None:
     # create a mask
     mask_np = np.zeros((h, w), dtype=np.uint8, order="F")
     mask_np[min:max, min:max] = 1

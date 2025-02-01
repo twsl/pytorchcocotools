@@ -3,6 +3,7 @@ from typing import Any, cast
 import numpy as np
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize, parametrize_with_cases
 import torch
 
@@ -106,7 +107,7 @@ class COCOEvalCasesBoth:
 @pytest.mark.benchmark(group="evaluateImg", warmup=True)
 @parametrize_with_cases("coco_eval_np, img_id, cat_id, range, max_det, result", cases=COCOEvalCasesNp)
 def test_evaluateImg_np(  # noqa: N802
-    benchmark,
+    benchmark: BenchmarkFixture,
     coco_eval_np: COCOevalnp,
     img_id: int,
     cat_id: int,
@@ -124,7 +125,7 @@ def test_evaluateImg_np(  # noqa: N802
 @pytest.mark.benchmark(group="evaluateImg", warmup=True)
 @parametrize_with_cases("coco_eval_pt, img_id, cat_id, range, max_det, result", cases=COCOEvalCasesPt)
 def test_evaluateImg_pt(  # noqa: N802
-    benchmark,
+    benchmark: BenchmarkFixture,
     coco_eval_pt: COCOevalpt,
     img_id: int,
     cat_id: int,

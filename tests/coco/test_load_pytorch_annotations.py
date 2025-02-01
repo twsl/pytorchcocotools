@@ -2,6 +2,7 @@ from typing import cast
 
 from pycocotools.coco import COCO as COCOnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 
@@ -25,7 +26,9 @@ class LoadPyTorchAnnotationsCases:
 
 @pytest.mark.benchmark(group="loadPyTorchAnnotations", warmup=True)
 @parametrize_with_cases("data, result", cases=LoadPyTorchAnnotationsCases)
-def test_loadPyTorchAnnotations_pt(benchmark, coco_pt: COCOpt, data: torch.Tensor, result: list[dict]) -> None:  # noqa: N802
+def test_loadPyTorchAnnotations_pt(  # noqa: N802
+    benchmark: BenchmarkFixture, coco_pt: COCOpt, data: torch.Tensor, result: list[dict]
+) -> None:
     # get the category ids for the image with id
     anns_pt = cast(list[ResultAnnotation], benchmark(coco_pt.loadPyTorchAnnotations, data))
     # compare the results
@@ -37,7 +40,9 @@ def test_loadPyTorchAnnotations_pt(benchmark, coco_pt: COCOpt, data: torch.Tenso
 
 @pytest.mark.benchmark(group="loadPyTorchAnnotations", warmup=True)
 @parametrize_with_cases("data, result", cases=LoadPyTorchAnnotationsCases)
-def test_loadPyTorchAnnotations_np(benchmark, coco_np: COCOnp, data: torch.Tensor, result: list[dict]) -> None:  # noqa: N802
+def test_loadPyTorchAnnotations_np(  # noqa: N802
+    benchmark: BenchmarkFixture, coco_np: COCOnp, data: torch.Tensor, result: list[dict]
+) -> None:
     # get the category ids for the image with id
     anns_np = cast(list[dict], benchmark(coco_np.loadNumpyAnnotations, data.numpy()))
     # compare the results

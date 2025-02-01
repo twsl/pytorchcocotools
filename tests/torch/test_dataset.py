@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torchvision.datasets import CocoDetection as CocoDetectionnp
@@ -16,7 +17,7 @@ class DatasetCases:
 
 @pytest.mark.benchmark(group="dataset", warmup=True)
 @parametrize_with_cases("root, annotation_file, index, result", cases=DatasetCases)
-def test_dataset_np(benchmark, root: str, annotation_file: str, index: int, result: Any) -> None:
+def test_dataset_np(benchmark: BenchmarkFixture, root: str, annotation_file: str, index: int, result: Any) -> None:
     benchmark.weave(CocoDetectionpt.__getitem__, lazy=True)
     dataset = CocoDetectionnp(root=root, annFile=annotation_file)
     image_np, target_np = dataset[index]
@@ -26,7 +27,7 @@ def test_dataset_np(benchmark, root: str, annotation_file: str, index: int, resu
 
 @pytest.mark.benchmark(group="dataset", warmup=True)
 @parametrize_with_cases("root, annotation_file, index, result", cases=DatasetCases)
-def test_dataset_pt(benchmark, root: str, annotation_file: str, index: int, result: Any) -> None:
+def test_dataset_pt(benchmark: BenchmarkFixture, root: str, annotation_file: str, index: int, result: Any) -> None:
     benchmark.weave(CocoDetectionpt.__getitem__, lazy=True)
     dataset = CocoDetectionpt(root=root, annotation_path=annotation_file)
     image_pt, target_pt = dataset[index]

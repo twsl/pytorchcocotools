@@ -3,6 +3,7 @@ from typing import Any, TypeAlias, cast
 import numpy as np
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 import pytest
+from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize, parametrize_with_cases
 import torch
 from torch import Tensor
@@ -133,7 +134,7 @@ class COCOEvalCasesBoth:
 
 @pytest.mark.benchmark(group="evaluate", warmup=True)
 @parametrize_with_cases("coco_eval_np, result", cases=COCOEvalCasesNp)
-def test_evaluate_np(benchmark, coco_eval_np: COCOevalnp, result) -> None:  # noqa: N802
+def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, result) -> None:  # noqa: N802
     # coco_eval_np.evaluate()
     benchmark(coco_eval_np.evaluate)
     assert len(coco_eval_np.evalImgs) == len(result)
@@ -147,7 +148,7 @@ def test_evaluate_np(benchmark, coco_eval_np: COCOevalnp, result) -> None:  # no
 
 @pytest.mark.benchmark(group="evaluate", warmup=True)
 @parametrize_with_cases("coco_eval_pt, result", cases=COCOEvalCasesPt)
-def test_evaluate_pt(benchmark, coco_eval_pt: COCOevalpt, result) -> None:  # noqa: N802
+def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, result) -> None:  # noqa: N802
     # coco_eval_pt.evaluate()
     benchmark(coco_eval_pt.evaluate)
     assert len(coco_eval_pt.eval_imgs) == len(result)
