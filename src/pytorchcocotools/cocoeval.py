@@ -16,17 +16,14 @@ from torchvision import tv_tensors as tv
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
 from pytorchcocotools.internal.cocoeval_types import EvalImgResult, EvalResult, Params
-from pytorchcocotools.internal.entities import RLE, IoUObject, IoUType, Range, RangeLabel, RleObj, RLEs, TorchDevice
-from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
+from pytorchcocotools.internal.entities import IoUObject, IoUType, Range, RangeLabel, RleObj, TorchDevice
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
     CocoAnnotationObjectDetection,
     Segmentation,
 )
-from pytorchcocotools.internal.structure.rle import CocoRLE
 from pytorchcocotools.utils.logging import get_logger
-from pytorchcocotools.utils.poly import Polygon
 
 
 class COCOeval:
@@ -57,7 +54,7 @@ class COCOeval:
             self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt or COCO()  # ground truth COCO API
         self.cocoDt = cocoDt or COCO()  # detections COCO API
-        self.eval_imgs: list[EvalImgResult] = []  # per-image per-category evaluation results [KxAxI] elements
+        self.eval_imgs: list[EvalImgResult | None] = []  # per-image per-category evaluation results [KxAxI] elements
         self.eval = EvalResult()  # accumulated evaluation results
         self._gts = defaultdict(list[CocoAnnotationDetection])  # gt for evaluation
         self._dts = defaultdict(list[CocoAnnotationDetection])  # dt for evaluation
@@ -106,7 +103,7 @@ class COCOeval:
             self._gts[gt.image_id, gt.category_id].append(gt)
         for dt in dts:
             self._dts[dt.image_id, dt.category_id].append(dt)
-        self.eval_imgs: list[EvalImgResult] = []  # per-image per-category evaluation results
+        self.eval_imgs: list[EvalImgResult | None] = []  # per-image per-category evaluation results
         self.eval = EvalResult()
 
     def evaluate(self) -> None:
@@ -290,7 +287,7 @@ class COCOeval:
                 ious[i, j] = torch.sum(torch.exp(-e)) / e.shape[0]
         return ious
 
-    def evaluateImg(self, imgId: int, catId: int, aRng: Range, maxDet: int) -> EvalImgResult:  # noqa: N803, N802
+    def evaluateImg(self, imgId: int, catId: int, aRng: Range, maxDet: int) -> EvalImgResult | None:  # noqa: N803, N802
         """Perform evaluation for single category and image.
 
         Args:
@@ -309,7 +306,7 @@ class COCOeval:
             gt = [_ for c_id in self.params.catIds for _ in self._gts[imgId, c_id]]
             dt = [_ for c_id in self.params.catIds for _ in self._dts[imgId, c_id]]
         if len(gt) == 0 and len(dt) == 0:
-            return EvalImgResult()
+            return None
 
         ignored = [1 if g.ignore or (g.area < aRng[0] or g.area > aRng[1]) else 0 for g in gt]
 

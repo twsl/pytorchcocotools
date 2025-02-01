@@ -153,4 +153,5 @@ def test_evaluateImg(  # noqa: N802
     coco_eval_pt.evaluate()
     result_pt = coco_eval_pt.evaluateImg(img_id, cat_id, range, max_det)
     assert np.allclose(result_np["dtScores"], result.dtScores.tolist())
+    assert result_pt is not None
     assert torch.allclose(result_pt.dtScores, result.dtScores)
