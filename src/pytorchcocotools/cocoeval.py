@@ -370,7 +370,9 @@ class COCOeval:
                     gtm[tind, m] = d.id
         # set unmatched detections outside of area range to ignore
         a = torch.Tensor([d.area < aRng[0] or d.area > aRng[1] for d in dt]).reshape((1, len(dt)))
-        dt_ig = torch.logical_or(dt_ig, torch.logical_and(dtm == 0, a.repeat(num_iou_thrs, 0)))
+        dt_ig = torch.logical_or(
+            dt_ig, torch.logical_and(dtm == 0, torch.repeat_interleave(a, repeats=num_iou_thrs, dim=0))
+        )
         # store results for given image and category
         return EvalImgResult(
             image_id=imgId,
@@ -441,14 +443,14 @@ class COCOeval:
             for a, a0 in enumerate(area_rng_indices):
                 num_a = a0 * len_img_ids
                 for m, max_det in enumerate(max_dets_indices):
-                    e = [self.eval_imgs[num_k + num_a + i] for i in img_ids_indices]
-                    e = [e for e in e if e is not None]
-                    if len(e) == 0:
+                    eval_img_results = [self.eval_imgs[num_k + num_a + i] for i in img_ids_indices]
+                    eval_img_results = [el for el in eval_img_results if el is not None]
+                    if len(eval_img_results) == 0:
                         continue
                     dt_scores = torch.concatenate(
                         [
-                            torch.tensor(e.dtScores[0:max_det], device=self.device, requires_grad=self.requires_grad)
-                            for e in e
+                            torch.tensor(el.dtScores[0:max_det], device=self.device, requires_grad=self.requires_grad)
+                            for el in eval_img_results
                         ]
                     )
 
@@ -458,24 +460,14 @@ class COCOeval:
                     dt_scores_sorted = dt_scores[inds]
 
                     dt_matches = torch.cat(
-                        [
-                            torch.tensor(
-                                e.dtMatches[:, 0:max_det], device=self.device, requires_grad=self.requires_grad
-                            )
-                            for e in e
-                        ],
+                        [el.dtMatches[:, 0:max_det] for el in eval_img_results],
                         dim=1,
                     )[:, inds]
                     dt_ig = torch.cat(
-                        [
-                            torch.tensor(e.dtIgnore[:, 0:max_det], device=self.device, requires_grad=self.requires_grad)
-                            for e in e
-                        ],
+                        [el.dtIgnore[:, 0:max_det] for el in eval_img_results],
                         dim=1,
                     )[:, inds]
-                    gt_ig = torch.cat(
-                        [torch.tensor(e.gtIgnore, device=self.device, requires_grad=self.requires_grad) for e in e]
-                    )
+                    gt_ig = torch.cat([el.gtIgnore for el in eval_img_results])
                     npig = torch.count_nonzero(gt_ig == 0)
                     if npig == 0:
                         continue
