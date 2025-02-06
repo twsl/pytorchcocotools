@@ -476,9 +476,6 @@ class COCOeval:
                     tp_sum = torch.cumsum(tps, dim=1).to(dtype=torch.float)
                     fp_sum = torch.cumsum(fps, dim=1).to(dtype=torch.float)
                     for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum, strict=False)):
-                        # TODO: fix, why new tensors?
-                        tp = tp.clone()
-                        fp = fp.clone()
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp + tp + torch.finfo(torch.float32).eps)
