@@ -479,32 +479,19 @@ class COCOeval:
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp + tp + torch.finfo(torch.float32).eps)
-                        q = torch.zeros((num_rec_thrs,), device=self.device, requires_grad=self.requires_grad)
-                        ss = torch.zeros((num_rec_thrs,), device=self.device, requires_grad=self.requires_grad)
 
-                        if nd:
-                            recall[t, k, a, m] = rc[-1]
-                        else:
-                            recall[t, k, a, m] = 0
+                        recall[t, k, a, m] = rc[-1] if nd else 0
 
-                        # numpy is slow without cython optimization for accessing elements
-                        # use python array gets significant speed improvement
-                        pr = pr.tolist()
-                        q = q.tolist()
-
-                        for i in range(nd - 1, 0, -1):
-                            if pr[i] > pr[i - 1]:
-                                pr[i - 1] = pr[i]
+                        cum_val, _cum_ind = torch.cummax(torch.flip(pr, dims=[0]), dim=0)
+                        pr = torch.flip(cum_val, dims=[0])
 
                         inds = torch.searchsorted(rc, p.recThrs, side="left")
-                        try:
-                            for ri, pi in enumerate(inds):
-                                q[ri] = pr[pi]
-                                ss[ri] = dt_scores_sorted[pi]
-                        except:  # noqa: S110, E722 # nosec B110
-                            pass  # TODO: fix this
-                        precision[t, :, k, a, m] = torch.tensor(q, device=self.device, requires_grad=self.requires_grad)
-                        scores[t, :, k, a, m] = ss.clone()
+
+                        q = pr[inds]
+                        ss = dt_scores_sorted[inds]
+
+                        precision[t, :, k, a, m] = q
+                        scores[t, :, k, a, m] = ss
         self.eval = EvalResult(
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
@@ -520,7 +507,7 @@ class COCOeval:
         """Compute and display summary metrics for evaluation results.
 
         Note:
-            This functin can *only* be applied on the default parameter setting.
+            This function can *only* be applied on the default parameter setting.
         """
 
         def _summarize(
