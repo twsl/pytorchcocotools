@@ -11,44 +11,11 @@ from torch import Tensor
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
 KEYPOINTS_DATA = [
-    [
-        [0.5],
-        None,
-        None,
-        [0.5],
-        None,
-        None,
-        [0.5],
-        None,
-        None,
-        [0.5],
-        None,
-        None,
-        [0.8],
-        [0.7],
-        None,
-        [0.8],
-        [0.7],
-        None,
-        [0.8],
-        [0.7],
-        None,
-        [0.8],
-        [0.7],
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    ],
+    {
+        (1, 1): [[1.0]],
+        (1, 2): [[0.5625]],
+        (2, 2): [[0.64]],
+    },
 ]
 
 
@@ -80,13 +47,10 @@ class COCOEvalCasesBoth:
 def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, result) -> None:  # noqa: N802
     # coco_eval_np.evaluate()
     benchmark(coco_eval_np.evaluate)
-    assert len(coco_eval_np.evalImgs) == len(result)
-    for i, (img, res) in enumerate(zip(coco_eval_np.evalImgs, result, strict=False)):
-        if (img is None) ^ (res is None):
-            pytest.fail(f"img[{i}] is None xor res[{i}] is None")
-        if img is None and res is None:
-            continue
-        assert np.allclose(img["dtScores"], res)
+    for combo in result:
+        iou = coco_eval_np.ious[combo]
+        assert iou is not None, f"IOU np is None for combo {combo}"
+        assert np.allclose(iou, np.array(result[combo])), f"IOU np mismatch for combo {combo}"
 
 
 @pytest.mark.benchmark(group="evaluate[keypoints]", warmup=True)
@@ -94,27 +58,20 @@ def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, resu
 def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, result) -> None:  # noqa: N802
     # coco_eval_pt.evaluate()
     benchmark(coco_eval_pt.evaluate)
-    assert len(coco_eval_pt.eval_imgs) == len(result)
-    for i, (img, res) in enumerate(zip(coco_eval_pt.eval_imgs, result, strict=False)):
-        if (img is None) ^ (res is None):
-            pytest.fail(f"img[{i}] is None xor res[{i}] is None")
-        if img is None and res is None:
-            continue
-        assert torch.allclose(img.dtScores, torch.tensor(res))  # pyright: ignore[reportOptionalMemberAccess]
+    for combo in result:
+        iou = coco_eval_pt.ious[combo]
+        assert iou is not None, f"IOU pt is None for combo {combo}"
+        assert torch.allclose(iou, torch.tensor(result[combo])), f"IOU pt mismatch for combo {combo}"
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, result", cases=COCOEvalCasesBoth)
 def test_evaluate(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, result) -> None:  # noqa: N802
     coco_eval_np.evaluate()
     coco_eval_pt.evaluate()
-    assert len(coco_eval_np.evalImgs) == len(coco_eval_pt.eval_imgs)
-    assert len(coco_eval_np.evalImgs) == len(result)
-    # assert np.allclose(ious_np, np.array(result))
-    # assert torch.allclose(ious_pt, torch.tensor(result, dtype=torch.float32))
-    for i, (img_pt, img_np, res) in enumerate(zip(coco_eval_pt.eval_imgs, coco_eval_np.evalImgs, result, strict=False)):
-        if (img_pt is None) ^ (img_np is None):
-            pytest.fail(f"img_pt[{i}] is None xor img_np[{i}] is None")
-        if img_pt is None and img_np is None and res is None:
-            continue
-        assert torch.allclose(img_pt.dtScores, torch.tensor(res))  # pyright: ignore[reportOptionalMemberAccess]
-        assert np.allclose(img_np["dtScores"], res)
+    for combo in result:
+        iou_np = coco_eval_np.ious[combo]
+        iou_pt = coco_eval_pt.ious[combo]
+        assert iou_np is not None, f"IOU np is None for combo {combo}"
+        assert np.allclose(iou_np, np.array(result[combo])), f"IOU np mismatch for combo {combo}"
+        assert iou_pt is not None, f"IOU pt is None for combo {combo}"
+        assert torch.allclose(iou_pt, torch.tensor(result[combo])), f"IOU pt mismatch for combo {combo}"
