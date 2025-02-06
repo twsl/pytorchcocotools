@@ -419,10 +419,20 @@ class COCOeval:
         num_area_rng = len(p.areaRng)  # A
         num_max_dets = len(p.maxDets)  # M
         precision = -torch.ones(
-            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets)
+            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
+            device=self.device,
+            requires_grad=self.requires_grad,
         )  # -1 for the precision of absent categories
-        recall = -torch.ones((num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets))
-        scores = -torch.ones((num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets))
+        recall = -torch.ones(
+            (num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets),
+            device=self.device,
+            requires_grad=self.requires_grad,
+        )
+        scores = -torch.ones(
+            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
+            device=self.device,
+            requires_grad=self.requires_grad,
+        )
 
         # create dictionary for future indexing
         cat_ids = self._paramsEval.catIds if self._paramsEval.useCats else [-1]
@@ -435,38 +445,27 @@ class COCOeval:
         max_dets_indices = [m for n, m in enumerate(p.maxDets) if m in set_max_dets]
         area_rng_indices = [n for n, a in enumerate(tuple(x) for x in p.areaRng) if a in set_area_rng]
         img_ids_indices = [n for n, i in enumerate(p.imgIds) if i in set_img_ids]
-        len_img_ids = len(self._paramsEval.imgIds)
-        len_area_rng = len(self._paramsEval.areaRng)
+        len_img_ids = len(self._paramsEval.imgIds)  # I0
+        len_area_rng = len(self._paramsEval.areaRng)  # A0
         # retrieve E at each category, area range, and max number of detections
         for k, k0 in enumerate(cat_ids_indices):
             num_k = k0 * len_area_rng * len_img_ids
             for a, a0 in enumerate(area_rng_indices):
                 num_a = a0 * len_img_ids
                 for m, max_det in enumerate(max_dets_indices):
-                    eval_img_results = [self.eval_imgs[num_k + num_a + i] for i in img_ids_indices]
+                    eval_img_results = [self.eval_imgs[num_k + num_a + i] for i in img_ids_indices]  # E
                     eval_img_results = [el for el in eval_img_results if el is not None]
                     if len(eval_img_results) == 0:
                         continue
-                    dt_scores = torch.concatenate(
-                        [
-                            torch.tensor(el.dtScores[0:max_det], device=self.device, requires_grad=self.requires_grad)
-                            for el in eval_img_results
-                        ]
-                    )
+                    dt_scores = torch.concatenate([el.dtScores[0:max_det] for el in eval_img_results])
 
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
-                    inds = torch.argsort(torch.tensor(-dt_scores, device=self.device, requires_grad=self.requires_grad))
+                    inds = torch.argsort(dt_scores, descending=True, stable=True)
                     dt_scores_sorted = dt_scores[inds]
 
-                    dt_matches = torch.cat(
-                        [el.dtMatches[:, 0:max_det] for el in eval_img_results],
-                        dim=1,
-                    )[:, inds]
-                    dt_ig = torch.cat(
-                        [el.dtIgnore[:, 0:max_det] for el in eval_img_results],
-                        dim=1,
-                    )[:, inds]
+                    dt_matches = torch.cat([el.dtMatches[:, 0:max_det] for el in eval_img_results], dim=1)[:, inds]
+                    dt_ig = torch.cat([el.dtIgnore[:, 0:max_det] for el in eval_img_results], dim=1)[:, inds]
                     gt_ig = torch.cat([el.gtIgnore for el in eval_img_results])
                     npig = torch.count_nonzero(gt_ig == 0)
                     if npig == 0:

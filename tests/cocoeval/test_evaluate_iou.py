@@ -10,6 +10,7 @@ from torch import Tensor
 
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
+# TODO: find better results from evaluate to compare against
 BBOX_DATA = [
     [
         [0.5],
