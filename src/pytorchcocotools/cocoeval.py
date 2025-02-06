@@ -476,8 +476,9 @@ class COCOeval:
                     tp_sum = torch.cumsum(tps, dim=1).to(dtype=torch.float)
                     fp_sum = torch.cumsum(fps, dim=1).to(dtype=torch.float)
                     for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum, strict=False)):
-                        tp = torch.tensor(tp, device=self.device, requires_grad=self.requires_grad)
-                        fp = torch.tensor(fp, device=self.device, requires_grad=self.requires_grad)
+                        # TODO: fix, why new tensors?
+                        tp = tp.clone()
+                        fp = fp.clone()
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp + tp + torch.finfo(torch.float32).eps)
@@ -506,7 +507,7 @@ class COCOeval:
                         except:  # noqa: S110, E722 # nosec B110
                             pass  # TODO: fix this
                         precision[t, :, k, a, m] = torch.tensor(q, device=self.device, requires_grad=self.requires_grad)
-                        scores[t, :, k, a, m] = torch.tensor(ss, device=self.device, requires_grad=self.requires_grad)
+                        scores[t, :, k, a, m] = ss.clone()
         self.eval = EvalResult(
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
