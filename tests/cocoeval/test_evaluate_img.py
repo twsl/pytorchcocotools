@@ -13,16 +13,61 @@ from pytorchcocotools.internal.cocoeval_types import EvalImgResult  # noqa: N811
 RANGE1 = (0, int(1e5**2))
 
 BBOX_DATA = [
-    (1, 1, RANGE1, 1, EvalImgResult(dtScores=torch.tensor([0.5]))),
-    (1, 2, RANGE1, 1, EvalImgResult(dtScores=torch.tensor([0.8]))),
+    (
+        1,
+        1,
+        RANGE1,
+        1,
+        EvalImgResult(
+            dtScores=torch.tensor([0.5]),
+            dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]]),
+        ),
+    ),
+    (
+        1,
+        2,
+        RANGE1,
+        1,
+        EvalImgResult(
+            dtScores=torch.tensor([0.8]),
+            dtMatches=torch.tensor([[2.0], [2.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]]),
+        ),
+    ),
 ]
 SEGM_DATA = [
-    (1, 1, RANGE1, 1, EvalImgResult(dtScores=torch.tensor([0.5]))),
-    (1, 2, RANGE1, 1, EvalImgResult(dtScores=torch.tensor([0.8]))),
+    (
+        1,
+        1,
+        RANGE1,
+        1,
+        EvalImgResult(
+            dtScores=torch.tensor([0.5]),
+            dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]]),
+        ),
+    ),
+    (
+        1,
+        2,
+        RANGE1,
+        1,
+        EvalImgResult(
+            dtScores=torch.tensor([0.8]),
+            dtMatches=torch.tensor([[2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [0.0], [0.0]]),
+        ),
+    ),
 ]
 
 KEYPOINTS_DATA = [
-    (1, 4, RANGE1, 1, EvalImgResult(dtScores=torch.tensor([0.5]))),
+    (
+        1,
+        4,
+        RANGE1,
+        1,
+        EvalImgResult(
+            dtScores=torch.tensor([0.5]),
+            dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [0.0], [0.0]]),
+        ),
+    ),
 ]
 
 
@@ -119,7 +164,7 @@ def test_evaluateImg_np(  # noqa: N802
     # result_np = coco_eval_np.evaluateImg(img_id, cat_id, list(range), max_det)
     result_np = cast(dict, benchmark(coco_eval_np.evaluateImg, img_id, cat_id, list(range), max_det))
     assert np.allclose(result_np["dtScores"], result.dtScores.tolist())
-    # assert result_np == result.__dict__
+    assert np.allclose(result_np["dtMatches"], result.dtMatches.tolist())
 
 
 @pytest.mark.benchmark(group="evaluateImg", warmup=True)
@@ -137,6 +182,7 @@ def test_evaluateImg_pt(  # noqa: N802
     # result_pt: EvalImgResult = coco_eval_pt.evaluateImg(img_id, cat_id, range, max_det)
     result_pt = cast(EvalImgResult, benchmark(coco_eval_pt.evaluateImg, img_id, cat_id, list(range), max_det))
     assert torch.allclose(result_pt.dtScores, result.dtScores)
+    assert torch.allclose(result_pt.dtMatches, result.dtMatches)
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, img_id, cat_id, range, max_det, result", cases=COCOEvalCasesBoth)
@@ -154,5 +200,7 @@ def test_evaluateImg(  # noqa: N802
     coco_eval_pt.evaluate()
     result_pt = coco_eval_pt.evaluateImg(img_id, cat_id, range, max_det)
     assert np.allclose(result_np["dtScores"], result.dtScores.tolist())
+    assert np.allclose(result_np["dtMatches"], result.dtMatches.tolist())
     assert result_pt is not None
     assert torch.allclose(result_pt.dtScores, result.dtScores)
+    assert torch.allclose(result_pt.dtMatches, result.dtMatches)
