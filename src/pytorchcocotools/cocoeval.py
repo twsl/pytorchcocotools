@@ -310,21 +310,25 @@ class COCOeval:
 
         ignored = [1 if g.ignore or (g.area < aRng[0] or g.area > aRng[1]) else 0 for g in gt]
 
-        gt_ig = torch.Tensor(ignored)
+        gt_ig = torch.tensor(ignored, device=self.device, requires_grad=self.requires_grad)
         # sort dt highest score first, sort gt ignore last
-        gtind = torch.argsort(gt_ig)
+        gtind = torch.argsort(gt_ig, stable=True)
         gt = [gt[i] for i in gtind]
         dtind = torch.argsort(
             torch.tensor(
                 [-d.score if d.score is not None else 0 for d in dt],
                 device=self.device,
                 requires_grad=self.requires_grad,
-            )
+            ),
+            stable=True,
         )
         dt = [dt[i] for i in dtind[0:maxDet]]
         iscrowd = torch.tensor([int(o.iscrowd) for o in gt], device=self.device, requires_grad=self.requires_grad)
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
+
+        limit = 1 - 1e-10
+        limit = torch.tensor(1, device=self.device, requires_grad=self.requires_grad) - torch.finfo(torch.float32).eps
 
         num_iou_thrs = len(self.params.iouThrs)  # T
         num_gt = len(gt)  # G
@@ -336,17 +340,13 @@ class COCOeval:
             for tind, t in enumerate(self.params.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = torch.min(
-                        t,
-                        torch.tensor(1, device=self.device, requires_grad=self.requires_grad)
-                        - torch.finfo(torch.float32).eps,
-                    )
+                    iou = torch.min(t, limit)
                     m = -1
                     #############################################################################
                     # Vectorize the comparison and selection process
                     mask = (gtm[tind] <= 0) | iscrowd
                     valid_ious = ious[dind] * mask
-                    m = int(torch.argmax(valid_ious).item())
+                    m2 = int(torch.argmax(valid_ious).item())
                     #############################################################################
 
                     for gind, g in enumerate(gt):  # noqa: B007
@@ -369,7 +369,9 @@ class COCOeval:
                     dtm[tind, dind] = gt[m].id
                     gtm[tind, m] = d.id
         # set unmatched detections outside of area range to ignore
-        a = torch.Tensor([d.area < aRng[0] or d.area > aRng[1] for d in dt]).reshape((1, len(dt)))
+        a = torch.tensor(
+            [d.area < aRng[0] or d.area > aRng[1] for d in dt], device=self.device, requires_grad=self.requires_grad
+        ).reshape((1, len(dt)))
         dt_ig = torch.logical_or(
             dt_ig, torch.logical_and(dtm == 0, torch.repeat_interleave(a, repeats=num_iou_thrs, dim=0))
         )
