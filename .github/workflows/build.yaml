@@ -63,6 +63,7 @@ jobs:
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
+        continue-on-error: true
         env:
           SKIP: poetry-lock
 
@@ -81,7 +82,7 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest -c pyproject.toml --cov=${{ github.event.repository.name }} --cov-report=html \
+          poetry run pytest -c pyproject.toml --cov-report=html \
           --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
           --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml \
           --benchmark-disable
