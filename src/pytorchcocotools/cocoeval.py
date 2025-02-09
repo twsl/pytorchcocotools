@@ -481,6 +481,8 @@ class COCOeval:
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp + tp + torch.finfo(torch.float32).eps)
+                        q = torch.zeros((num_rec_thrs,), device=self.device, requires_grad=self.requires_grad)
+                        ss = torch.zeros((num_rec_thrs,), device=self.device, requires_grad=self.requires_grad)
 
                         recall[t, k, a, m] = rc[-1] if nd else 0
 
@@ -489,8 +491,9 @@ class COCOeval:
 
                         inds = torch.searchsorted(rc, p.recThrs, side="left")
 
-                        q = pr[inds]
-                        ss = dt_scores_sorted[inds]
+                        valid = (inds >= 0) & (inds < pr.size(0))
+                        q[valid] = pr[inds[valid]]
+                        ss[valid] = dt_scores_sorted[inds[valid]]
 
                         precision[t, :, k, a, m] = q
                         scores[t, :, k, a, m] = ss
