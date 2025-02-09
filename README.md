@@ -20,6 +20,9 @@ Uses the official [repository](https://github.com/ppwwyyxx/cocoapi) of the `pyco
 
 The file format is explained in the [official documentation](https://cocodataset.org/#format-data) and nicely summarized [here](https://www.youtube.com/watch?v=h6s61a_pqfM).
 
+> [!WARNING]
+> This is work in progress, feel free to contribute!
+
 ## Features
 
 - Strongly typed COCO data format [represetation](./src/pytorchcocotools/internal/structure/)
