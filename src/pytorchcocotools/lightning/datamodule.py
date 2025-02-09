@@ -1,10 +1,9 @@
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any
 
 import lightning as L  # noqa: N812
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision.transforms.v2 import Transform
 
 from pytorchcocotools.torch.dataset import CocoDetection
@@ -83,11 +82,11 @@ class COCODataModule(L.LightningDataModule):
     def predict_dataloader(self) -> DataLoader[CocoDetection]:
         return DataLoader(self.predict_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
 
-    def on_before_batch_transfer(self, batch: Any, dataloader_idx) -> Any:
+    def on_before_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
         # self.trainer.training
         # batch["x"] = transforms(batch["x"])
         return batch
 
-    def on_after_batch_transfer(self, batch: Any, dataloader_idx) -> Any:
+    def on_after_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
         # batch["x"] = gpu_transforms(batch["x"])
         return batch

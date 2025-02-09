@@ -1,5 +1,4 @@
-from collections.abc import Callable
-from functools import _Wrapped, wraps
+from functools import wraps
 from typing import Any
 
 import torch

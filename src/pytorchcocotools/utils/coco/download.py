@@ -1,23 +1,14 @@
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Literal, cast
 from urllib.error import URLError
 
 from torchvision.datasets.utils import (
-    _flip_byte_order,
     check_integrity,
     download_and_extract_archive,
-    extract_archive,
-    verify_str_arg,
 )
 
 from pytorchcocotools.utils.coco.files import (
     BaseCocoFileConfig,
-    Coco2014FileConfig,
-    Coco2015FileConfig,
     Coco2017FileConfig,
-    CocoYear,
     FileEntity,
 )
 from pytorchcocotools.utils.logging import get_logger

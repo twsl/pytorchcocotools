@@ -1,7 +1,4 @@
-import torch
-from torch import Tensor
 from torchvision import tv_tensors as tv
-from torchvision.ops.boxes import nms
 
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
 

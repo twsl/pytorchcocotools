@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from dataclasses import field
 from datetime import datetime
-from typing import Literal, TypeAlias
 
-from numpy import rec
 import torch
 
 from pytorchcocotools.internal.entities import IoUType, Range, RangeLabels, Ranges

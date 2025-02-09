@@ -1,18 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Literal, TypeAlias
-from urllib.error import URLError
 
-from torchvision.datasets.utils import (
-    _flip_byte_order,
-    check_integrity,
-    download_and_extract_archive,
-    extract_archive,
-    verify_str_arg,
-)
-
-from pytorchcocotools.utils.logging import get_logger
 from pytorchcocotools.utils.stage import StageStore
 
 CocoYear: TypeAlias = Literal[2014, 2015, 2017]

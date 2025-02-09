@@ -1,9 +1,8 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, Self, Union
+from typing import Any, Self
 
 import torch
 from torch import Tensor
-from torch.nested._internal.nested_tensor import NestedTensor
 from torch.utils._pytree import tree_flatten
 from torchvision.tv_tensors import TVTensor
 

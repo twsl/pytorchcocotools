@@ -52,7 +52,7 @@ from torchvision.transforms.v2 import (
     ToDtype,
     Transform,
     TrivialAugmentWide,
-)
+)  # noqa: F401
 
 
 def default_transform() -> Transform:
