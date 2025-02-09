@@ -52,12 +52,12 @@ class PyObjectsCases:
         )
 
     @pytest.mark.skip(reason="Original pycocotools implementation is wrong")
-    def case_poly(self) -> tuple[int, int, list[int], RleObj]:
+    def case_poly(self) -> tuple[int, int, list[int], RleObjs]:
         return (
             self.h,
             self.w,
             [10, 10, 20, 10, 20, 20, 21, 21, 10, 20],
-            RleObj(size=[self.h, self.w], counts=b"T8:?00000000001O00000:F`2"),
+            [RleObj(size=[self.h, self.w], counts=b"T8:?00000000001O00000:F`2")],
         )
 
     def case_uncompr_list(self) -> tuple[int, int, list[dict], list[dict]]:
@@ -68,12 +68,12 @@ class PyObjectsCases:
             [{"size": [self.h, self.w], "counts": b"R45d00000000b;"}],
         )
 
-    def case_uncompr(self) -> tuple[int, int, dict, dict]:
+    def case_uncompr(self) -> tuple[int, int, list[dict], RleObjs]:
         return (
             self.h,
             self.w,
-            {"size": [self.h, self.w], "counts": [130, 5, 20, 5, 20, 5, 20, 5, 20, 5, 390]},
-            RleObj(size=[self.h, self.w], counts=b"R45d00000000b;"),
+            [{"size": [self.h, self.w], "counts": [130, 5, 20, 5, 20, 5, 20, 5, 20, 5, 390]}],
+            [RleObj(size=[self.h, self.w], counts=b"R45d00000000b;")],
         )
 
     def case_complex(self):
@@ -195,7 +195,7 @@ def test_frPyObjects(h: int, w: int, obj: PyObj, result) -> None:  # noqa: N802
         obj_np = obj
 
     # convert the polygon to a mask
-    mask_np = mask.frPyObjects(obj_np, h, w)
+    mask_np = mask.frPyObjects(obj_np, h, w)  # pyright: ignore[reportCallIssue,reportArgumentType]
     mask_pt = tmask.frPyObjects(obj, h, w)
 
     # fix output
