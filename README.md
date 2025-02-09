@@ -73,14 +73,24 @@ from pytorchcocotools.cocoeval import COCOeval
 ### `mask`
 
 All methods now have a optional `device` and `requires_grad` parameters that allows to specify the device on which the masks should be created and whether gradients are required. This is useful for acceleration.
-`decode`, `encode` and `toBbox` now always return the batch/channel dimension implementation as opposed to a single return element if only a single element was passed. This was done to make the API more consistent, but is open for further discussion.
 
 > [!IMPORTANT]
-> Not yet done for `frPyObjects`.
+> `decode`, `encode`, `toBbox` and `frPyObjects` now always return the batch/channel dimension implementation as opposed to a single return element if only a single element was passed.
+> This was done to make the API more consistent by providing single, defined return types, but is open for further discussion.
 
 ### `COCO`
 
 One major difference is that the `COCO` class now uses a strongly typed data structure to represent the COCO data format. This makes it easier to work with the data and to understand the structure of the data, but also might cause problems with data sources that do not strictly follow the data format.
+
+### `COCOeval`
+
+Strongly typed as well. Includes also minor fixes, e.g. the `__str__` now also returns the `stats`.
+
+### Other additions
+
+- `pytorchcocotools.utils.coco.download.CocoDownloader`: While `gsutils rsync` is the officially recommended way to download the data, this allows you to trigger the download from Python.
+- The `logger` property in both all classes from the `logging` module replaces the `print` command, so you can fully customize it.
+- `pytorchcocotools.torch.dataset.CocoDetection`: A drop-in replacement for the dataset from `torchvision`, now strongly typed using the new `transforms.v2` api.
 
 ## Docs
 

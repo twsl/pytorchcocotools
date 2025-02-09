@@ -346,7 +346,7 @@ def frPyObjects(  # noqa: N802
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> RleObjs | RleObj:
+) -> RleObjs:
     """Convert (list of) polygon, bbox, or uncompressed RLE to encoded RLE mask.
 
     Args:
@@ -411,7 +411,7 @@ def frPyObjects(  # noqa: N802
         boxes = tv.BoundingBoxes(
             data, format=tv.BoundingBoxFormat.XYWH, canvas_size=(h, w), device=device, requires_grad=requires_grad
         )  # pyright: ignore[reportCallIssue]
-        return frBbox(boxes, device=device, requires_grad=requires_grad)[0]
+        return frBbox(boxes, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, list) and len(py_obj) > 4:
         poly = Polygon(
             torch.tensor(
@@ -422,10 +422,10 @@ def frPyObjects(  # noqa: N802
             requires_grad=requires_grad,
         )  # pyright: ignore[reportCallIssue]
         polygons = [poly]  # Polygons([poly])  # pyright: ignore[reportCallIssue]
-        return frPoly(polygons, device=device, requires_grad=requires_grad)[0]
+        return frPoly(polygons, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, RleObj | dict) and "counts" in py_obj and "size" in py_obj:
         return frUncompressedRLE(
             [RleObj(size=py_obj["size"], counts=py_obj["counts"])], device=device, requires_grad=requires_grad
-        )[0]
+        )
     else:
         raise Exception("Input type is not supported.")  # noqa: TRY002

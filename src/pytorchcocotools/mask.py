@@ -73,7 +73,7 @@ def frPyObjects(  # noqa: N802
     *,
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
-) -> RleObjs | RleObj:
+) -> RleObjs:
     """Convert (list of) polygon, bbox, or uncompressed RLE to encoded RLE mask.
 
     Args:
