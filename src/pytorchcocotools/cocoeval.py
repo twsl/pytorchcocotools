@@ -346,7 +346,7 @@ class COCOeval:
                     # Vectorize the comparison and selection process
                     mask = (gtm[tind] <= 0) | iscrowd
                     valid_ious = ious[dind] * mask
-                    m2 = int(torch.argmax(valid_ious).item())
+                    m2 = int(torch.argmax(valid_ious).item())  # noqa: F841
                     #############################################################################
 
                     for gind, g in enumerate(gt):  # noqa: B007
