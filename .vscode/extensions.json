@@ -26,7 +26,6 @@
         "ms-vscode-remote.vscode-remote-extensionpack",
         "ms-azuretools.vscode-docker",
         "uctakeoff.vscode-counter",
-        "ExecutableBookProject.myst-highlight",
         "redhat.vscode-yaml"
     ]
 }

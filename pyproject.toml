@@ -57,32 +57,33 @@ lightning = "^2.5.0"
 torchmetrics = "^1.6.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.9.5"
-bandit = "^1.8.2"
-pre-commit = "^4.1.0"
-pyright = "^1.1.393"
+ruff = "^0.11.2"
+bandit = "^1.8.3"
+pre-commit = "^4.2.0"
+pyright = "^1.1.398"
 vulture = "^2.14"
+copier = "^9.6.0"
 ipykernel = "^6.29.5"
 ipywidgets = "^8.1.5"
-ipython = "^8.31.0"
+ipython = "^9.0.2"
 jupytext = " ^1.16.6"
 nbconvert = "^7.16.6"
 torchfix = "^0.7.0"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.3.4"
+pytest = "^8.3.5"
 pytest-cov = "^6.0.0"
-pytest-mock = "^3.12.0"
+pytest-mock = "^3.14.0"
 pytest-cases = "^3.8.6"
 pytest-benchmark = {extras = ["aspect"], version = "^5.1.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.3"
-mkdocs-git-revision-date-localized-plugin = "^1.2.9"
+mkdocs-material = "^9.6.9"
+mkdocs-git-revision-date-localized-plugin = "^1.4.5"
 mkdocs-awesome-pages-plugin = "^2.10.1"
-mkdocs-git-authors-plugin = "^0.9.2"
-mkapi = "^4.0.0"
+mkdocs-git-authors-plugin = "^0.9.3"
+mkapi = "^4.1.3"
 markdown-callouts = "^0.4.0"
 pygments = "^2.19.0"
 mkdocs-jupyter = "^0.25.1"
@@ -260,5 +261,5 @@ reportMissingTypeStubs = false
 [tool.vulture]
 sort_by_size = true
 verbose = false
-min_confidence = 70
+min_confidence = 100
 paths = ["src"]
