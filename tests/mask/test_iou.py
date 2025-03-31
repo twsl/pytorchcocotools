@@ -149,7 +149,7 @@ def test_iou(
 
     # compute the iou
     iscrowd = [bool(c) for c in iscrowd]
-    iou_np = mask.iou(obj_np1, obj_np2, iscrowd)
+    iou_np = mask.iou(obj_np1, obj_np2, iscrowd)  # pyright: ignore[reportArgumentType]
     iou_pt = tmask.iou(obj_pt1, obj_pt2, iscrowd)  # pyright: ignore[reportArgumentType]
     # compare the results
     assert iou_np[0][0] == iou_pt[0][0]

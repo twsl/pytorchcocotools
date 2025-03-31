@@ -1,11 +1,10 @@
-from typing import Annotated, Literal
+from typing import Annotated
 
-import torch
 from torch import Tensor
 from torchvision import tv_tensors as tv
 
 import pytorchcocotools._mask as _mask
-from pytorchcocotools.internal.entities import Bool, Bools, IoUObject, PyObj, RleObj, RleObjs, TorchDevice
+from pytorchcocotools.internal.entities import Bools, IoUObject, PyObj, RleObj, RleObjs, TorchDevice
 
 
 def iou(

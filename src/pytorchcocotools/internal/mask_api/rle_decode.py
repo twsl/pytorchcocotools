@@ -9,6 +9,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 # https://github.com/pytorch-labs/segment-anything-fast/blob/de861af9badd03e8b40f5e063d70754a3dc6b4f4/segment_anything_fast/utils/amg.py#L106-L141
 
 
+@torch.no_grad
 # TODO: vectorize
 def rleDecode(  # noqa: N802
     rles: RLEs,

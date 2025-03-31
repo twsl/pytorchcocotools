@@ -5,6 +5,8 @@ from torchvision.ops.boxes import box_convert, box_iou
 from torchvision.transforms.v2 import functional as F  # noqa: N812
 
 
+@torch.no_grad
+@torch.compile
 def bbIou(dt: tv.BoundingBoxes, gt: tv.BoundingBoxes, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """Compute intersection over union between bounding boxes.
 

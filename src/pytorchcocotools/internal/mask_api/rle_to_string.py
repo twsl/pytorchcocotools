@@ -4,6 +4,8 @@ from torch import Tensor
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
+@torch.no_grad
+@torch.compile
 def rleToString(  # noqa: N802
     rle: RLE,
     *,

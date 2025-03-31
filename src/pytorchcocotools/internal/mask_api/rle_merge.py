@@ -4,6 +4,8 @@ from torch import Tensor
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
+@torch.no_grad
+@torch.compile
 def rleMerge(  # noqa: N802
     rles: RLEs,
     intersect: bool,

@@ -5,6 +5,8 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 from pytorchcocotools.utils.poly import Polygon
 
 
+@torch.no_grad
+@torch.compile
 def rleFrPoly(  # noqa: N802
     xy: Polygon,
     *,

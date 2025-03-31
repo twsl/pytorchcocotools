@@ -3,7 +3,7 @@ from typing import Any, Self
 
 import torch
 from torch import Tensor
-from torch.utils._pytree import tree_flatten
+from torch.utils._pytree import tree_flatten  # pyright: ignore[reportPrivateImportUsage]
 from torchvision.tv_tensors import TVTensor
 
 
