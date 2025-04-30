@@ -10,6 +10,9 @@
             "VARIANT": "3.11-bookworm"
         }
     },
+    // "runArgs": [
+    //     "--gpus=all"
+    // ],
     // Features to add to the dev container. More info: https://containers.dev/features.
     "features": {
         "ghcr.io/devcontainers/features/git:1": {},
