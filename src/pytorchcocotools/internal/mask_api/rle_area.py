@@ -5,7 +5,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
-@torch.compile
+# @torch.compile
 def rleArea(  # noqa: N802
     rles: RLEs,
     *,

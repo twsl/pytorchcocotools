@@ -6,7 +6,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
-@torch.compile
+# @torch.compile
 def rleToBbox(  # noqa: N802,
     rles: RLEs,
     *,

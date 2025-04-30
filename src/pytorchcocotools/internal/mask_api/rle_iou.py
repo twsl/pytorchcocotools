@@ -8,7 +8,7 @@ from pytorchcocotools.internal.mask_api.rle_to_bbox import rleToBbox
 
 
 @torch.no_grad
-@torch.compile
+# @torch.compile
 def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """Compute intersection over union between masks.
 

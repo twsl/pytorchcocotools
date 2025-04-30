@@ -6,7 +6,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
-@torch.compile
+# @torch.compile
 # TODO: vectorize
 def rleEncode(  # noqa: N802
     mask: tv.Mask,

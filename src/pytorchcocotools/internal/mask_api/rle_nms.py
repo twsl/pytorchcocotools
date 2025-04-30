@@ -6,7 +6,7 @@ from pytorchcocotools.internal.mask_api.rle_iou import rleIou
 
 
 @torch.no_grad
-@torch.compile
+# @torch.compile
 # TODO: Note used in python api
 def rleNms(dt: RLEs, n: int, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding masks.

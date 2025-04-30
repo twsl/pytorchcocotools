@@ -6,7 +6,7 @@ from pytorchcocotools.utils.poly import Polygon
 
 
 @torch.no_grad
-@torch.compile
+# @torch.compile
 def rleFrPoly(  # noqa: N802
     xy: Polygon,
     *,
@@ -57,7 +57,8 @@ def rleFrPoly(  # noqa: N802
     seq_lens = torch.where(xy_cond, dx, dy).unsqueeze(-1)
 
     max_len = torch.max(seq_lens)
-    d = torch.arange(0, int(max_len.int()) + 1, device=device).unsqueeze(0)
+    max_len_int = int(max_len.int().item()) + 1
+    d = torch.arange(0, max_len_int, device=device).unsqueeze(0)
     d = d.expand(seq_lens.size(0), d.size(1))
     d_mask = d <= seq_lens
 
