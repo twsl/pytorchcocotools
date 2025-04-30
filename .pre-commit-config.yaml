@@ -11,7 +11,7 @@ ci:
 repos:
   # https://github.com/python-poetry/poetry/pull/9716
   - repo: https://gitlab.com/vojko.pribudic.foss/pre-commit-update
-    rev: v0.6.1
+    rev: v0.7.0
     hooks:
       - id: pre-commit-update
 
@@ -30,8 +30,6 @@ repos:
         args: [--fix=lf]
       - id: end-of-file-fixer
       - id: trailing-whitespace
-      - id: check-json
-        exclude: devcontainer.json
       - id: check-yaml
         args: [--unsafe]
       - id: check-toml
@@ -41,6 +39,11 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=500, --enforce-all]
       - id: detect-private-key
+
+  - repo: https://gitlab.com/bmares/check-json5
+    rev: v1.0.0
+    hooks:
+      - id: check-json5
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.3
@@ -55,13 +58,13 @@ repos:
       - id: nbstripout
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
+    rev: v0.11.7
     hooks:
       - id: ruff
         args: [--fix, -v]
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.398
+    rev: v1.1.400
     hooks:
       - id: pyright
         args: [--verbose, --project=.]
@@ -75,6 +78,6 @@ repos:
       - id: vulture
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.2
+    rev: v8.25.1
     hooks:
       - id: gitleaks

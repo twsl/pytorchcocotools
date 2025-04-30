@@ -67,9 +67,6 @@ jobs:
         env:
           SKIP: poetry-lock
 
-      - name: Install plugin
-        run: poetry add --group test pytest-github-actions-annotate-failures
-
       - name: Build dependencies
         run: poetry build
 
