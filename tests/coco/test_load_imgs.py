@@ -10,7 +10,7 @@ from pytorchcocotools.internal.structure.images import CocoImage
 
 
 class LoadImgsCases:
-    def case_test(self) -> tuple[int | list[int], list[dict]]:
+    def case_test_1(self) -> tuple[int | list[int], list[dict]]:
         return (
             397133,
             [

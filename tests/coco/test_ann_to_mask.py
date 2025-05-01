@@ -12,7 +12,7 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class AnnToMaskCases:
-    def case_test(self) -> tuple[int, np.ndarray]:
+    def case_test_1(self) -> tuple[int, np.ndarray]:
         from pycocotools.mask import decode
 
         data = {

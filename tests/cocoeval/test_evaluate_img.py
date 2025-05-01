@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 import numpy as np
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
@@ -10,140 +10,153 @@ import torch
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt
 from pytorchcocotools.internal.cocoeval_types import EvalImgResult  # noqa: N811
 
+TEST_DATA: TypeAlias = tuple[int, int, tuple[int, int], int, EvalImgResult]
+
 RANGE1 = (0, int(1e5**2))
 
-BBOX_DATA = [
-    (
-        1,
-        1,
-        RANGE1,
-        1,
-        EvalImgResult(
-            dtScores=torch.tensor([0.5]),
-            dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]]),
-        ),
-    ),
-    (
-        1,
-        2,
-        RANGE1,
-        1,
-        EvalImgResult(
-            dtScores=torch.tensor([0.8]),
-            dtMatches=torch.tensor([[2.0], [2.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]]),
-        ),
-    ),
-]
-SEGM_DATA = [
-    (
-        1,
-        1,
-        RANGE1,
-        1,
-        EvalImgResult(
-            dtScores=torch.tensor([0.5]),
-            dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]]),
-        ),
-    ),
-    (
-        1,
-        2,
-        RANGE1,
-        1,
-        EvalImgResult(
-            dtScores=torch.tensor([0.8]),
-            dtMatches=torch.tensor([[2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [0.0], [0.0]]),
-        ),
-    ),
-]
 
-KEYPOINTS_DATA = [
-    (
-        1,
-        4,
-        RANGE1,
-        1,
-        EvalImgResult(
-            dtScores=torch.tensor([0.5]),
-            dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [0.0], [0.0]]),
-        ),
-    ),
-]
+class BBoxCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return (
+            1,
+            1,
+            RANGE1,
+            1,
+            EvalImgResult(
+                dtScores=torch.tensor([0.5]),
+                dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]]),
+            ),
+        )
+
+    def case_test_2(self) -> TEST_DATA:
+        return (
+            1,
+            2,
+            RANGE1,
+            1,
+            EvalImgResult(
+                dtScores=torch.tensor([0.8]),
+                dtMatches=torch.tensor([[2.0], [2.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]]),
+            ),
+        )
+
+
+class SegmCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return (
+            1,
+            1,
+            RANGE1,
+            1,
+            EvalImgResult(
+                dtScores=torch.tensor([0.5]),
+                dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0]]),
+            ),
+        )
+
+    def case_test_2(self) -> TEST_DATA:
+        return (
+            1,
+            2,
+            RANGE1,
+            1,
+            EvalImgResult(
+                dtScores=torch.tensor([0.8]),
+                dtMatches=torch.tensor([[2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [2.0], [0.0], [0.0]]),
+            ),
+        )
+
+
+class KeypointCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return (
+            1,
+            4,
+            RANGE1,
+            1,
+            EvalImgResult(
+                dtScores=torch.tensor([0.5]),
+                dtMatches=torch.tensor([[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [0.0], [0.0]]),
+            ),
+        )
 
 
 class COCOEvalCasesNp:
-    @parametrize(data=BBOX_DATA)
+    @parametrize_with_cases("data", cases=BBoxCases)
     def case_eval_bbox(
-        self, eval_bbox_np: COCOevalnp, data: tuple[int, int, tuple[int, int], int, EvalImgResult]
+        self, eval_bbox_np: COCOevalnp, data: TEST_DATA
     ) -> tuple[COCOevalnp, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_bbox_np, img_id, cat_id, range, max_det, result)
 
-    @parametrize(data=SEGM_DATA)
+    @parametrize_with_cases("data", cases=SegmCases)
     def case_eval_segm(
-        self, eval_segm_np: COCOevalnp, data: tuple[int, int, tuple[int, int], int, EvalImgResult]
+        self, eval_segm_np: COCOevalnp, data: TEST_DATA
     ) -> tuple[COCOevalnp, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_segm_np, img_id, cat_id, range, max_det, result)
 
-    @parametrize(data=KEYPOINTS_DATA)
+    @parametrize_with_cases("data", cases=KeypointCases)
     def case_eval_keypoints(
-        self, eval_keypoints_np: COCOevalnp, data: tuple[int, int, tuple[int, int], int, EvalImgResult]
+        self, eval_keypoints_np: COCOevalnp, data: TEST_DATA
     ) -> tuple[COCOevalnp, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_keypoints_np, img_id, cat_id, range, max_det, result)
 
 
 class COCOEvalCasesPt:
-    @parametrize(data=BBOX_DATA)
+    @parametrize_with_cases("data", cases=BBoxCases)
     def case_eval_bbox(
-        self, eval_bbox_pt: COCOevalpt, data: tuple[int, int, tuple[int, int], int, EvalImgResult]
+        self, eval_bbox_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalpt, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_bbox_pt, img_id, cat_id, range, max_det, result)
 
-    @parametrize(data=SEGM_DATA)
+    @parametrize_with_cases("data", cases=SegmCases)
     def case_eval_segm(
-        self, eval_segm_pt: COCOevalpt, data: tuple[int, int, tuple[int, int], int, EvalImgResult]
+        self, eval_segm_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalpt, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_segm_pt, img_id, cat_id, range, max_det, result)
 
-    @parametrize(data=KEYPOINTS_DATA)
+    @parametrize_with_cases("data", cases=KeypointCases)
     def case_eval_keypoints(
-        self, eval_keypoints_pt: COCOevalpt, data: tuple[int, int, tuple[int, int], int, EvalImgResult]
+        self, eval_keypoints_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalpt, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_keypoints_pt, img_id, cat_id, range, max_det, result)
 
 
 class COCOEvalCasesBoth:
-    @parametrize(data=BBOX_DATA)
+    @parametrize_with_cases("data", cases=BBoxCases)
     def case_eval_bbox(
         self,
         eval_bbox_np: COCOevalnp,
         eval_bbox_pt: COCOevalpt,
-        data: tuple[int, int, tuple[int, int], int, EvalImgResult],
+        data: TEST_DATA,
     ) -> tuple[COCOevalnp, COCOevalpt, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_bbox_np, eval_bbox_pt, img_id, cat_id, range, max_det, result)
 
-    @parametrize(data=SEGM_DATA)
+    @parametrize_with_cases("data", cases=SegmCases)
     def case_eval_segm(
         self,
         eval_segm_np: COCOevalnp,
         eval_segm_pt: COCOevalpt,
-        data: tuple[int, int, tuple[int, int], int, EvalImgResult],
+        data: TEST_DATA,
     ) -> tuple[COCOevalnp, COCOevalpt, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_segm_np, eval_segm_pt, img_id, cat_id, range, max_det, result)
 
-    @parametrize(data=KEYPOINTS_DATA)
+    @parametrize_with_cases("data", cases=KeypointCases)
     def case_eval_keypoints(
         self,
         eval_keypoints_np: COCOevalnp,
         eval_keypoints_pt: COCOevalpt,
-        data: tuple[int, int, tuple[int, int], int, EvalImgResult],
+        data: TEST_DATA,
     ) -> tuple[COCOevalnp, COCOevalpt, int, int, tuple[int, int], int, EvalImgResult]:
         img_id, cat_id, range, max_det, result = data
         return (eval_keypoints_np, eval_keypoints_pt, img_id, cat_id, range, max_det, result)

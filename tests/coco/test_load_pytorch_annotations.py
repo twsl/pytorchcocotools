@@ -11,7 +11,7 @@ from pytorchcocotools.internal.structure.additional import ResultAnnotation
 
 
 class LoadPyTorchAnnotationsCases:
-    def case_test(self) -> tuple[torch.Tensor, list[dict]]:
+    def case_test_1(self) -> tuple[torch.Tensor, list[dict]]:
         data = torch.Tensor([[397133, 48.51, 240.91, 247.03, 184.81, 0.999, 1]])
         result = [
             {

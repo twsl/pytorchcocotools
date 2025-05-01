@@ -10,7 +10,7 @@ from pytorchcocotools.internal.structure.annotations import CocoAnnotationDetect
 
 
 class GetCatIdsCases:
-    def case_test(self) -> tuple[int, list[dict]]:
+    def case_test_1(self) -> tuple[int, list[dict]]:
         result = [
             {
                 "segmentation": [

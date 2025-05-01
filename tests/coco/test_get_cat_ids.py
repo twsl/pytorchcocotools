@@ -9,7 +9,7 @@ from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 
 
 class GetCatIdsCases:
-    def case_test(self) -> tuple[str | list[str], str | list[str], int | list[int], list[int]]:
+    def case_test_1(self) -> tuple[str | list[str], str | list[str], int | list[int], list[int]]:
         return ([], [], 1, [1])
 
 

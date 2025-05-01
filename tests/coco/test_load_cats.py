@@ -10,7 +10,7 @@ from pytorchcocotools.internal.structure.categories import CocoCategoriesDetecti
 
 
 class LoadCatsCases:
-    def case_test(self) -> tuple[int, list[dict]]:
+    def case_test_1(self) -> tuple[int, list[dict]]:
         return (1, [{"supercategory": "person", "id": 1, "name": "person"}])
 
 

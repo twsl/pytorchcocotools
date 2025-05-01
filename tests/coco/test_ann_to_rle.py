@@ -10,7 +10,7 @@ from pytorchcocotools.internal.entities import RleObj, RleObjs
 
 
 class AnnToRLECases:
-    def case_test(self) -> tuple[int, RleObj]:
+    def case_test_1(self) -> tuple[int, RleObj]:
         result = RleObj(
             size=[427, 640],
             counts=b"RT_32X<9SD3f;3ZDNb;5_DKU;DeDd05HU;b0kD_OS;b0nD]OQ;e0nD[OR;e0nD[OR;f0nDZOQ;f0oDZOQ;f0oDZOQ;g0oDXOQ;h0oDXOQ;h0oDXOQ;i0oDVOQ;j0oDVOQ;k0nDTOS;l0mDTOS;l0nDSOR;l0oDmNX;n0f0J5J6A^C0g<N=O001O0O2Omk^4",

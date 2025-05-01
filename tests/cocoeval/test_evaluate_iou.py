@@ -10,58 +10,65 @@ from torch import Tensor
 
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
+TEST_DATA: TypeAlias = dict[tuple[int, int], list[list[float]]]
+
+
 # TODO: find better results from evaluate to compare against
-BBOX_DATA = [
-    {
-        (1, 1): [[1.0]],
-        (1, 2): [[0.5625]],
-        (2, 2): [[0.64]],
-    },
-]
-SEGM_DATA = [
-    {
-        (1, 1): [[1.0]],
-        (1, 2): [[0.875]],
-        (2, 2): [[0.85790885]],
-    },
-]
+class BBoxCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return {
+            (1, 1): [[1.0]],
+            (1, 2): [[0.5625]],
+            (2, 2): [[0.64]],
+        }
+
+
+class SegmCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return {
+            (1, 1): [[1.0]],
+            (1, 2): [[0.875]],
+            (2, 2): [[0.85790885]],
+        }
 
 
 class COCOEvalCasesNp:
-    @parametrize(data=BBOX_DATA)
-    def case_eval_bbox(self, eval_bbox_np: COCOevalnp, data: tuple[Any]) -> tuple[COCOevalnp, Any]:
+    @parametrize_with_cases("data", cases=BBoxCases)
+    def case_eval_bbox(self, eval_bbox_np: COCOevalnp, data: TEST_DATA) -> tuple[COCOevalnp, Any]:
         result = data
         return (eval_bbox_np, result)
 
-    @parametrize(data=SEGM_DATA)
-    def case_eval_segm(self, eval_segm_np: COCOevalnp, data: tuple[Any]) -> tuple[COCOevalnp, Any]:
+    @parametrize_with_cases("data", cases=SegmCases)
+    def case_eval_segm(self, eval_segm_np: COCOevalnp, data: TEST_DATA) -> tuple[COCOevalnp, Any]:
         result = data
         return (eval_segm_np, result)
 
 
 class COCOEvalCasesPt:
-    @parametrize(data=BBOX_DATA)
-    def case_eval_bbox(self, eval_bbox_pt: COCOevalpt, data: tuple[Any]) -> tuple[COCOevalpt, Any]:
+    @parametrize_with_cases("data", cases=BBoxCases)
+    def case_eval_bbox(self, eval_bbox_pt: COCOevalpt, data: TEST_DATA) -> tuple[COCOevalpt, Any]:
         result = data
         return (eval_bbox_pt, result)
 
-    @parametrize(data=SEGM_DATA)
-    def case_eval_segm(self, eval_segm_pt: COCOevalpt, data: tuple[Any]) -> tuple[COCOevalpt, Any]:
+    @parametrize_with_cases("data", cases=SegmCases)
+    def case_eval_segm(self, eval_segm_pt: COCOevalpt, data: TEST_DATA) -> tuple[COCOevalpt, Any]:
         result = data
         return (eval_segm_pt, result)
 
 
 class COCOEvalCasesBoth:
-    @parametrize(data=BBOX_DATA)
+    @parametrize_with_cases("data", cases=BBoxCases)
     def case_eval_bbox(
-        self, eval_bbox_np: COCOevalnp, eval_bbox_pt: COCOevalpt, data: tuple[Any]
+        self, eval_bbox_np: COCOevalnp, eval_bbox_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalnp, COCOevalpt, Any]:
         result = data
         return (eval_bbox_np, eval_bbox_pt, result)
 
-    @parametrize(data=SEGM_DATA)
+    @parametrize_with_cases("data", cases=SegmCases)
     def case_eval_segm(
-        self, eval_segm_np: COCOevalnp, eval_segm_pt: COCOevalpt, data: tuple[Any]
+        self, eval_segm_np: COCOevalnp, eval_segm_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalnp, COCOevalpt, Any]:
         result = data
         return (eval_segm_np, eval_segm_pt, result)
@@ -69,7 +76,7 @@ class COCOEvalCasesBoth:
 
 @pytest.mark.benchmark(group="evaluate", warmup=True)
 @parametrize_with_cases("coco_eval_np, result", cases=COCOEvalCasesNp)
-def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, result) -> None:  # noqa: N802
+def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, result: TEST_DATA) -> None:  # noqa: N802
     # coco_eval_np.evaluate()
     benchmark(coco_eval_np.evaluate)
     for combo in result:
@@ -80,7 +87,7 @@ def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, resu
 
 @pytest.mark.benchmark(group="evaluate", warmup=True)
 @parametrize_with_cases("coco_eval_pt, result", cases=COCOEvalCasesPt)
-def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, result) -> None:  # noqa: N802
+def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, result: TEST_DATA) -> None:  # noqa: N802
     # coco_eval_pt.evaluate()
     benchmark(coco_eval_pt.evaluate)
     for combo in result:
@@ -90,7 +97,7 @@ def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, resu
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, result", cases=COCOEvalCasesBoth)
-def test_evaluate(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, result) -> None:  # noqa: N802
+def test_evaluate(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, result: TEST_DATA) -> None:  # noqa: N802
     coco_eval_np.evaluate()
     coco_eval_pt.evaluate()
     for combo in result:

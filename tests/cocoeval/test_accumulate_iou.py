@@ -12,57 +12,66 @@ from torch import Tensor
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 from pytorchcocotools.internal.cocoeval_types import Params as Paramspt
 
-BBOX_DATA = [
-    (None, torch.tensor(-0.5514851485148515), torch.tensor(-0.46245874587458746), torch.tensor(-0.4583333333333333)),
-]
-SEGM_DATA = [
-    (None, torch.tensor(-0.483003300330033), torch.tensor(-0.36666666666666664), torch.tensor(-0.36666666666666664)),
-]
+TEST_DATA: TypeAlias = tuple[Any, Tensor, Tensor, Tensor]
+
+
+class BBoxCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return (
+            None,
+            torch.tensor(-0.5514851485148515),
+            torch.tensor(-0.46245874587458746),
+            torch.tensor(-0.4583333333333333),
+        )
+
+
+class SegmCases:
+    # @case(id="test_1")
+    def case_test_1(self) -> TEST_DATA:
+        return (
+            None,
+            torch.tensor(-0.483003300330033),
+            torch.tensor(-0.36666666666666664),
+            torch.tensor(-0.36666666666666664),
+        )
 
 
 class COCOEvalCasesNp:
-    @parametrize(data=BBOX_DATA)
-    def case_eval_bbox(
-        self, eval_bbox_np: COCOevalnp, data: tuple[Any, Any, Any, Any]
-    ) -> tuple[COCOevalnp, Any, tuple[Any, Any, Any]]:
+    @parametrize_with_cases("data", cases=BBoxCases)
+    def case_eval_bbox(self, eval_bbox_np: COCOevalnp, data: TEST_DATA) -> tuple[COCOevalnp, Any, tuple[Any, Any, Any]]:
         params, scores, precision, recall = data
         return (eval_bbox_np, params, (scores, precision, recall))
 
-    @parametrize(data=SEGM_DATA)
-    def case_eval_segm(
-        self, eval_segm_np: COCOevalnp, data: tuple[Any, Any, Any, Any]
-    ) -> tuple[COCOevalnp, Any, tuple[Any, Any, Any]]:
+    @parametrize_with_cases("data", cases=SegmCases)
+    def case_eval_segm(self, eval_segm_np: COCOevalnp, data: TEST_DATA) -> tuple[COCOevalnp, Any, tuple[Any, Any, Any]]:
         params, scores, precision, recall = data
         return (eval_segm_np, params, (scores, precision, recall))
 
 
 class COCOEvalCasesPt:
-    @parametrize(data=BBOX_DATA)
-    def case_eval_bbox(
-        self, eval_bbox_pt: COCOevalpt, data: tuple[Any, Any, Any, Any]
-    ) -> tuple[COCOevalpt, Any, tuple[Any, Any, Any]]:
+    @parametrize_with_cases("data", cases=BBoxCases)
+    def case_eval_bbox(self, eval_bbox_pt: COCOevalpt, data: TEST_DATA) -> tuple[COCOevalpt, Any, tuple[Any, Any, Any]]:
         params, scores, precision, recall = data
         return (eval_bbox_pt, params, (scores, precision, recall))
 
-    @parametrize(data=SEGM_DATA)
-    def case_eval_segm(
-        self, eval_segm_pt: COCOevalpt, data: tuple[Any, Any, Any, Any]
-    ) -> tuple[COCOevalpt, Any, tuple[Any, Any, Any]]:
+    @parametrize_with_cases("data", cases=SegmCases)
+    def case_eval_segm(self, eval_segm_pt: COCOevalpt, data: TEST_DATA) -> tuple[COCOevalpt, Any, tuple[Any, Any, Any]]:
         params, scores, precision, recall = data
         return (eval_segm_pt, params, (scores, precision, recall))
 
 
 class COCOEvalCasesBoth:
-    @parametrize(data=BBOX_DATA)
+    @parametrize_with_cases("data", cases=BBoxCases)
     def case_eval_bbox(
-        self, eval_bbox_np: COCOevalnp, eval_bbox_pt: COCOevalpt, data: tuple[Any, Any, Any, Any]
+        self, eval_bbox_np: COCOevalnp, eval_bbox_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalnp, COCOevalpt, Any, tuple[Any, Any, Any]]:
         params, scores, precision, recall = data
         return (eval_bbox_np, eval_bbox_pt, params, (scores, precision, recall))
 
-    @parametrize(data=SEGM_DATA)
+    @parametrize_with_cases("data", cases=SegmCases)
     def case_eval_segm(
-        self, eval_segm_np: COCOevalnp, eval_segm_pt: COCOevalpt, data: tuple[Any, Any, Any, Any]
+        self, eval_segm_np: COCOevalnp, eval_segm_pt: COCOevalpt, data: TEST_DATA
     ) -> tuple[COCOevalnp, COCOevalpt, Any, tuple[Any, Any, Any]]:
         params, scores, precision, recall = data
         return (eval_segm_np, eval_segm_pt, params, (scores, precision, recall))
