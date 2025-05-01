@@ -143,11 +143,11 @@ class PyObjectsCases:
 @pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_pt(  # noqa: N802
-    benchmark: BenchmarkFixture, h: int, w: int, obj: PyObj, result
+    benchmark: BenchmarkFixture, device: str, h: int, w: int, obj: PyObj, result
 ) -> None:
     # convert the polygon to a mask
-    # mask_pt = benchmark(tmask.frPyObjects, obj, h, w)
-    mask_pt = tmask.frPyObjects(obj, h, w)
+    mask_pt = benchmark(tmask.frPyObjects, obj, h, w, device=device)
+    # mask_pt = tmask.frPyObjects(obj, h, w)
 
     # fix output
     if not isinstance(mask_pt, list):
@@ -162,7 +162,7 @@ def test_frPyObjects_pt(  # noqa: N802
 @pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_np(  # noqa: N802
-    benchmark: BenchmarkFixture, h: int, w: int, obj: PyObj, result
+    benchmark: BenchmarkFixture, device: str, h: int, w: int, obj: PyObj, result
 ) -> None:
     # fix input
     if isinstance(obj, list):
@@ -186,17 +186,17 @@ def test_frPyObjects_np(  # noqa: N802
 
 
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
-def test_frPyObjects(h: int, w: int, obj: PyObj, result) -> None:  # noqa: N802
+def test_frPyObjects(device: str, h: int, w: int, obj: PyObj, result) -> None:  # noqa: N802
     if isinstance(obj, list):
-        obj_np = [o.numpy() if isinstance(o, Tensor) else o for o in obj]
+        obj_np = [o.cpu().numpy() if isinstance(o, Tensor) else o for o in obj]
     elif isinstance(obj, Tensor):
-        obj_np = obj.numpy()
+        obj_np = obj.cpu().numpy()
     else:
         obj_np = obj
 
     # convert the polygon to a mask
     mask_np = mask.frPyObjects(obj_np, h, w)  # pyright: ignore[reportCallIssue,reportArgumentType]
-    mask_pt = tmask.frPyObjects(obj, h, w)
+    mask_pt = tmask.frPyObjects(obj, h, w, device=device)
 
     # fix output
     if not isinstance(mask_np, list) and not isinstance(mask_pt, list):

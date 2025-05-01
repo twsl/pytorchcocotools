@@ -65,18 +65,18 @@ class EncodeCases(BaseCases):
 
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("mask, result", cases=EncodeCases)
-def test_encode_pt(benchmark: BenchmarkFixture, mask: Tensor, result: RleObj) -> None:  # noqa: N802
+def test_encode_pt(benchmark: BenchmarkFixture, device: str, mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
-    mask_pt = tv.Mask(mask)
+    mask_pt = tv.Mask(mask, device=device)
     # encode the mask
-    result_pt: Tensor = benchmark(tmask.encode, mask_pt)
+    result_pt: Tensor = benchmark(tmask.encode, mask_pt, device=device)
     # compare the results
     assert result_pt[0] == result
 
 
 @pytest.mark.benchmark(group="encode", warmup=True)
 @parametrize_with_cases("mask, result", cases=EncodeCases)
-def test_encode_np(benchmark: BenchmarkFixture, mask: Tensor, result: RleObj) -> None:  # noqa: N802
+def test_encode_np(benchmark: BenchmarkFixture, device: str, mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # encode the mask
@@ -86,13 +86,13 @@ def test_encode_np(benchmark: BenchmarkFixture, mask: Tensor, result: RleObj) ->
 
 
 @parametrize_with_cases("mask, result", cases=EncodeCases)
-def test_encode(mask: Tensor, result: RleObj) -> None:  # noqa: N802
+def test_encode(device: str, mask: Tensor, result: RleObj) -> None:  # noqa: N802
     # create a mask
-    mask_pt = tv.Mask(mask)
-    mask_np = np.asfortranarray(mask_pt.numpy())
+    mask_pt = tv.Mask(mask, device=device)
+    mask_np = np.asfortranarray(mask_pt.cpu().numpy())
     # encode the mask
     result_np = nmask.encode(mask_np)
-    result_pt = tmask.encode(mask_pt)
+    result_pt = tmask.encode(mask_pt, device=device)
     # compare the results
     assert result_np["counts"] == result_pt[0].counts
     assert result_np["size"] == result_pt[0].size

@@ -159,10 +159,12 @@ class MergeCases:
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge_pt(benchmark: BenchmarkFixture, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
+def test_merge_pt(
+    benchmark: BenchmarkFixture, device: str, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj
+) -> None:
     # encode
-    rle_pt1 = tmask.encode(tv.Mask(obj1))
-    rle_pt2 = tmask.encode(tv.Mask(obj2))
+    rle_pt1 = tmask.encode(tv.Mask(obj1, device=device), device=device)
+    rle_pt2 = tmask.encode(tv.Mask(obj2, device=device), device=device)
     # compute the iou
     result_pt = cast(RleObj, benchmark(tmask.merge, [rle_pt1[0], rle_pt2[0]], intersect=intersect))
     # compare the results
@@ -172,7 +174,9 @@ def test_merge_pt(benchmark: BenchmarkFixture, obj1: Tensor, obj2: Tensor, inter
 
 @pytest.mark.benchmark(group="merge", warmup=True)
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge_np(benchmark: BenchmarkFixture, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
+def test_merge_np(
+    benchmark: BenchmarkFixture, device: str, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj
+) -> None:
     obj1n = np.asfortranarray(obj1.numpy())
     obj2n = np.asfortranarray(obj2.numpy())
     # encode
@@ -186,20 +190,20 @@ def test_merge_np(benchmark: BenchmarkFixture, obj1: Tensor, obj2: Tensor, inter
 
 
 @parametrize_with_cases("obj1, obj2, intersect, result", cases=MergeCases)
-def test_merge(obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
+def test_merge(device: str, obj1: Tensor, obj2: Tensor, intersect: bool, result: RleObj) -> None:
     # create two masks
-    mask_pt1 = tv.Mask(obj1)
-    mask_pt2 = tv.Mask(obj2)
-    mask_np1 = np.asfortranarray(mask_pt1.numpy())
-    mask_np2 = np.asfortranarray(mask_pt2.numpy())
+    mask_pt1 = tv.Mask(obj1, device=device)
+    mask_pt2 = tv.Mask(obj2, device=device)
+    mask_np1 = np.asfortranarray(mask_pt1.cpu().numpy())
+    mask_np2 = np.asfortranarray(mask_pt2.cpu().numpy())
     # compute the iou
     rle_np1 = mask.encode(mask_np1)
     rle_np2 = mask.encode(mask_np2)
-    rle_pt1 = tmask.encode(mask_pt1)[0]
-    rle_pt2 = tmask.encode(mask_pt2)[0]
+    rle_pt1 = tmask.encode(mask_pt1, device=device)[0]
+    rle_pt2 = tmask.encode(mask_pt2, device=device)[0]
     # merge the masks
     merged_np = mask.merge([rle_np1, rle_np2], intersect=intersect)
-    merged_pt = tmask.merge([rle_pt1, rle_pt2], intersect=intersect)
+    merged_pt = tmask.merge([rle_pt1, rle_pt2], intersect=intersect, device=device)
     # compare the results
     assert merged_np == merged_pt.__dict__
     assert merged_pt.counts == merged_np["counts"]

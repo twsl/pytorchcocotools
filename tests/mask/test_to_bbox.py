@@ -33,19 +33,19 @@ class BboxCases(BaseCases):
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox_pt(benchmark: BenchmarkFixture, mask: Tensor, result: list[int]) -> None:  # noqa: N802
+def test_toBbox_pt(benchmark: BenchmarkFixture, device: str, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
-    mask_pt = tv.Mask(mask)
+    mask_pt = tv.Mask(mask, device=device)
     # compute the bounding box
-    rle_pt = tmask.encode(mask_pt)
-    result_pt: Tensor = benchmark(tmask.toBbox, rle_pt)
+    rle_pt = tmask.encode(mask_pt, device=device)
+    result_pt: Tensor = benchmark(tmask.toBbox, rle_pt, device=device)
     # compare the results
     assert result_pt.tolist()[0] == result
 
 
 @pytest.mark.benchmark(group="toBbox", warmup=True)
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox_np(benchmark: BenchmarkFixture, mask: Tensor, result: list[int]) -> None:  # noqa: N802
+def test_toBbox_np(benchmark: BenchmarkFixture, device: str, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # compute the bounding box
@@ -56,15 +56,15 @@ def test_toBbox_np(benchmark: BenchmarkFixture, mask: Tensor, result: list[int])
 
 
 @parametrize_with_cases("mask, result", cases=BboxCases)
-def test_toBbox(mask: Tensor, result: list[int]) -> None:  # noqa: N802
+def test_toBbox(device: str, mask: Tensor, result: list[int]) -> None:  # noqa: N802
     # create a mask
-    mask_pt = tv.Mask(mask)
-    mask_np = np.asfortranarray(mask_pt.numpy())
+    mask_pt = tv.Mask(mask, device=device)
+    mask_np = np.asfortranarray(mask_pt.cpu().numpy())
     # compute the bounding box
     rle_np = nmask.encode(mask_np)
-    rle_pt = tmask.encode(mask_pt)
+    rle_pt = tmask.encode(mask_pt, device=device)
     result_np = nmask.toBbox(rle_np)
-    result_pt = tmask.toBbox(rle_pt)
+    result_pt = tmask.toBbox(rle_pt, device=device)
     # compare the results
-    assert np.all(result_np == result_pt.numpy()[0])  # np.allclose(bbox1, bbox2.numpy())
+    assert np.all(result_np == result_pt.cpu().numpy()[0])  # np.allclose(bbox1, bbox2.numpy())
     assert list(result_np) == result

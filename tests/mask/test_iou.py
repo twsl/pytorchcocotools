@@ -77,6 +77,7 @@ class IoUCases:
 @parametrize_with_cases("obj1, obj2, iscrowd, result", cases=IoUCases)
 def test_iou_pt(
     benchmark: BenchmarkFixture,
+    device: str,
     obj1: tv.Mask | tv.BoundingBoxes,
     obj2: tv.Mask | tv.BoundingBoxes,
     iscrowd: list[bool],
@@ -84,13 +85,13 @@ def test_iou_pt(
 ) -> None:
     # encode
     if isinstance(obj1, tv.Mask) and isinstance(obj2, tv.Mask):
-        obj1_ = tmask.encode(obj1)
-        obj2_ = tmask.encode(obj2)
+        obj1_ = tmask.encode(obj1, device=device)
+        obj2_ = tmask.encode(obj2, device=device)
     else:
         obj1_ = obj1
         obj2_ = obj2
     # compute the iou
-    result_pt = benchmark(tmask.iou, obj1_, obj2_, iscrowd)
+    result_pt = benchmark(tmask.iou, obj1_, obj2_, iscrowd, device=device)
     # compare the results
     assert result_pt == result
 
@@ -99,6 +100,7 @@ def test_iou_pt(
 @parametrize_with_cases("obj1, obj2, iscrowd, result", cases=IoUCases)
 def test_iou_np(
     benchmark: BenchmarkFixture,
+    device: str,
     obj1: tv.Mask | tv.BoundingBoxes,
     obj2: tv.Mask | tv.BoundingBoxes,
     iscrowd: list[bool],
@@ -123,19 +125,19 @@ def test_iou_np(
 
 @parametrize_with_cases("obj1, obj2, iscrowd, result", cases=IoUCases)
 def test_iou(
-    obj1: tv.Mask | tv.BoundingBoxes, obj2: tv.Mask | tv.BoundingBoxes, iscrowd: list[bool], result: float
+    device: str, obj1: tv.Mask | tv.BoundingBoxes, obj2: tv.Mask | tv.BoundingBoxes, iscrowd: list[bool], result: float
 ) -> None:
     # create two masks
     mask_pt1 = obj1
     mask_pt2 = obj2
-    mask_np1 = np.asfortranarray(obj1.numpy())
-    mask_np2 = np.asfortranarray(obj2.numpy())
+    mask_np1 = np.asfortranarray(obj1.cpu().numpy())
+    mask_np2 = np.asfortranarray(obj2.cpu().numpy())
     # encode the masks
     if isinstance(mask_pt1, tv.Mask) and isinstance(mask_pt2, tv.Mask):
         rle_np1 = mask.encode(mask_np1)
         rle_np2 = mask.encode(mask_np2)
-        rle_pt1 = tmask.encode(mask_pt1)[0]
-        rle_pt2 = tmask.encode(mask_pt2)[0]
+        rle_pt1 = tmask.encode(mask_pt1, device=device)[0]
+        rle_pt2 = tmask.encode(mask_pt2, device=device)[0]
         # make RleObjs/lists
         obj_np1 = [rle_np1]
         obj_np2 = [rle_np2]
@@ -150,7 +152,7 @@ def test_iou(
     # compute the iou
     iscrowd = [bool(c) for c in iscrowd]
     iou_np = mask.iou(obj_np1, obj_np2, iscrowd)  # pyright: ignore[reportArgumentType]
-    iou_pt = tmask.iou(obj_pt1, obj_pt2, iscrowd)  # pyright: ignore[reportArgumentType]
+    iou_pt = tmask.iou(obj_pt1, obj_pt2, iscrowd, device=device)  # pyright: ignore[reportArgumentType]
     # compare the results
     assert iou_np[0][0] == iou_pt[0][0]
     assert iou_np[0][0] == result

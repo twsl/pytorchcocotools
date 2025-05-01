@@ -69,19 +69,19 @@ class DecodeCases(BaseCases):
 
 @pytest.mark.benchmark(group="decode", warmup=True)
 @parametrize_with_cases("mask, result", cases=DecodeCases)
-def test_decode_pt(benchmark: BenchmarkFixture, mask: Tensor, result: Tensor) -> None:  # noqa: N802
+def test_decode_pt(benchmark: BenchmarkFixture, device: str, mask: Tensor, result: Tensor) -> None:  # noqa: N802
     # create a mask
-    mask_pt = tv.Mask(mask)
+    mask_pt = tv.Mask(mask, device=device)
     # decode the mask
-    rle_pt = tmask.encode(mask_pt)
-    result_pt: Tensor = benchmark(tmask.decode, rle_pt)
+    rle_pt = tmask.encode(mask_pt, device=device)
+    result_pt: Tensor = benchmark(tmask.decode, rle_pt, device=device)
     # compare the results
     assert torch.equal(result_pt, result)
 
 
 @pytest.mark.benchmark(group="decode", warmup=True)
 @parametrize_with_cases("mask, result", cases=DecodeCases)
-def test_decode_np(benchmark: BenchmarkFixture, mask: Tensor, result: Tensor) -> None:  # noqa: N802
+def test_decode_np(benchmark: BenchmarkFixture, device: str, mask: Tensor, result: Tensor) -> None:  # noqa: N802
     # create a mask
     mask_np = np.asfortranarray(mask.numpy())
     # decode the mask
@@ -92,16 +92,16 @@ def test_decode_np(benchmark: BenchmarkFixture, mask: Tensor, result: Tensor) ->
 
 
 @parametrize_with_cases("mask, result", cases=DecodeCases)
-def test_decode(mask: Tensor, result: Tensor) -> None:  # noqa: N802
+def test_decode(device: str, mask: Tensor, result: Tensor) -> None:  # noqa: N802
     # create a mask
-    mask_pt = tv.Mask(mask)
-    mask_np = np.asfortranarray(mask_pt.numpy())
+    mask_pt = tv.Mask(mask, device=device)
+    mask_np = np.asfortranarray(mask_pt.cpu().numpy())
     # decode the mask
     rle_np = nmask.encode(mask_np)
-    rle_pt = tmask.encode(mask_pt)
+    rle_pt = tmask.encode(mask_pt, device=device)
     result_np = nmask.decode(rle_np)
-    result_pt = tmask.decode(rle_pt)
+    result_pt = tmask.decode(rle_pt, device=device)
     # compare the results
     assert np.array_equal(result_np, mask_np)
-    assert np.array_equal(result_np, mask_pt.numpy())
-    assert np.array_equal(result_np, result_pt.numpy())
+    assert np.array_equal(result_np, mask_pt.cpu().numpy())
+    assert np.array_equal(result_np, result_pt.cpu().numpy())
