@@ -140,7 +140,7 @@ class PyObjectsCases:
         )
 
 
-@pytest.mark.benchmark(group="encode", warmup=True)
+@pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_pt(  # noqa: N802
     benchmark: BenchmarkFixture, h: int, w: int, obj: PyObj, result
