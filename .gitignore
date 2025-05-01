@@ -166,6 +166,7 @@ cython_debug/
 
 # pytest-benchmark
 .benchmarks
+benchmark.json
 
 # tests
 junit/

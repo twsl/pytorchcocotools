@@ -140,13 +140,16 @@ jobs:
           poetry run pytest -c pyproject.toml --cov-report=html \
           --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
           --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml \
-          --benchmark-enable
-          --benchmark-only
-          --benchmark-json=benchmark.json
+          --benchmark-enable \
+          --benchmark-only \
+          --benchmark-sort=mean \
+          --benchmark-group-by=group,param \
+          --benchmark-warmup-iterations=25 \
+          --benchmark-histogram=.benchmarks/bench-${{ runner.os }}-${{ matrix.python-version }}
 
-      - name: Upload benchmark results
+      - name: Upload benchmark histogram
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
-          path: benchmark.json
+          name: benchmark-histogram-${{ runner.os }}-${{ matrix.python-version }}
+          path: .benchmarks/*
         if: ${{ always() }}
