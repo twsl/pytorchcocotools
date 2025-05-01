@@ -153,5 +153,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-histogram-${{ runner.os }}-${{ matrix.python-version }}
-          path: ./.benchmarks/*
+          path: .benchmarks/*
+          include-hidden-files: true
         if: ${{ always() }}
