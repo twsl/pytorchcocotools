@@ -136,6 +136,8 @@ jobs:
         if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
 
       - name: Run benchmark
+        env:
+          PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword, so passing copy=False failed."
         run: |
           poetry run pytest -c pyproject.toml --cov-report=html \
           --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
