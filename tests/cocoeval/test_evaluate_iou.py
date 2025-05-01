@@ -74,7 +74,7 @@ class COCOEvalCasesBoth:
         return (eval_segm_np, eval_segm_pt, result)
 
 
-@pytest.mark.benchmark(group="evaluate", warmup=True)
+@pytest.mark.benchmark(group="evaluateIoU", warmup=True)
 @parametrize_with_cases("coco_eval_np, result", cases=COCOEvalCasesNp)
 def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, result: TEST_DATA) -> None:  # noqa: N802
     # coco_eval_np.evaluate()
@@ -85,7 +85,7 @@ def test_evaluate_np(benchmark: BenchmarkFixture, coco_eval_np: COCOevalnp, resu
         assert np.allclose(iou, np.array(result[combo])), f"IOU np mismatch for combo {combo}"
 
 
-@pytest.mark.benchmark(group="evaluate", warmup=True)
+@pytest.mark.benchmark(group="evaluateIoU", warmup=True)
 @parametrize_with_cases("coco_eval_pt, result", cases=COCOEvalCasesPt)
 def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, result: TEST_DATA) -> None:  # noqa: N802
     # coco_eval_pt.evaluate()

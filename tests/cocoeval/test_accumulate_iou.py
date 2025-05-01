@@ -93,7 +93,7 @@ def convert_params(params: Paramspt | None) -> Paramsnp | None:
     return p
 
 
-@pytest.mark.benchmark(group="accumulate", warmup=True)
+@pytest.mark.benchmark(group="accumulateIoU", warmup=True)
 @parametrize_with_cases("coco_eval_np, params, result", cases=COCOEvalCasesNp)
 def test_accumulate_np(
     benchmark: BenchmarkFixture,
@@ -111,7 +111,7 @@ def test_accumulate_np(
     assert np.allclose(coco_eval_np.eval["recall"].mean(), recall.numpy())
 
 
-@pytest.mark.benchmark(group="accumulate", warmup=True)
+@pytest.mark.benchmark(group="accumulateIoU", warmup=True)
 @parametrize_with_cases("coco_eval_pt, params, result", cases=COCOEvalCasesPt)
 def test_accumulate_pt(
     benchmark: BenchmarkFixture,
