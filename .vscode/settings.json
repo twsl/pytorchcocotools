@@ -24,6 +24,8 @@
         "tests",
         "-v",
         "--benchmark-disable",
+        //"--benchmark-histogram=.benchmarks/bench",
+        //"--benchmark-group-by=group,param",
         "--no-cov"
     ],
     "[python]": {

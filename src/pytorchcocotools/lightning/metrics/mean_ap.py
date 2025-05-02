@@ -327,7 +327,7 @@ class MeanAveragePrecision(Metric):
             raise ValueError(f"Expected argument `box_format` to be one of {allowed_box_formats} but got {box_format}")
         self.box_format = box_format
 
-        self.iou_type = _validate_iou_type_arg(iou_type)
+        self.iou_type = _validate_iou_type_arg(iou_type)  # pyright: ignore[reportArgumentType]
 
         if iou_thresholds is not None and not isinstance(iou_thresholds, list):
             raise ValueError(

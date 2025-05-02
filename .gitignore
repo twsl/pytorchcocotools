@@ -170,3 +170,6 @@ benchmark.json
 
 # tests
 junit/
+
+# logs
+logs/
