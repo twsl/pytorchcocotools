@@ -76,7 +76,7 @@ def test_decode_pt(benchmark: BenchmarkFixture, device: str, mask: Tensor, resul
     rle_pt = tmask.encode(mask_pt, device=device)
     result_pt: Tensor = benchmark(tmask.decode, rle_pt, device=device)
     # compare the results
-    assert torch.equal(result_pt, result)
+    assert torch.equal(result_pt.cpu(), result)
 
 
 @pytest.mark.benchmark(group="decode", warmup=True)
