@@ -12,6 +12,16 @@ from torch.profiler import profile as TorchProfiler  # noqa: N812
 ExperimentalConfigType = object | None
 
 
+def is_decorated(func: Callable) -> bool:
+    return hasattr(func, "__wrapped__")
+
+
+def unwrap_function(func: Callable) -> Callable:
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__  # pyright: ignore[reportFunctionMemberAccess]
+    return func
+
+
 class CombinedProfiler:
     """A class that combines PyTorch profiler and line_profiler capabilities."""
 
@@ -34,6 +44,7 @@ class CombinedProfiler:
         print_line_stats: bool = True,
         output_unit: float = 1e-6,
         stripzeros: bool = False,
+        unwrap_decorated: bool = True,
     ):
         """Initialize the combined profiler.
 
@@ -56,6 +67,7 @@ class CombinedProfiler:
             print_line_stats: Whether to print the line-by-line profiling statistics to stdout.
             output_unit: Unit for timing measurements in the output (default: 1e-6 for microseconds).
             stripzeros: Whether to remove lines with zero hits from the output.
+            unwrap_decorated: Whether to unwrap decorated functions before profiling.
         """
         self.logger = logging.getLogger(__name__)
         self.functions_to_profile = functions_to_profile
@@ -75,6 +87,7 @@ class CombinedProfiler:
         self.print_line_stats = print_line_stats
         self.output_unit = output_unit
         self.stripzeros = stripzeros
+        self.unwrap_decorated = unwrap_decorated
         self.line_profiler = self._initialize_line_profiler()
         self.profiler_args = self._initialize_profiler_args()
 
@@ -82,7 +95,13 @@ class CombinedProfiler:
         """Initialize the line profiler with the provided functions."""
         lp = LineProfiler()
         for func in self.functions_to_profile:
-            lp.add_function(func)
+            if is_decorated(func) and self.unwrap_decorated:
+                unwrapped_func = unwrap_function(func)
+                if unwrapped_func is not func:
+                    lp.add_function(unwrapped_func)
+                    self.logger.debug(f"Unwrapped function: {unwrapped_func.__name__}")
+            else:
+                lp.add_function(func)
         return lp
 
     def _initialize_activities(self, activities) -> list[ProfilerActivity]:
