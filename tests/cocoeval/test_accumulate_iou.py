@@ -120,8 +120,8 @@ def test_accumulate_pt(
     result: tuple[Tensor, Tensor, Tensor],
 ) -> None:
     coco_eval_pt.evaluate()
-    coco_eval_pt.accumulate()
-    # benchmark(coco_eval_pt.accumulate, params)
+    # coco_eval_pt.accumulate()
+    benchmark(coco_eval_pt.accumulate, params)
     scores, precision, recall = result
     assert torch.allclose(coco_eval_pt.eval.scores.mean(), scores)
     assert torch.allclose(coco_eval_pt.eval.precision.mean(), precision)
