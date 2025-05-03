@@ -78,6 +78,8 @@ jobs:
         if: ${{ always() }}
 
       - name: Run tests
+        env:
+          PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword, so passing copy=False failed."
         run: |
           poetry run pytest -c pyproject.toml --cov-report=html \
           --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
