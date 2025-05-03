@@ -11,6 +11,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 @torch.no_grad
 # TODO: vectorize
+# @torch.compile
 def rleDecode(  # noqa: N802
     rles: RLEs,
     *,

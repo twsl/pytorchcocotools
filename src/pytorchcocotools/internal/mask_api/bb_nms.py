@@ -5,7 +5,7 @@ from pytorchcocotools.internal.mask_api.bb_iou import bbIou
 
 
 @torch.no_grad
-# @torch.compile
+@torch.compile
 # TODO: Note used in python api, call torch nms directly
 def bbNms(dt: tv.BoundingBoxes, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding boxes.

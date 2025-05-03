@@ -50,7 +50,8 @@ def rleFrString(  # noqa: N802
     # if len(cnts) % 2 != 0:
     #     cnts.append(0)
 
-    result = torch.tensor(cnts, device=device, requires_grad=requires_grad if requires_grad else False)
+    grad = requires_grad if requires_grad else False
+    result = torch.tensor(cnts, device=device, requires_grad=grad)  # TODO: Performance
 
     # uneven number of values means we cant reshape
     # result = result.view(-1, 2)

@@ -5,7 +5,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
-# @torch.compile
+@torch.compile
 def rleArea(  # noqa: N802
     rles: RLEs,
     *,
@@ -22,5 +22,5 @@ def rleArea(  # noqa: N802
     Returns:
         A list of areas of the encoded masks.
     """
-    a = [int(torch.sum(rles[i].cnts[1 : len(rles[i].cnts) : 2]).int()) for i in range(len(rles))]
+    a = [int(torch.sum(rle.cnts[1::2]).int().item()) for rle in rles]
     return a
