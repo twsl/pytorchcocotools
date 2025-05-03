@@ -8,5 +8,6 @@ def test_version() -> None:
 
 
 @pytest.mark.xfail(reason="expected to fail")
-def test_failed() -> None:
+def test_failed(device: str) -> None:
+    assert device is not None
     assert 1 == 2

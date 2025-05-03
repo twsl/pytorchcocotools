@@ -26,6 +26,7 @@ class CocoDetection(VisionDataset):
         annotation_path: Path to json annotation file.
         transforms: A function/transform that takes input sample and its target as entry
             and returns a transformed version.
+        out_bbox_fmt: The output bounding box format. Default is `XYXY`.
     """
 
     def __init__(

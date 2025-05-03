@@ -4,6 +4,7 @@ from dataclasses import field
 from datetime import datetime
 
 import torch
+from torch import Tensor
 
 from pytorchcocotools.internal.entities import IoUType, Range, RangeLabels, Ranges
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -14,13 +15,13 @@ class Params:
 
     imgIds: list[int]  # noqa: N815
     catIds: list[int]  # noqa: N815
-    iouThrs: torch.Tensor  # noqa: N815
-    recThrs: torch.Tensor  # noqa: N815
+    iouThrs: Tensor  # noqa: N815
+    recThrs: Tensor  # noqa: N815
     maxDets: list[int]  # noqa: N815
     areaRng: Ranges  # noqa: N815
     areaRngLbl: RangeLabels  # noqa: N815
     useCats: int  # noqa: N815
-    kpt_oks_sigmas: torch.Tensor
+    kpt_oks_sigmas: Tensor
 
     def __init__(self, iouType: IoUType = "segm") -> None:  # noqa: N803
         """Initialize Params with default values.
