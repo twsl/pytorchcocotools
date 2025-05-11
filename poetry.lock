@@ -5531,4 +5531,4 @@ metrics = ["torchmetrics"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "8a3add11b727399baccaf10fff4fd1f9958efafda8864ac0b8002c9c68f7e345"
+content-hash = "020502da3bf190c39de937e8493e9598ad7a802b94c28f0aa8e9491a011c97fd"

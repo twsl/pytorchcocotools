@@ -55,7 +55,7 @@ detection = ["torchmetrics"]
 [tool.poetry.group.ref.dependencies]
 pycocotools = "^2.0.8"
 scikit-image = "^0.25.0"
-faster-coco-eval = "^1.6.3"
+faster-coco-eval = "^1.6.5"
 lightning = "^2.5.0"
 torchmetrics = "^1.7.1"
 line-profiler = "^4.2.0"
