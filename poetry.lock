@@ -5642,10 +5642,11 @@ type = ["pytest-mypy"]
 
 [extras]
 debug = ["line-profiler"]
+detection = ["torchmetrics"]
 lightning = ["lightning"]
 metrics = ["torchmetrics"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "9540dfcc8d3fb59baaaa5e93b9544b1af8678d4403cfb73a51970f178135f8ac"
+content-hash = "de0117417699c8fa3ce2d2a0b4f18352052599d97810661c48629b6cce18cc6c"
