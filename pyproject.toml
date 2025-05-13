@@ -123,7 +123,7 @@ __version_tuple__ = (0, 0, 0)
 [tool.pytest.ini_options]
 minversion = "8.0"
 # https://code.visualstudio.com/docs/python/testing#_pytest-configuration-settings
-addopts = "--doctest-glob='test_*.md' --cov=src/pytorchcocotools --cov-report xml"
+addopts = "--doctest-glob='test_*.md'"
 testpaths = [
     "tests",
 ]
@@ -133,7 +133,7 @@ branch = true
 omit = [
     "tests/*",
 ]
-source = ["pytorchcocotools"]
+source_pkgs = ["pytorchcocotools"]
 
 [tool.coverage.report]
 exclude_lines = [
