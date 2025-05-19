@@ -60,7 +60,7 @@ torchmetrics = "^1.7.1"
 line-profiler = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.9"
+ruff = "^0.11.10"
 bandit = "^1.8.3"
 pre-commit = "^4.2.0"
 pyright = "^1.1.400"
