@@ -27,38 +27,16 @@ jobs:
       - name: Install copier
         run: pip install copier
 
-      - name: Get commit id and date
-        id: vars
-        run: |
-          export GIT_COMMIT=$(git rev-parse --short origin/main)
-          echo "branch_name=copier/update-${GIT_COMMIT}" >> $GITHUB_OUTPUT
-
-      - name: Create or update PR branch from main
-        run: |
-          git checkout main
-          git pull
-          git checkout -B ${{ steps.vars.outputs.branch_name }}
-
       - name: Run copier update
         run: copier update --trust -A --vcs-ref=HEAD
 
       - name: Check for changes
         id: check_changes
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           if [[ -n "$(git status --porcelain)" ]]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit changes
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
-          git add -A
-          git commit -m "chore: update files via copier"
 
       - name: Create or update PR
         if: steps.check_changes.outputs.has_changes == 'true'
@@ -66,8 +44,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: update files via copier"
-          branch: "${{ steps.vars.outputs.branch_name }}"
-          base: main
+          branch: copier/update
+          branch-suffix: short-commit-hash
           title: "Automated copier template update"
           body: "This PR updates files via copier. In case of conflicts, the PR will always reflect the latest copier output."
           delete-branch: true
