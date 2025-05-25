@@ -57,14 +57,24 @@ repos:
     hooks:
     -   id: nbstripout
 
+<<<<<<< before updating
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.9
+=======
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.11
+>>>>>>> after updating
     hooks:
     -   id: ruff
         args: [--fix, -v]
 
+<<<<<<< before updating
 -   repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.400
+=======
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.401
+>>>>>>> after updating
     hooks:
     -   id: pyright
         args: [--verbose, --project=.]
@@ -77,7 +87,11 @@ repos:
     hooks:
     -   id: vulture
 
+<<<<<<< before updating
 -   repo: https://github.com/gitleaks/gitleaks
+=======
+  - repo: https://github.com/gitleaks/gitleaks
+>>>>>>> after updating
     rev: v8.26.0
     hooks:
     -   id: gitleaks
