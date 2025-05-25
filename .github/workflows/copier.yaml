@@ -30,6 +30,13 @@ jobs:
       - name: Run copier update
         run: copier update --trust -A --vcs-ref=HEAD
 
+      - name: Resolve conflicts with incoming changes
+        run: |
+          if [[ -n "$(git status --porcelain | grep '^UU')" ]]; then
+            git checkout --theirs .
+            git add .
+          fi
+
       - name: Check for changes
         id: check_changes
         run: |
