@@ -36,7 +36,7 @@ jobs:
           git checkout -B ${{ steps.vars.outputs.branch_name }}
 
       - name: Run copier update
-        run: copier update --trust
+        run: copier update --trust -A --vcs-ref=HEAD
 
       - name: Check for changes
         id: check_changes
