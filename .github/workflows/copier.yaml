@@ -37,6 +37,7 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create or update PR
         if: steps.check_changes.outputs.has_changes == 'true'
@@ -49,3 +50,4 @@ jobs:
           title: "Automated copier template update"
           body: "This PR updates files via copier. In case of conflicts, the PR will always reflect the latest copier output."
           delete-branch: true
+          labels: "dependencies"
