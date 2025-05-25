@@ -1,4 +1,4 @@
-name: Copier Periodic Template Update
+name: Copier Template Update
 
 on:
   schedule:
