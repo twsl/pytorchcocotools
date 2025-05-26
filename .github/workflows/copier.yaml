@@ -34,8 +34,8 @@ jobs:
       - name: Resolve conflicts with incoming changes
         run: |
           if [[ -n "$(git status --porcelain | grep '^UU')" ]]; then
-            git merge --strategy-option theirs
-            git add .
+            git diff --name-only --diff-filter=U | xargs git checkout --theirs
+            git diff --name-only --diff-filter=U | xargs git add
           fi
 
       - name: Check for changes
