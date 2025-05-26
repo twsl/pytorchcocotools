@@ -34,7 +34,7 @@ jobs:
         run: |
           if [[ -n "$(git status --porcelain | grep '^UU')" ]]; then
             git add .
-            git -c merge.ours.driver=true merge --continue
+            git merge --strategy-option theirs
           fi
 
       - name: Check for changes
