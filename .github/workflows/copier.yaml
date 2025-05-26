@@ -28,13 +28,14 @@ jobs:
         run: pip install copier
 
       - name: Run copier update
+        id: run-update
         run: copier update --trust -A --vcs-ref=HEAD
 
       - name: Resolve conflicts with incoming changes
         run: |
           if [[ -n "$(git status --porcelain | grep '^UU')" ]]; then
-            git add .
             git merge --strategy-option theirs
+            git add .
           fi
 
       - name: Check for changes
@@ -45,6 +46,13 @@ jobs:
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Extract commit from copier answers
+        id: copier-commit
+        run: |
+          COMMIT=$(grep '^_commit:' .copier-answers.yml | sed 's/_commit: //')
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+          echo "COPIER_COMMIT=$COMMIT" >> $GITHUB_ENV
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
@@ -57,8 +65,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: update files via copier"
-          branch: copier/update
-          branch-suffix: short-commit-hash
+          branch: copier/update-${{ steps.copier-commit.outputs.commit }}
           title: "Automated copier template update"
           body: "This PR updates files via copier. In case of conflicts, the PR will always reflect the latest copier output."
           delete-branch: true
