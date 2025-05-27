@@ -122,11 +122,7 @@ __version_tuple__ = (0, 0, 0)
 [tool.pytest.ini_options]
 minversion = "8.0"
 # https://code.visualstudio.com/docs/python/testing#_pytest-configuration-settings
-<<<<<<< before updating
-addopts = "--doctest-glob='test_*.md'  --cov=src/pytorchcocotools --cov-config=pyproject.toml"
-=======
 addopts = "--doctest-glob='test_*.md' --cov=src/pytorchcocotools --cov-config=pyproject.toml"
->>>>>>> after updating
 testpaths = [
     "tests",
 ]
