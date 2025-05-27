@@ -60,10 +60,10 @@ torchmetrics = "^1.7.1"
 line-profiler = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.9"
+ruff = "^0.11.11"
 bandit = "^1.8.3"
 pre-commit = "^4.2.0"
-pyright = "^1.1.400"
+pyright = "^1.1.401"
 vulture = "^2.14"
 copier = "^9.7.1"
 ipykernel = "^6.29.5"
@@ -122,7 +122,7 @@ __version_tuple__ = (0, 0, 0)
 [tool.pytest.ini_options]
 minversion = "8.0"
 # https://code.visualstudio.com/docs/python/testing#_pytest-configuration-settings
-addopts = "--doctest-glob='test_*.md'  --cov=src/pytorchcocotools --cov-config=pyproject.toml"
+addopts = "--doctest-glob='test_*.md' --cov=src/pytorchcocotools --cov-config=pyproject.toml"
 testpaths = [
     "tests",
 ]
