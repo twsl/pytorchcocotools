@@ -34,7 +34,16 @@ jobs:
       - name: Resolve conflicts with incoming changes
         run: |
           if [[ -n "$(git status --porcelain | grep '^UU')" ]]; then
-            git diff --name-only --diff-filter=U | xargs git checkout --theirs
+            git diff --name-only --diff-filter=U | while read file; do
+              awk '
+                BEGIN { inConflict=0 }
+                /^<<<<<<< /     { inConflict=1; next }
+                /^=======/      { if (inConflict) { inConflict=2; next } }
+                /^>>>>>>> /     { if (inConflict) { inConflict=0; next } }
+                { if (!inConflict) print; else if (inConflict==2) print }
+              ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+              git add "$file"
+            done
             git diff --name-only --diff-filter=U | xargs git add
           fi
 
