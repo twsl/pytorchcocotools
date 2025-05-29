@@ -48,7 +48,7 @@ jobs:
 
       - name: Run copier update
         id: run-update
-        run: copier update --trust -A --vcs-ref=HEAD
+        run: poetry run copier update --trust -A --vcs-ref=HEAD
 
       - name: Resolve conflicts with incoming changes
         run: |
