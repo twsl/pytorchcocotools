@@ -48,7 +48,7 @@ line-profiler = { version = "^4.2.0", optional = true }
 [project.optional-dependencies]
 metrics = ["torchmetrics"]
 lightning = ["lightning"]
-debug = ["line-profiler"]
+profiling = ["line-profiler"]
 detection = ["torchmetrics"]
 
 [tool.poetry.group.ref.dependencies]
