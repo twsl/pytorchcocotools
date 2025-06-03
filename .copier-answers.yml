@@ -30,3 +30,4 @@ repository_namespace: twsl
 repository_provider: github.com
 self_signed: false
 use_precommit: true
+copier_auto_update: true
