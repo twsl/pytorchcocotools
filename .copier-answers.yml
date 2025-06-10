@@ -1,8 +1,9 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v0.2.0-120-gef4455e
+_commit: v0.2.0-136-g43cd98d
 _src_path: git+https://github.com/twsl/python-project-template
 author_email: 45483159+twsl@users.noreply.github.com
 author_username: twsl
+copier_auto_update: true
 copyright_holder: twsl
 copyright_holder_email: 45483159+twsl@users.noreply.github.com
 copyright_license: MIT
@@ -30,4 +31,3 @@ repository_namespace: twsl
 repository_provider: github.com
 self_signed: false
 use_precommit: true
-copier_auto_update: true

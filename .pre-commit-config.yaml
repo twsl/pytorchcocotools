@@ -18,8 +18,8 @@ repos:
   - repo: https://github.com/python-poetry/poetry
     rev: 2.1.3
     hooks:
-      - id: poetry-check
       - id: poetry-lock
+      - id: poetry-check
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -58,7 +58,7 @@ repos:
       - id: nbstripout
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
+    rev: v0.11.13
     hooks:
       - id: ruff
         args: [--fix, -v]
@@ -78,6 +78,6 @@ repos:
       - id: vulture
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.26.0
+    rev: v8.27.2
     hooks:
       - id: gitleaks
