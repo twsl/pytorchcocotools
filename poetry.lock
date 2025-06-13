@@ -2381,14 +2381,14 @@ pyyaml = ">=5.1"
 
 [[package]]
 name = "mkdocs-git-authors-plugin"
-version = "0.9.6"
+version = "0.10.0"
 description = "Mkdocs plugin to display git authors of a page"
 optional = false
 python-versions = ">=3.8"
 groups = ["docs"]
 files = [
-    {file = "mkdocs_git_authors_plugin-0.9.6-py3-none-any.whl", hash = "sha256:c437d33e85b79e39809f9d81d3283267b416312425b6f9728cd60156d59187e8"},
-    {file = "mkdocs_git_authors_plugin-0.9.6.tar.gz", hash = "sha256:180cc80ef78d553676b850fb783e13506d7eadd30b13a070aa085b2d9ad0607d"},
+    {file = "mkdocs_git_authors_plugin-0.10.0-py3-none-any.whl", hash = "sha256:28421a99c3e872a8e205674bb80ec48524838243e5f59eaf9bd97df103e38901"},
+    {file = "mkdocs_git_authors_plugin-0.10.0.tar.gz", hash = "sha256:29d1973b2835663d79986fb756e02f1f0ff3fe35c278e993206bd3c550c205e4"},
 ]
 
 [package.dependencies]
@@ -3923,14 +3923,14 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pyright"
-version = "1.1.401"
+version = "1.1.402"
 description = "Command line wrapper for pyright"
 optional = false
 python-versions = ">=3.7"
 groups = ["dev"]
 files = [
-    {file = "pyright-1.1.401-py3-none-any.whl", hash = "sha256:6fde30492ba5b0d7667c16ecaf6c699fab8d7a1263f6a18549e0b00bf7724c06"},
-    {file = "pyright-1.1.401.tar.gz", hash = "sha256:788a82b6611fa5e34a326a921d86d898768cddf59edde8e93e56087d277cc6f1"},
+    {file = "pyright-1.1.402-py3-none-any.whl", hash = "sha256:2c721f11869baac1884e846232800fe021c33f1b4acb3929cff321f7ea4e2982"},
+    {file = "pyright-1.1.402.tar.gz", hash = "sha256:85a33c2d40cd4439c66aa946fd4ce71ab2f3f5b8c22ce36a623f59ac22937683"},
 ]
 
 [package.dependencies]
@@ -5391,4 +5391,4 @@ metrics = ["torchmetrics"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "32a8085595384f9956eace154ced5b15902bdbe37cc465800bc6550d6340f788"
+content-hash = "4b1e64351198a06d4395507e367e0f242affb124c359c141398f0b1f84f251d3"
