@@ -41,9 +41,10 @@ classifiers = [
 python = "^3.11"
 torch = "^2.7.0"
 torchvision = "^0.22.0"
-torchmetrics = { version = "^1.7.2", optional = true }
+torchmetrics = { version = "^1.7.3", optional = true }
 lightning = { version = "^2.5.0", optional = true }
 line-profiler = { version = "^4.2.0", optional = true }
+matplotlib = "^3.10.3"
 
 [project.optional-dependencies]
 metrics = ["torchmetrics"]
@@ -52,11 +53,11 @@ profiling = ["line-profiler"]
 detection = ["torchmetrics"]
 
 [tool.poetry.group.ref.dependencies]
-pycocotools = "^2.0.8"
+pycocotools = "^2.0.10"
 scikit-image = "^0.25.0"
-faster-coco-eval = "^1.6.6"
+faster-coco-eval = "^1.6.7"
 lightning = "^2.5.0"
-torchmetrics = "^1.7.2"
+torchmetrics = "^1.7.3"
 line-profiler = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
