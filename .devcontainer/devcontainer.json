@@ -117,6 +117,7 @@
                 "yahyabatulu.vscode-markdown-alert",
                 "ms-vscode-remote.vscode-remote-extensionpack",
                 "ms-azuretools.vscode-docker",
+                "docker.docker",
                 "uctakeoff.vscode-counter",
                 "redhat.vscode-yaml",
                 "ms-vscode.cpptools-extension-pack"
