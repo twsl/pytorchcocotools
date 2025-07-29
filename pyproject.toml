@@ -84,11 +84,11 @@ pytest-github-actions-annotate-failures = "^0.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.15"
+mkdocs-material = "^9.6.16"
 mkdocs-git-revision-date-localized-plugin = "^1.4.7"
 mkdocs-awesome-pages-plugin = "^2.10.1"
 mkdocs-git-authors-plugin = "^0.10.0"
-mkapi = "^4.4.4"
+mkapi = "^4.4.5"
 markdown-callouts = "^0.4.0"
 pygments = "^2.19.0"
 mkdocs-jupyter = "^0.25.1"
@@ -98,7 +98,10 @@ optional = true
 
 [tool.poetry.group.debug.dependencies]
 ipdb = "^0.13.9"
-line-profiler = "^4.2.0"
+line_profiler = "^5.0.0"
+
+[project.scripts]
+pytorchcocotools = "pytorchcocotools.cli:main"
 
 [tool.poetry-dynamic-versioning]
 enable = false
