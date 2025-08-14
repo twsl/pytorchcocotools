@@ -105,7 +105,7 @@ jobs:
         with:
           commit-message: "chore: update files via copier"
           branch: copier/update
-          title: "Automated copier template update to ${{ steps.copier-commit.outputs.commit }}"
+          title: "chore(deps): bump copier project template to ${{ steps.copier-commit.outputs.commit }}"
           body: "This PR updates files via copier. In case of conflicts, the PR will always reflect the latest copier output."
           delete-branch: true
           labels: "dependencies"
