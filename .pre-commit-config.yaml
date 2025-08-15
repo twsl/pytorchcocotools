@@ -58,10 +58,11 @@ repos:
       - id: nbstripout
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.8
+    rev: v0.12.9
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, -v]
+      - id: ruff-format
 
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.403
