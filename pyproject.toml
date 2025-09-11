@@ -60,7 +60,7 @@ lightning = "^2.5.4"
 torchmetrics = "^1.8.1"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.12.12"
+ruff = "^0.13.0"
 bandit = "^1.8.6"
 pre-commit = "^4.3.0"
 pyright = "^1.1.405"
@@ -75,7 +75,7 @@ torchfix = "^0.7.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.4.2"
-pytest-cov = "^6.2.1"
+pytest-cov = "^7.0.0"
 pytest-mock = "^3.15.0"
 pytest-cases = "^3.9.1"
 pytest-benchmark = {extras = ["aspect","histogram"], version = "^5.1.0"}
@@ -83,7 +83,7 @@ pytest-github-actions-annotate-failures = "^0.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.18"
+mkdocs-material = "^9.6.19"
 mkdocs-git-revision-date-localized-plugin = "^1.4.7"
 mkdocs-awesome-pages-plugin = "^2.10.1"
 mkdocs-git-authors-plugin = "^0.10.0"

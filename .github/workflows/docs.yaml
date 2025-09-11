@@ -19,7 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ARTIFACT: docs
+  artifacts-name: docs
+  python-version: "3.11"
 
 jobs:
   build-docs:
@@ -31,10 +32,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
+      - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: ${{ env.python-version }}
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
@@ -48,11 +49,10 @@ jobs:
         id: cached-poetry-dependencies
         with:
           path: .venv
-          key: venv-Linux-3.11-${{ hashFiles('poetry.lock') }}
-          restore-keys: venv-Linux-3.11-
+          key: venv-${{ runner.os }}-${{ env.python-version }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: venv-${{ runner.os }}-${{ env.python-version }}-
 
       - name: Install dependencies
-        # if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --all-extras
 
       - name: Build dependencies
@@ -66,7 +66,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT }}
+          name: ${{ env.artifacts-name }}
           path: ./docs/_build/
         if: ${{ always() }}
 
@@ -86,14 +86,14 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: artifacts/${{ env.ARTIFACT }}/
+          path: artifacts/${{ env.artifacts-name }}/
 
       - name: Deploy to GitHub Pages
         id: deployment
