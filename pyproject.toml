@@ -41,7 +41,7 @@ classifiers = [
 python = "^3.11"
 torch = "^2.7.0"
 torchvision = "^0.22.0"
-torchmetrics = { version = "^1.8.1", optional = true }
+torchmetrics = { version = "^1.8.2", optional = true }
 lightning = { version = "^2.5.5", optional = true }
 line-profiler = { version = "^5.0.0", optional = true }
 matplotlib = "^3.10.3"
@@ -57,7 +57,7 @@ pycocotools = "^2.0.10"
 scikit-image = "^0.25.0"
 faster-coco-eval = "^1.6.7"
 lightning = "^2.5.5"
-torchmetrics = "^1.8.1"
+torchmetrics = "^1.8.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.13.0"
