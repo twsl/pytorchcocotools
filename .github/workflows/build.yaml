@@ -58,7 +58,6 @@ jobs:
           restore-keys: venv-${{ runner.os }}-${{ matrix.python-version }}-
 
       - name: Install dependencies
-        # if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --all-extras
 
       - name: Run pre-commit

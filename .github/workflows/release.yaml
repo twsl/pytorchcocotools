@@ -5,26 +5,23 @@ on:
   release:
     types: [published]
 
+env:
+  python-version: "3.11"
+
 jobs:
   release:
-    strategy:
-      matrix:
-        python-version: [3.11] # single version deployment
-    runs-on: ["ubuntu-latest"]
-    defaults:
-      run:
-        shell: bash
-
+    name: Release package
+    runs-on: ['ubuntu-latest']
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
@@ -38,11 +35,10 @@ jobs:
         id: cached-poetry-dependencies
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
-          restore-keys: venv-${{ runner.os }}-${{ matrix.python-version }}-
+          key: venv-${{ runner.os }}-${{ env.python-version }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: venv-${{ runner.os }}-${{ env.python-version }}-
 
       - name: Install dependencies
-        # if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --all-extras
 
       - name: Dynamic versioning
@@ -81,7 +77,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: build-${{ github.sha }}
           path: dist/
