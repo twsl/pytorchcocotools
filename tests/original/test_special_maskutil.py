@@ -37,7 +37,7 @@ def test_invalid_rle_counts_pt(rle) -> None:
     # pycocotools raises a ValueError, pytorchcocotools raises a runtime error
     with pytest.raises(RuntimeError) as error:
         mask_util_pt.decode(rle)
-    assert str(error.value) == "upper bound and larger bound inconsistent with step sign"
+    assert str(error.value) == "upper bound and lower bound inconsistent with step sign"
 
 
 @pytest.mark.parametrize("rle", [get_zero_leading_rle()])
