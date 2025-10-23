@@ -28,13 +28,15 @@ def rleToString(  # noqa: N802
     s = bytearray()
     cnts = rle.cnts
     # make sure it's integers
-    cnts = cnts.ceil().int()  # TODO: Performance
+    cnts = cnts.ceil().int()
+    
+    # Optimized: Convert to Python list once instead of repeated .item() calls
+    cnts_list = cnts.tolist()
 
-    for i in range(len(rle.cnts)):  # len(cnts)
-        # make sure its not a reference
-        x = int(cnts[i].item())  # TODO: Performance
+    for i in range(len(cnts_list)):
+        x = cnts_list[i]
         if i > 2:
-            x -= int(cnts[i - 2].item())  # TODO: Performance
+            x -= cnts_list[i - 2]
         more = True
         while more:
             # take the 5 least significant bits of start point
