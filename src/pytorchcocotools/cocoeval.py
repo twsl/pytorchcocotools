@@ -159,8 +159,12 @@ class COCOeval:
             gt = self._gts[imgId, catId]
             dt = self._dts[imgId, catId]
         else:
-            gt = [_ for c_id in self.params.catIds for _ in self._gts[imgId, c_id]]
-            dt = [_ for c_id in self.params.catIds for _ in self._dts[imgId, c_id]]
+            # Optimized: Use list.extend instead of nested list comprehension
+            gt = []
+            dt = []
+            for c_id in self.params.catIds:
+                gt.extend(self._gts[imgId, c_id])
+                dt.extend(self._dts[imgId, c_id])
 
         gt = cast(list[CocoAnnotationObjectDetection], gt)
         dt = cast(list[CocoAnnotationObjectDetection], dt)
@@ -173,7 +177,8 @@ class COCOeval:
                 requires_grad=self.requires_grad,
             )
         )
-        dt = [dt[i] for i in inds]  # TODO: optimize, dt[inds]
+        # Optimized: Use list comprehension with direct indexing
+        dt = [dt[i] for i in inds.tolist()]
         if len(dt) > self.params.maxDets[-1]:
             dt = dt[0 : self.params.maxDets[-1]]
 
@@ -245,7 +250,8 @@ class COCOeval:
                 requires_grad=self.requires_grad,
             )
         )
-        dts = [dts[i] for i in inds]
+        # Optimized: Convert to list once for indexing
+        dts = [dts[i] for i in inds.tolist()]
         if len(dts) > self.params.maxDets[-1]:
             dts = dts[0 : self.params.maxDets[-1]]
         # if len(gts) == 0 and len(dts) == 0:
@@ -255,36 +261,72 @@ class COCOeval:
         sigmas = self.params.kpt_oks_sigmas
         vars = (sigmas * 2) ** 2
         k = len(sigmas)
-        # compute oks between each detection and ground truth object
-        for j, gt in enumerate(gts):
-            # create bounds for ignore regions(double the gt bbox)
-            g = torch.tensor(gt.keypoints, device=self.device, requires_grad=self.requires_grad)
-            xg = g[0::3]
-            yg = g[1::3]
-            vg = g[2::3]
-            k1 = torch.count_nonzero(vg > 0)
-            bb = torch.tensor(gt.bbox, device=self.device, requires_grad=self.requires_grad)
-            x0 = bb[0] - bb[2]
-            x1 = bb[0] + bb[2] * 2
-            y0 = bb[1] - bb[3]
-            y1 = bb[1] + bb[3] * 2
-            for i, dt in enumerate(dts):
-                d = torch.tensor(dt.keypoints, device=self.device, requires_grad=self.requires_grad)
-                xd = d[0::3]
-                yd = d[1::3]
-                if k1 > 0:
-                    # measure the per-keypoint distance if keypoints visible
-                    dx = xd - xg
-                    dy = yd - yg
+        
+        # Optimized: Vectorize OKS computation
+        # Pre-convert all keypoints and bboxes to tensors
+        if len(gts) > 0 and len(dts) > 0:
+            # Stack all gt keypoints and bboxes
+            gt_keypoints = torch.stack([
+                torch.tensor(gt.keypoints, device=self.device, requires_grad=self.requires_grad) 
+                for gt in gts
+            ])  # [num_gts, 3*k]
+            gt_bboxes = torch.stack([
+                torch.tensor(gt.bbox, device=self.device, requires_grad=self.requires_grad) 
+                for gt in gts
+            ])  # [num_gts, 4]
+            gt_areas = torch.tensor([gt.area for gt in gts], device=self.device, requires_grad=self.requires_grad)
+            
+            # Stack all dt keypoints
+            dt_keypoints = torch.stack([
+                torch.tensor(dt.keypoints, device=self.device, requires_grad=self.requires_grad) 
+                for dt in dts
+            ])  # [num_dts, 3*k]
+            
+            # Extract x, y, v for all gts and dts
+            xg = gt_keypoints[:, 0::3]  # [num_gts, k]
+            yg = gt_keypoints[:, 1::3]  # [num_gts, k]
+            vg = gt_keypoints[:, 2::3]  # [num_gts, k]
+            
+            xd = dt_keypoints[:, 0::3]  # [num_dts, k]
+            yd = dt_keypoints[:, 1::3]  # [num_dts, k]
+            
+            # Compute k1 for all gts
+            k1 = torch.count_nonzero(vg > 0, dim=1)  # [num_gts]
+            
+            # Compute bounds for all gts
+            x0 = gt_bboxes[:, 0] - gt_bboxes[:, 2]  # [num_gts]
+            x1 = gt_bboxes[:, 0] + gt_bboxes[:, 2] * 2  # [num_gts]
+            y0 = gt_bboxes[:, 1] - gt_bboxes[:, 3]  # [num_gts]
+            y1 = gt_bboxes[:, 1] + gt_bboxes[:, 3] * 2  # [num_gts]
+            
+            # Compute distances for all dt-gt pairs
+            # dx, dy shape: [num_dts, num_gts, k]
+            dx = xd.unsqueeze(1) - xg.unsqueeze(0)  # [num_dts, num_gts, k]
+            dy = yd.unsqueeze(1) - yg.unsqueeze(0)  # [num_dts, num_gts, k]
+            
+            # Handle cases where k1 == 0
+            # For these cases, we need to use bounds
+            z = torch.zeros(k, device=self.device)
+            for j in range(len(gts)):
+                if k1[j] == 0:
+                    for i in range(len(dts)):
+                        dx_bound, _ = torch.max(torch.stack([z, x0[j] - xd[i]]), dim=0) + torch.max(torch.stack([z, xd[i] - x1[j]]), dim=0)
+                        dy_bound, _ = torch.max(torch.stack([z, y0[j] - yd[i]]), dim=0) + torch.max(torch.stack([z, yd[i] - y1[j]]), dim=0)
+                        dx[i, j] = dx_bound
+                        dy[i, j] = dy_bound
+            
+            # Compute OKS for all pairs
+            e = (torch.pow(dx, 2) + torch.pow(dy, 2)) / vars.unsqueeze(0).unsqueeze(0) / (gt_areas.unsqueeze(0).unsqueeze(-1) + torch.finfo(torch.float32).eps) / 2
+            
+            # Apply visibility mask
+            for j in range(len(gts)):
+                if k1[j] > 0:
+                    visible_mask = vg[j] > 0  # [k]
+                    e[:, j, :] = torch.where(visible_mask.unsqueeze(0), e[:, j, :], torch.tensor(float('inf'), device=self.device))
+                    ious[:, j] = torch.sum(torch.exp(-e[:, j, visible_mask]), dim=1) / torch.count_nonzero(visible_mask)
                 else:
-                    # measure minimum distance to keypoints in (x0,y0) & (x1,y1)
-                    z = torch.zeros(k)
-                    dx, _ = torch.max(torch.stack([z, x0 - xd]), dim=0) + torch.max(torch.stack([z, xd - x1]), dim=0)
-                    dy, _ = torch.max(torch.stack([z, y0 - yd]), dim=0) + torch.max(torch.stack([z, yd - y1]), dim=0)
-                e = (torch.pow(dx, 2) + torch.pow(dy, 2)) / vars / (gt.area + torch.finfo(torch.float32).eps) / 2
-                if k1 > 0:
-                    e = e[vg > 0]
-                ious[i, j] = torch.sum(torch.exp(-e)) / e.shape[0]
+                    ious[:, j] = torch.sum(torch.exp(-e[:, j, :]), dim=1) / k
+        
         return ious
 
     def evaluateImg(self, imgId: int, catId: int, aRng: Range, maxDet: int) -> EvalImgResult | None:  # noqa: N803, N802
@@ -303,8 +345,12 @@ class COCOeval:
             gt = self._gts[imgId, catId]
             dt = self._dts[imgId, catId]
         else:
-            gt = [_ for c_id in self.params.catIds for _ in self._gts[imgId, c_id]]
-            dt = [_ for c_id in self.params.catIds for _ in self._dts[imgId, c_id]]
+            # Optimized: Use list.extend instead of nested list comprehension
+            gt = []
+            dt = []
+            for c_id in self.params.catIds:
+                gt.extend(self._gts[imgId, c_id])
+                dt.extend(self._dts[imgId, c_id])
         if len(gt) == 0 and len(dt) == 0:
             return None
 
@@ -313,7 +359,8 @@ class COCOeval:
         gt_ig = torch.tensor(ignored, device=self.device, requires_grad=self.requires_grad)
         # sort dt highest score first, sort gt ignore last
         gtind = torch.argsort(gt_ig, stable=True)
-        gt = [gt[i] for i in gtind]
+        # Optimized: Convert to list once for indexing
+        gt = [gt[i] for i in gtind.tolist()]
         dtind = torch.argsort(
             torch.tensor(
                 [-d.score if d.score is not None else 0 for d in dt],
@@ -322,7 +369,8 @@ class COCOeval:
             ),
             stable=True,
         )
-        dt = [dt[i] for i in dtind[0:maxDet]]
+        # Optimized: Convert to list once for indexing
+        dt = [dt[i] for i in dtind[0:maxDet].tolist()]
         iscrowd = torch.tensor([int(o.iscrowd) for o in gt], device=self.device, requires_grad=self.requires_grad)
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
@@ -340,15 +388,8 @@ class COCOeval:
             for tind, t in enumerate(self.params.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = torch.min(t, limit)
+                    iou = torch.min(torch.tensor(t, device=self.device), limit)
                     m = -1
-                    #############################################################################
-                    # Vectorize the comparison and selection process
-                    mask = (gtm[tind] <= 0) | iscrowd
-                    valid_ious = ious[dind] * mask
-                    m2 = int(torch.argmax(valid_ious).item())  # noqa: F841
-                    #############################################################################
-
                     for gind, g in enumerate(gt):  # noqa: B007
                         # if this gt already matched, and not a crowd, continue
                         if gtm[tind, gind] > 0 and not iscrowd[gind]:

@@ -101,20 +101,22 @@ def rleFrPoly(  # noqa: N802
 
     a = torch.diff(sorted, prepend=torch.tensor([0], device=device)).to(dtype=torch.int)
 
-    b = torch.zeros_like(a, device=device)
-    j, m = 0, 0
-    while j < len(a):
-        if a[j] > 0:
-            b[m] = a[j]
-            m += 1
+    # Optimized: Simplified loop - the pattern is to skip zeros and merge with previous non-zero
+    # Convert to list for faster Python iteration over small data
+    a_list = a.tolist()
+    b_list = []
+    j = 0
+    while j < len(a_list):
+        if a_list[j] > 0:
+            b_list.append(a_list[j])
             j += 1
         else:
             j += 1
-            if j < len(a):
-                b[m - 1] += a[j]
+            if j < len(a_list) and len(b_list) > 0:
+                b_list[-1] += a_list[j]
                 j += 1
-
-    b = b[:m]
+    
+    b = torch.tensor(b_list, dtype=torch.int, device=device) if b_list else torch.tensor([], dtype=torch.int, device=device)
 
     # Initialize RLE with the counts
     r = RLE(h=h, w=w, cnts=b)
