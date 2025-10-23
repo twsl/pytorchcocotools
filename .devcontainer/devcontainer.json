@@ -120,7 +120,7 @@
                 "docker.docker",
                 "uctakeoff.vscode-counter",
                 "redhat.vscode-yaml",
-                "ms-vscode.cpptools-extension-pack"
+                "sebastienfi.dead-code-finder"
             ]
         }
     },
