@@ -38,7 +38,7 @@ def rleEncode(  # noqa: N802
 
     # Optimized: Use list comprehension with tensor slicing
     zero = torch.zeros((1,), dtype=flattened_mask.dtype, device=mask.device)
-    
+
     rles = []
     for index in range(n):
         # Optimized: Direct boolean indexing instead of nested nonzero

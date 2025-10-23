@@ -34,9 +34,6 @@ def rleFrPoly(  # noqa: N802
     y = ((scale * xy[:, 1]) + 0.5).int()
     y = torch.cat((y, y[0:1]))
 
-    max_diff = torch.maximum(torch.abs(torch.diff(x)), torch.abs(torch.diff(y))) + 1
-    m = torch.sum(max_diff).int()
-
     xs = x[:-1]
     xe = x[1:]
     ys = y[:-1]
@@ -115,7 +112,7 @@ def rleFrPoly(  # noqa: N802
             if j < len(a_list) and len(b_list) > 0:
                 b_list[-1] += a_list[j]
                 j += 1
-    
+
     b = torch.tensor(b_list, dtype=torch.int, device=device) if b_list else torch.tensor([], dtype=torch.int, device=device)
 
     # Initialize RLE with the counts

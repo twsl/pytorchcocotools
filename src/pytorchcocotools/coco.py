@@ -80,7 +80,7 @@ class COCO:
         imgs: dict[int, CocoImage] = {}
         img_to_anns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         cat_to_imgs: defaultdict[int, list[int]] = defaultdict(list[int])
-        
+
         # Optimized: Single iteration over annotations instead of two
         for ann in self.dataset.annotations:
             img_to_anns[ann.image_id].append(ann)

@@ -29,7 +29,7 @@ def rleToString(  # noqa: N802
     cnts = rle.cnts
     # make sure it's integers
     cnts = cnts.ceil().int()
-    
+
     # Optimized: Convert to Python list once instead of repeated .item() calls
     cnts_list = cnts.tolist()
 
