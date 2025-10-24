@@ -45,7 +45,7 @@ def rleNmsBatch(dt: RLEs, n: int, thr: float) -> Tensor:  # noqa: N802
     """
     if n == 0:
         return torch.tensor([], dtype=torch.bool)
-    
+
     keep = torch.ones(n, dtype=torch.bool)
     for i in range(n):
         if keep[i]:

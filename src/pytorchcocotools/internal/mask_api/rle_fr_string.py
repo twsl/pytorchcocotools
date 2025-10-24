@@ -82,5 +82,5 @@ def rleFrStringBatch(  # noqa: N802
     """
     return RLEs([
         rleFrString(s, h, w, device=device, requires_grad=requires_grad)
-        for s, h, w in zip(strings, heights, widths)
+        for s, h, w in zip(strings, heights, widths, strict=True)
     ])

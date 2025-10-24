@@ -46,7 +46,7 @@ def rleAreaBatch(  # noqa: N802
     """
     if not rles:
         return torch.tensor([], dtype=torch.int32, device=device, requires_grad=requires_grad if requires_grad else False)
-    
+
     # For vectorization, we need to handle variable-length RLEs
     # We'll still iterate but use vectorized sum within each RLE
     areas = torch.stack([torch.sum(rle.cnts[1::2]).int() for rle in rles])
