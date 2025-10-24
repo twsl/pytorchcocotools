@@ -47,3 +47,7 @@ def rleEncode(  # noqa: N802
         diff = torch.diff(values, prepend=zero, dim=0)
         rles.append(RLE(h, w, diff))
     return RLEs(rles)
+
+
+# Batch version is the same as the original since it already processes batches
+rleEncodeBatch = rleEncode  # noqa: N816

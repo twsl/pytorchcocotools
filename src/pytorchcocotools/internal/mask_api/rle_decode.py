@@ -52,3 +52,7 @@ def rleDecode(  # noqa: N802
         objs.append(mask_tensor)
     data = torch.stack(objs, dim=-1)
     return tv.Mask(data, device=device, requires_grad=requires_grad)  # pyright: ignore[reportCallIssue]
+
+
+# Batch version is the same as the original since it already processes batches
+rleDecodeBatch = rleDecode  # noqa: N816

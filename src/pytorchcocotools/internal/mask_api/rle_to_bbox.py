@@ -81,7 +81,11 @@ def rleToBbox(  # noqa: N802,
     return tv.BoundingBoxes(bb, format=tv.BoundingBoxFormat.XYWH, canvas_size=(rles[0].h, rles[0].w))  # pyright: ignore[reportCallIssue]
 
 
-def rle_to_bbox_batch(
+# Batch version is the same as the original since it already processes batches
+rleToBboxBatch = rleToBbox  # noqa: N816
+
+
+def _rle_to_bbox_batch(
     rles: RLEs,
     *,
     device: TorchDevice | None = None,

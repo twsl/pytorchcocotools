@@ -114,3 +114,29 @@ def rleMerge(  # noqa: N802
         cnts = torch.stack(cnts_out)
 
     return RLE(h, w, cnts)
+
+
+@torch.no_grad
+@torch.compile
+def rleMergeBatch(  # noqa: N802
+    rles_list: list[RLEs],
+    intersect: bool,
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLEs:
+    """Compute union or intersection of encoded masks for multiple sets (batch version).
+
+    Args:
+        rles_list: List of RLE sets to merge.
+        intersect: Whether to compute the intersection.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
+
+    Returns:
+        List of merged masks, one per input set.
+    """
+    return RLEs([
+        rleMerge(rles, intersect, device=device, requires_grad=requires_grad)
+        for rles in rles_list
+    ])
