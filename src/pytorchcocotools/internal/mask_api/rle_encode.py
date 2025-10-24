@@ -9,7 +9,6 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 @torch.no_grad
 # @torch.compile
-# TODO: vectorize
 def rleEncode(  # noqa: N802
     mask: Annotated[tv.Mask, "N H W"],
     *,
@@ -29,25 +28,22 @@ def rleEncode(  # noqa: N802
     n, h, w = mask.shape
     mask_p = mask.permute(0, 2, 1)
     flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
-    # flattened_mask = mask.permute(0, 2, 1).reshape(mask.shape[0], -1).permute(1, 0)
     start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask.device)
-    # torch.ones((1, n), dtype=flattened_mask.dtype, device=mask.device) * flattened_mask.shape[0] # TODO: ???
     sentinel = torch.ones((1, n), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
     flat_tensor_with_sentinels = torch.cat([start_sentinel, flattened_mask, sentinel])
 
-    transitions = flat_tensor_with_sentinels[:-1, :] != flat_tensor_with_sentinels[1:, :]  # TODO: Performance
-    transition_indices = transitions.nonzero()  # TODO: Performance
+    # Optimized: Compute transitions once
+    transitions = flat_tensor_with_sentinels[:-1, :] != flat_tensor_with_sentinels[1:, :]
+    transition_indices = transitions.nonzero()
 
-    unique_indices = torch.unique(transition_indices[:, 1])  # TODO: Performance
+    # Optimized: Use list comprehension with tensor slicing
     zero = torch.zeros((1,), dtype=flattened_mask.dtype, device=mask.device)
 
     rles = []
-    for index in unique_indices:
-        values = transition_indices[torch.nonzero(transition_indices[:, 1] == index).squeeze(), 0]  # TODO: Performance
-        # not adding append=end, because thats how pycocotools does it
-        # Results in the possibility of an uneven number of values
-        diff = torch.diff(values, prepend=zero, dim=0)  # TODO: Performance
-        # diff = values - torch.cat([zero, values[:-1]], dim=0)
-        rle = diff
-        rles.append(RLE(h, w, rle))
+    for index in range(n):
+        # Optimized: Direct boolean indexing instead of nested nonzero
+        mask_idx = transition_indices[:, 1] == index
+        values = transition_indices[mask_idx, 0]
+        diff = torch.diff(values, prepend=zero, dim=0)
+        rles.append(RLE(h, w, diff))
     return RLEs(rles)
