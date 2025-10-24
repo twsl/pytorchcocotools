@@ -13,10 +13,12 @@ from pytorchcocotools.internal.mask_api import (
     rleFrBbox,
     rleFrPoly,
     rleFrString,
+    rleFrStringBatch,
     rleIou,
     rleMerge,
     rleToBbox,
     rleToString,
+    rleToStringBatch,
 )
 from pytorchcocotools.utils.list import is_list_of_type
 from pytorchcocotools.utils.poly import Polygon, Polygons
@@ -38,18 +40,8 @@ def _toString(  # noqa: N802
     Returns:
         The RLE encoded mask.
     """
-    objs = [
-        RleObj(
-            size=[r.h, r.w],
-            counts=rleToString(
-                r,
-                device=device,
-                requires_grad=requires_grad,
-            ),
-        )
-        for r in rles
-    ]
-    return objs
+    # Use batched version to avoid loops
+    return rleToStringBatch(rles, device=device, requires_grad=requires_grad)
 
 
 def _frString(  # noqa: N802
@@ -68,17 +60,11 @@ def _frString(  # noqa: N802
     Returns:
         The decoded mask.
     """
-    rles = [
-        rleFrString(
-            str.encode(obj.counts) if isinstance(obj.counts, str) else obj.counts,
-            obj.size[0],
-            obj.size[1],
-            device=device,
-            requires_grad=requires_grad,
-        )
-        for obj in rle_objs
-    ]
-    return rles
+    # Use batched version to avoid loops
+    strings = [str.encode(obj.counts) if isinstance(obj.counts, str) else obj.counts for obj in rle_objs]
+    heights = [obj.size[0] for obj in rle_objs]
+    widths = [obj.size[1] for obj in rle_objs]
+    return rleFrStringBatch(strings, heights, widths, device=device, requires_grad=requires_grad)
 
 
 def encode(
@@ -325,18 +311,18 @@ def frUncompressedRLE(  # noqa: N803, N802
     Returns:
         The RLE encoded objects.
     """
-    n = len(uc_rles)
-    objs = []
-    for i in range(n):
+    # Convert all uncompressed RLEs to RLE objects, then use batched toString
+    rles = []
+    for uc_rle in uc_rles:
         cnts = torch.tensor(
-            uc_rles[i].counts,
+            uc_rle.counts,
             dtype=torch.int,
             device=device,
             requires_grad=requires_grad if requires_grad is not None else False,
         )
-        r = RLE(uc_rles[i].size[0], uc_rles[i].size[1], cnts)
-        objs.append(_toString(RLEs([r]), device=device, requires_grad=requires_grad)[0])
-    return objs
+        rles.append(RLE(uc_rle.size[0], uc_rle.size[1], cnts))
+    # Use batched version to convert all at once
+    return _toString(RLEs(rles), device=device, requires_grad=requires_grad)
 
 
 def frPyObjects(  # noqa: N802
