@@ -34,7 +34,10 @@ def rleAreaBatch(  # noqa: N802
     device: TorchDevice | None = None,
     requires_grad: bool | None = None,
 ) -> Tensor:
-    """Compute area of encoded masks in a batched manner.
+    """Compute area of encoded masks using vectorized tensor operations.
+    
+    Uses fully vectorized approach when all RLEs have the same length,
+    falling back to per-RLE vectorized sum for variable-length RLEs.
 
     Args:
         rles: The run length encoded masks.
@@ -47,9 +50,18 @@ def rleAreaBatch(  # noqa: N802
     if not rles:
         return torch.tensor([], dtype=torch.int32, device=device, requires_grad=requires_grad if requires_grad else False)
 
-    # For vectorization, we need to handle variable-length RLEs
-    # We'll still iterate but use vectorized sum within each RLE
-    areas = torch.stack([torch.sum(rle.cnts[1::2]).int() for rle in rles])
+    # Try fully vectorized approach if all RLEs have same length
+    lengths = [len(rle.cnts) for rle in rles]
+    if len(set(lengths)) == 1 and lengths[0] > 0:
+        # All RLEs have same length - use fully vectorized approach
+        # Stack all counts into a single tensor [num_rles, counts_per_rle]
+        all_cnts = torch.stack([rle.cnts for rle in rles], dim=0)
+        # Sum only odd indices (foreground pixels) along the counts dimension
+        areas = all_cnts[:, 1::2].sum(dim=1).int()
+    else:
+        # Variable-length RLEs - fall back to per-RLE vectorized sum
+        areas = torch.stack([torch.sum(rle.cnts[1::2]).int() for rle in rles])
+    
     if device is not None:
         areas = areas.to(device)
     if requires_grad is not None:
