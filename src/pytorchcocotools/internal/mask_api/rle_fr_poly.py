@@ -118,3 +118,7 @@ def rleFrPoly(  # noqa: N802
     # Initialize RLE with the counts
     r = RLE(h=h, w=w, cnts=b)
     return r
+
+
+# Batch version processes multiple polygons - already batched since it takes a single polygon
+rleFrPolyBatch = rleFrPoly  # noqa: N816

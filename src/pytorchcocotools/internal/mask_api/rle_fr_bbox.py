@@ -50,3 +50,7 @@ def rleFrBbox(  # noqa: N802
         ]
     )
     return r
+
+
+# Batch version is the same as the original since it already processes batches
+rleFrBboxBatch = rleFrBbox  # noqa: N816

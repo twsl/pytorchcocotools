@@ -68,3 +68,7 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
                     u = rleArea([dt[d]])[0]
                 o[d, g] = i / u
     return o
+
+
+# Batch version is the same as the original since it already processes batches
+rleIouBatch = rleIou  # noqa: N816

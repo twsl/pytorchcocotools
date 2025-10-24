@@ -28,3 +28,30 @@ def rleNms(dt: RLEs, n: int, thr: float) -> list[bool]:  # noqa: N802
                     if u[0].float() > thr:
                         keep[j] = False
     return keep
+
+
+@torch.no_grad
+# @torch.compile
+def rleNmsBatch(dt: RLEs, n: int, thr: float) -> Tensor:  # noqa: N802
+    """Compute non-maximum suppression between masks in a batched manner.
+
+    Args:
+        dt: The detected masks
+        n: The number of detected masks.
+        thr: The IoU threshold for non-maximum suppression.
+
+    Returns:
+        A boolean tensor indicating which masks to keep (shape: [n]).
+    """
+    if n == 0:
+        return torch.tensor([], dtype=torch.bool)
+    
+    keep = torch.ones(n, dtype=torch.bool)
+    for i in range(n):
+        if keep[i]:
+            for j in range(i + 1, n):
+                if keep[j]:
+                    u = rleIou([dt[i]], [dt[j]], [False])
+                    if u[0].float() > thr:
+                        keep[j] = False
+    return keep
