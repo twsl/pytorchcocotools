@@ -113,7 +113,11 @@ def rleFrPoly(  # noqa: N802
                 b_list[-1] += a_list[j]
                 j += 1
 
-    b = torch.tensor(b_list, dtype=torch.int, device=device) if b_list else torch.tensor([], dtype=torch.int, device=device)
+    b = (
+        torch.tensor(b_list, dtype=torch.int, device=device)
+        if b_list
+        else torch.tensor([], dtype=torch.int, device=device)
+    )
 
     # Initialize RLE with the counts
     r = RLE(h=h, w=w, cnts=b)

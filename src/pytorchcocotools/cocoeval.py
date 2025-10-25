@@ -266,21 +266,18 @@ class COCOeval:
         # Pre-convert all keypoints and bboxes to tensors
         if len(gts) > 0 and len(dts) > 0:
             # Stack all gt keypoints and bboxes
-            gt_keypoints = torch.stack([
-                torch.tensor(gt.keypoints, device=self.device, requires_grad=self.requires_grad)
-                for gt in gts
-            ])  # [num_gts, 3*k]
-            gt_bboxes = torch.stack([
-                torch.tensor(gt.bbox, device=self.device, requires_grad=self.requires_grad)
-                for gt in gts
-            ])  # [num_gts, 4]
+            gt_keypoints = torch.stack(
+                [torch.tensor(gt.keypoints, device=self.device, requires_grad=self.requires_grad) for gt in gts]
+            )  # [num_gts, 3*k]
+            gt_bboxes = torch.stack(
+                [torch.tensor(gt.bbox, device=self.device, requires_grad=self.requires_grad) for gt in gts]
+            )  # [num_gts, 4]
             gt_areas = torch.tensor([gt.area for gt in gts], device=self.device, requires_grad=self.requires_grad)
 
             # Stack all dt keypoints
-            dt_keypoints = torch.stack([
-                torch.tensor(dt.keypoints, device=self.device, requires_grad=self.requires_grad)
-                for dt in dts
-            ])  # [num_dts, 3*k]
+            dt_keypoints = torch.stack(
+                [torch.tensor(dt.keypoints, device=self.device, requires_grad=self.requires_grad) for dt in dts]
+            )  # [num_dts, 3*k]
 
             # Extract x, y, v for all gts and dts
             xg = gt_keypoints[:, 0::3]  # [num_gts, k]
@@ -310,19 +307,30 @@ class COCOeval:
             for j in range(len(gts)):
                 if k1[j] == 0:
                     for i in range(len(dts)):
-                        dx_bound, _ = torch.max(torch.stack([z, x0[j] - xd[i]]), dim=0) + torch.max(torch.stack([z, xd[i] - x1[j]]), dim=0)
-                        dy_bound, _ = torch.max(torch.stack([z, y0[j] - yd[i]]), dim=0) + torch.max(torch.stack([z, yd[i] - y1[j]]), dim=0)
+                        dx_bound, _ = torch.max(torch.stack([z, x0[j] - xd[i]]), dim=0) + torch.max(
+                            torch.stack([z, xd[i] - x1[j]]), dim=0
+                        )
+                        dy_bound, _ = torch.max(torch.stack([z, y0[j] - yd[i]]), dim=0) + torch.max(
+                            torch.stack([z, yd[i] - y1[j]]), dim=0
+                        )
                         dx[i, j] = dx_bound
                         dy[i, j] = dy_bound
 
             # Compute OKS for all pairs
-            e = (torch.pow(dx, 2) + torch.pow(dy, 2)) / vars.unsqueeze(0).unsqueeze(0) / (gt_areas.unsqueeze(0).unsqueeze(-1) + torch.finfo(torch.float32).eps) / 2
+            e = (
+                (torch.pow(dx, 2) + torch.pow(dy, 2))
+                / vars.unsqueeze(0).unsqueeze(0)
+                / (gt_areas.unsqueeze(0).unsqueeze(-1) + torch.finfo(torch.float32).eps)
+                / 2
+            )
 
             # Apply visibility mask
             for j in range(len(gts)):
                 if k1[j] > 0:
                     visible_mask = vg[j] > 0  # [k]
-                    e[:, j, :] = torch.where(visible_mask.unsqueeze(0), e[:, j, :], torch.tensor(float("inf"), device=self.device))
+                    e[:, j, :] = torch.where(
+                        visible_mask.unsqueeze(0), e[:, j, :], torch.tensor(float("inf"), device=self.device)
+                    )
                     ious[:, j] = torch.sum(torch.exp(-e[:, j, visible_mask]), dim=1) / torch.count_nonzero(visible_mask)
                 else:
                     ious[:, j] = torch.sum(torch.exp(-e[:, j, :]), dim=1) / k
