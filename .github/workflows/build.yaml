@@ -153,7 +153,7 @@ jobs:
           --benchmark-histogram=.benchmarks/bench-${{ runner.os }}-${{ matrix.python-version }}
 
       - name: Upload benchmark histogram
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: benchmark-histogram-${{ runner.os }}-${{ matrix.python-version }}
           path: .benchmarks/*
