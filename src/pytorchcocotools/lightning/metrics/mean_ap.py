@@ -450,11 +450,11 @@ class MeanAveragePrecision(Metric):
                 if self.extended_summary:
                     summary = {
                         f"{prefix}ious": apply_to_collection(
-                            coco_eval.ious, torch.Tensor, lambda x: torch.tensor(x, dtype=torch.float32)
+                            coco_eval.ious, torch.Tensor, lambda x: x.detach().clone().to(dtype=torch.float32)
                         ),
-                        f"{prefix}precision": torch.tensor(coco_eval.eval["precision"]),
-                        f"{prefix}recall": torch.tensor(coco_eval.eval["recall"]),
-                        f"{prefix}scores": torch.tensor(coco_eval.eval["scores"]),
+                        f"{prefix}precision": coco_eval.eval["precision"].detach().clone(),
+                        f"{prefix}recall": coco_eval.eval["recall"].detach().clone(),
+                        f"{prefix}scores": coco_eval.eval["scores"].detach().clone(),
                     }
                 result_dict.update(summary)
 
