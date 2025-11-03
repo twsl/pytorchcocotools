@@ -16,18 +16,26 @@ def device(request: FixtureRequest) -> str:
     return request.param
 
 
-def _filter_device_from_params(param_str: str) -> str:
-    """Filter device parameters (cpu/cuda) from parameter string.
+def _filter_device_from_params(bench: dict) -> str:
+    """Filter device parameter from parameter string by checking param names.
 
     Args:
-        param_str: Parameter string with parts separated by '-'
+        bench: Benchmark dictionary containing 'params' and 'param' keys
 
     Returns:
-        Filtered parameter string without device parameters
+        Filtered parameter string without device parameter value
     """
-    param_parts = param_str.split("-")
-    filtered_parts = [p for p in param_parts if p not in ["cpu", "cuda"]]
-    return "-".join(filtered_parts) if filtered_parts else param_str
+    param_str = bench["param"]
+    params_dict = bench.get("params", {})
+
+    # If there's a 'device' parameter, find and remove its value from param_str
+    if "device" in params_dict:
+        device_value = str(params_dict["device"])
+        param_parts = param_str.split("-")
+        filtered_parts = [p for p in param_parts if p != device_value]
+        return "-".join(filtered_parts) if filtered_parts else param_str
+
+    return param_str
 
 
 def pytest_benchmark_group_stats(config, benchmarks, group_by):
@@ -76,7 +84,7 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                     key.append(fullname_base)
                 elif grouping == "param":
                     # Get parameter string but exclude device parameter
-                    key.append(_filter_device_from_params(bench["param"]))
+                    key.append(_filter_device_from_params(bench))
                 elif grouping.startswith("param:"):
                     param_name = grouping[len("param:"):]
                     # Ignore 'device' parameter
@@ -97,7 +105,7 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                     key.append(fullname.split("[")[0])
                 elif grouping == "param":
                     # Remove device parameter if present
-                    key.append(_filter_device_from_params(bench["param"]))
+                    key.append(_filter_device_from_params(bench))
                 elif grouping.startswith("param:"):
                     param_name = grouping[len("param:"):]
                     # Ignore 'device' parameter
