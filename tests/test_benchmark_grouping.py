@@ -1,10 +1,18 @@
 """Test custom pytest-benchmark grouping behavior."""
+import importlib.util
 from pathlib import Path
-import sys
 
-# Add tests directory to path to import conftest
-sys.path.insert(0, str(Path(__file__).parent))
-from conftest import pytest_benchmark_group_stats  # noqa: E402
+
+def _import_conftest():
+    """Import conftest module dynamically to access pytest_benchmark_group_stats."""
+    conftest_path = Path(__file__).parent / "conftest.py"
+    spec = importlib.util.spec_from_file_location("conftest", conftest_path)
+    conftest = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(conftest)
+    return conftest.pytest_benchmark_group_stats
+
+
+pytest_benchmark_group_stats = _import_conftest()
 
 
 def test_benchmark_grouping_np_pt_clustering():

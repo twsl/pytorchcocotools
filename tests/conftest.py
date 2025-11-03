@@ -16,6 +16,20 @@ def device(request: FixtureRequest) -> str:
     return request.param
 
 
+def _filter_device_from_params(param_str: str) -> str:
+    """Filter device parameters (cpu/cuda) from parameter string.
+
+    Args:
+        param_str: Parameter string with parts separated by '-'
+
+    Returns:
+        Filtered parameter string without device parameters
+    """
+    param_parts = param_str.split("-")
+    filtered_parts = [p for p in param_parts if p not in ["cpu", "cuda"]]
+    return "-".join(filtered_parts) if filtered_parts else param_str
+
+
 def pytest_benchmark_group_stats(config, benchmarks, group_by):
     """Custom grouping for pytest-benchmark.
 
@@ -62,11 +76,7 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                     key.append(fullname_base)
                 elif grouping == "param":
                     # Get parameter string but exclude device parameter
-                    param_str = bench["param"]
-                    # Remove device parameter if present
-                    param_parts = param_str.split("-")
-                    filtered_parts = [p for p in param_parts if p not in ["cpu", "cuda"]]
-                    key.append("-".join(filtered_parts) if filtered_parts else param_str)
+                    key.append(_filter_device_from_params(bench["param"]))
                 elif grouping.startswith("param:"):
                     param_name = grouping[len("param:"):]
                     # Ignore 'device' parameter
@@ -86,11 +96,8 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                 elif grouping == "fullfunc":
                     key.append(fullname.split("[")[0])
                 elif grouping == "param":
-                    param_str = bench["param"]
                     # Remove device parameter if present
-                    param_parts = param_str.split("-")
-                    filtered_parts = [p for p in param_parts if p not in ["cpu", "cuda"]]
-                    key.append("-".join(filtered_parts) if filtered_parts else param_str)
+                    key.append(_filter_device_from_params(bench["param"]))
                 elif grouping.startswith("param:"):
                     param_name = grouping[len("param:"):]
                     # Ignore 'device' parameter
@@ -99,8 +106,8 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                 else:
                     raise NotImplementedError(f"Unsupported grouping {group_by!r}.")
 
-        # Convert key to string
-        group_key = " ".join(str(p) for p in key if p) or None
+        # Convert key to string - only skip None values, not empty strings
+        group_key = " ".join(str(p) for p in key if p is not None) or None
         groups[group_key].append(bench)
 
     # Sort benchmarks within each group
