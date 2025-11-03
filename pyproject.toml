@@ -60,14 +60,14 @@ lightning = "^2.5.5"
 torchmetrics = "^1.8.2"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.14.2"
+ruff = "^0.14.3"
 bandit = "^1.8.6"
 pre-commit = "^4.3.0"
 pyright = "^1.1.407"
 vulture = "^2.14"
 copier = "^9.10.3"
 ipykernel = "^6.31.0"
-ipywidgets = "^8.1.7"
+ipywidgets = "^8.1.8"
 ipython = "^9.6.0"
 jupytext = " ^1.18.1"
 nbconvert = "^7.16.6"
@@ -78,13 +78,13 @@ pytest = "^8.4.2"
 pytest-cov = "^7.0.0"
 pytest-mock = "^3.15.1"
 pytest-cases = "^3.9.1"
-pytest-benchmark = {extras = ["aspect","histogram"], version = "^5.1.0"}
+pytest-benchmark = {extras = ["aspect","histogram"], version = "^5.2.0"}
 pytest-github-actions-annotate-failures = "^0.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.22"
-mkdocs-git-revision-date-localized-plugin = "^1.4.7"
+mkdocs-material = "^9.6.23"
+mkdocs-git-revision-date-localized-plugin = "^1.5.0"
 mkdocs-awesome-pages-plugin = "^2.10.1"
 mkdocs-git-authors-plugin = "^0.10.0"
 mkapi = "^4.5.0"
