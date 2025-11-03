@@ -396,7 +396,7 @@ class COCOeval:
             for tind, t in enumerate(self.params.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = torch.min(torch.tensor(t, device=self.device), limit)
+                    iou = torch.min(t.detach().clone().to(device=self.device), limit)
                     m = -1
                     for gind, g in enumerate(gt):  # noqa: B007
                         # if this gt already matched, and not a crowd, continue
