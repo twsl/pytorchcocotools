@@ -1,4 +1,5 @@
 """Test custom pytest-benchmark grouping behavior."""
+
 import importlib.util
 from pathlib import Path
 
@@ -24,15 +25,15 @@ def test_benchmark_grouping_np_pt_clustering():
             "name": "test_func_np[param1-param2]",
             "group": "test_group",
             "param": "param1-param2",
-            "params": {"param1": "value1", "param2": "value2"}
+            "params": {"param1": "value1", "param2": "value2"},
         },
         {
             "fullname": "tests/test_file.py::test_func_pt[param1-param2]",
             "name": "test_func_pt[param1-param2]",
             "group": "test_group",
             "param": "param1-param2",
-            "params": {"param1": "value1", "param2": "value2"}
-        }
+            "params": {"param1": "value1", "param2": "value2"},
+        },
     ]
 
     # Test grouping by 'group'
@@ -55,29 +56,29 @@ def test_benchmark_grouping_with_device_parameter():
             "name": "test_func_np[cpu-param1]",
             "group": "test_group",
             "param": "cpu-param1",
-            "params": {"device": "cpu", "param1": "value1"}
+            "params": {"device": "cpu", "param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_func_np[cuda-param1]",
             "name": "test_func_np[cuda-param1]",
             "group": "test_group",
             "param": "cuda-param1",
-            "params": {"device": "cuda", "param1": "value1"}
+            "params": {"device": "cuda", "param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_func_pt[cpu-param1]",
             "name": "test_func_pt[cpu-param1]",
             "group": "test_group",
             "param": "cpu-param1",
-            "params": {"device": "cpu", "param1": "value1"}
+            "params": {"device": "cpu", "param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_func_pt[cuda-param1]",
             "name": "test_func_pt[cuda-param1]",
             "group": "test_group",
             "param": "cuda-param1",
-            "params": {"device": "cuda", "param1": "value1"}
-        }
+            "params": {"device": "cuda", "param1": "value1"},
+        },
     ]
 
     # Test grouping by 'group,name'
@@ -100,29 +101,29 @@ def test_benchmark_grouping_by_name():
             "name": "test_evaluate_np[param1]",
             "group": "evaluate",
             "param": "param1",
-            "params": {"param1": "value1"}
+            "params": {"param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_evaluate_pt[param1]",
             "name": "test_evaluate_pt[param1]",
             "group": "evaluate",
             "param": "param1",
-            "params": {"param1": "value1"}
+            "params": {"param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_compute_np[param1]",
             "name": "test_compute_np[param1]",
             "group": "compute",
             "param": "param1",
-            "params": {"param1": "value1"}
+            "params": {"param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_compute_pt[param1]",
             "name": "test_compute_pt[param1]",
             "group": "compute",
             "param": "param1",
-            "params": {"param1": "value1"}
-        }
+            "params": {"param1": "value1"},
+        },
     ]
 
     # Test grouping by 'name'
@@ -152,15 +153,15 @@ def test_benchmark_grouping_fallback_for_non_matching():
             "name": "test_other[param1]",
             "group": "other",
             "param": "param1",
-            "params": {"param1": "value1"}
+            "params": {"param1": "value1"},
         },
         {
             "fullname": "tests/test_file.py::test_another[param2]",
             "name": "test_another[param2]",
             "group": "other",
             "param": "param2",
-            "params": {"param2": "value2"}
-        }
+            "params": {"param2": "value2"},
+        },
     ]
 
     # Test grouping by 'group'

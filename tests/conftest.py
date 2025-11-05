@@ -76,7 +76,7 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                     # Use full path but with base name
                     fullname_base = fullname.split("::")[0] + "::" + base_name
                     if "[" in fullname:
-                        fullname_base += fullname[fullname.index("["):]
+                        fullname_base += fullname[fullname.index("[") :]
                     key.append(fullname_base)
                 elif grouping == "fullfunc":
                     # Use full path with function name only
@@ -86,7 +86,7 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                     # Get parameter string but exclude device parameter
                     key.append(_filter_device_from_params(bench))
                 elif grouping.startswith("param:"):
-                    param_name = grouping[len("param:"):]
+                    param_name = grouping[len("param:") :]
                     # Ignore 'device' parameter
                     if param_name != "device" and param_name in bench["params"]:
                         key.append(f"{param_name}={bench['params'][param_name]}")
@@ -107,7 +107,7 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
                     # Remove device parameter if present
                     key.append(_filter_device_from_params(bench))
                 elif grouping.startswith("param:"):
-                    param_name = grouping[len("param:"):]
+                    param_name = grouping[len("param:") :]
                     # Ignore 'device' parameter
                     if param_name != "device" and param_name in bench["params"]:
                         key.append(f"{param_name}={bench['params'][param_name]}")
