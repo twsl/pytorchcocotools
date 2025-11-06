@@ -73,7 +73,7 @@ plugins:
   - search
   - mkdocs-jupyter
   - mkapi
-  - awesome-pages
+  - awesome-nav
   - tags
   - git-authors
   - git-revision-date-localized:
@@ -114,3 +114,5 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+  - pymdownx.snippets:
+      base_path: !relative $config_dir/../ # Relative to the root directory ($config_dir is where mkdocs.yml is located)
