@@ -53,6 +53,7 @@
                 "python.analysis.inlayHints.variableTypes": true,
                 "python.analysis.inlayHints.functionReturnTypes": true,
                 "python.analysis.diagnosticMode": "workspace",
+                "python.analysis.typeCheckingMode": "strict",
                 "python.sortImports": true,
                 "python.testing.autoTestDiscoverOnSaveEnabled": false,
                 "python.testing.unittestEnabled": false,
