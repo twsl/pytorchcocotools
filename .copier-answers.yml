@@ -19,6 +19,7 @@ include_docs: true
 include_notebooks: true
 include_sample_code: false
 line_ending: lf
+precommit_tool: prek
 primary_branch: main
 project_description: Unofficial APIs for the MS-COCO dataset using PyTorch
 project_name: pytorchcocotools
