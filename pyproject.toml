@@ -89,7 +89,7 @@ mkdocs-awesome-nav = "^3.2.0"
 mkdocs-git-authors-plugin = "^0.10.0"
 mkapi = "^4.5.0"
 markdown-callouts = "^0.4.0"
-pymdown-extensions = "^10.16.1"
+pymdown-extensions = "^10.17.1"
 pygments = "^2.19.0"
 mkdocs-jupyter = "^0.25.1"
 
