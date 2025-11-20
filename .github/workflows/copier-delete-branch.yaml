@@ -17,12 +17,13 @@ jobs:
       contents: write
     steps:
       - name: Delete branch via GitHub API
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const branchRef = 'refs/heads/copier/update';
+            const fullRef = 'refs/heads/copier/update';
+            const branchRef = fullRef.replace(/^refs\//, '');
 
             try {
               await github.rest.git.deleteRef({ owner, repo, ref: branchRef });
