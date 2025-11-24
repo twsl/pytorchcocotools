@@ -60,7 +60,7 @@ lightning = "^2.5.5"
 torchmetrics = "^1.8.2"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.14.5"
+ruff = "^0.14.6"
 bandit = "^1.9.1"
 prek = "^0.2.16"
 pyright = "^1.1.407"
