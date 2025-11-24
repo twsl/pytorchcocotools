@@ -61,7 +61,7 @@ torchmetrics = "^1.8.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.14.5"
-bandit = "^1.9.1"
+bandit = "^1.9.2"
 prek = "^0.2.16"
 pyright = "^1.1.407"
 vulture = "^2.14"
