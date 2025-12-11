@@ -33,7 +33,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free Disk Space (Ubuntu)
+      - name: Free Disk Space
+        if: runner.os == 'Linux'
         uses: jlumbroso/free-disk-space@main
 
       - name: Set up Python ${{ matrix.python-version }}
