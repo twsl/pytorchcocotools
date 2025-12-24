@@ -60,9 +60,9 @@ lightning = "^2.6.0"
 torchmetrics = "^1.8.2"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.14.9"
+ruff = "^0.14.10"
 bandit = "^1.9.2"
-prek = "^0.2.21"
+prek = "^0.2.23"
 pyright = "^1.1.407"
 vulture = "^2.14"
 copier = "^9.11.0"
@@ -83,13 +83,13 @@ pytest-github-actions-annotate-failures = "^0.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.7.0"
+mkdocs-material = "^9.7.1"
 mkdocs-git-revision-date-localized-plugin = "^1.5.0"
 mkdocs-awesome-nav = "^3.3.0"
 mkdocs-git-authors-plugin = "^0.10.0"
 mkapi = "^4.5.0"
 markdown-callouts = "^0.4.0"
-pymdown-extensions = "^10.19"
+pymdown-extensions = "^10.19.1"
 pygments = "^2.19.0"
 mkdocs-jupyter = "^0.25.1"
 

@@ -49,7 +49,7 @@ jobs:
           virtualenvs-path: .venv
 
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cached-poetry-dependencies
         with:
           path: .venv
@@ -68,7 +68,7 @@ jobs:
         run: poetry run mkdocs build -f ./docs/mkdocs.yml -d ./_build/
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ env.artifacts-name }}
           path: ./docs/_build/
@@ -90,7 +90,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
