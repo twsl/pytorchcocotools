@@ -62,7 +62,7 @@ torchmetrics = "^1.8.2"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.14.10"
 bandit = "^1.9.2"
-prek = "^0.2.23"
+prek = "^0.2.27"
 pyright = "^1.1.407"
 vulture = "^2.14"
 copier = "^9.11.0"
