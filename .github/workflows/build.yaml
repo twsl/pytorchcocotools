@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0
 
       - name: Free Disk Space
-        uses: gha-free-disk-space@main
+        uses: twsl/gha-free-disk-space@main
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
