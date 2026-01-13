@@ -49,3 +49,7 @@ def bbIou(dt: tv.BoundingBoxes, gt: tv.BoundingBoxes, iscrowd: list[bool]) -> Te
         iou = intersect_area / union_area
 
     return iou
+
+
+# Batch version is the same as the original since it already processes batches
+bbIouBatch = bbIou  # noqa: N816
