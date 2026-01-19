@@ -69,7 +69,7 @@ copier = "^9.11.1"
 ipykernel = "^6.31.0"
 ipywidgets = "^8.1.8"
 ipython = "^9.9.0"
-jupytext = "^1.18.1"
+jupytext = "^1.19.0"
 nbconvert = "^7.16.6"
 torchfix = "^0.7.0"
 
