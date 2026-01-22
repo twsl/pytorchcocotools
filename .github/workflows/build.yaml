@@ -132,7 +132,7 @@ jobs:
         env:
           PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword"
         run: |
-          poetry run pytest -c pyproject.toml --cov-report=html \
+          uv run pytest -c pyproject.toml --cov-report=html \
           --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
           --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml \
           --benchmark-enable \
