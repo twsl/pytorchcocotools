@@ -28,37 +28,28 @@ jobs:
 
       - name: Free Disk Space
         if: runner.os == 'Linux'
-        uses: jlumbroso/free-disk-space@main
+        uses: twsl/gha-free-disk-space@main
 
       - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.python-version }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          virtualenvs-path: .venv
-
-      - name: Add poetry to path
-        run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
-
-      - name: Set up cache
-        uses: actions/cache@v5
-        id: cached-poetry-dependencies
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ env.python-version }}-${{ hashFiles('poetry.lock') }}
-          restore-keys: venv-${{ runner.os }}-${{ env.python-version }}-
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
 
       - name: Install dependencies
-        run: poetry install --no-interaction --all-extras
+        run: uv sync --all-groups --all-extras
+
+      - name: Build dependencies
+        run: uv build
 
       - name: Run copier update
         id: run-update
-        run: poetry run copier update --trust -A --vcs-ref=HEAD
+        run: uv run copier update --trust -A --vcs-ref=HEAD
 
       - name: Resolve conflicts with incoming changes
         run: |

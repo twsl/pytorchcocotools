@@ -1,1 +1,1 @@
-from pytorchcocotools.__about__ import __version__, __version_tuple__
+from pytorchcocotools.__about__ import __version__

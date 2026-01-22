@@ -34,43 +34,30 @@ jobs:
           fetch-depth: 0
 
       - name: Free Disk Space
-        uses: twsl/gha-free-disk-space@main
+        uses: twsl/gha-free-disk-space@v1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          # cache: 'poetry'
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          virtualenvs-path: .venv
-
-      - name: Add poetry to path
-        run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
-
-      - name: Set up cache
-        uses: actions/cache@v5
-        id: cached-poetry-dependencies
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
-          restore-keys: venv-${{ runner.os }}-${{ matrix.python-version }}-
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
 
       - name: Install dependencies
-        run: poetry install --no-interaction --all-extras
+        run: uv sync --all-groups --all-extras
 
       - name: Run prek
         uses: j178/prek-action@v1
         continue-on-error: true
         env:
-          SKIP: poetry-lock
+          SKIP: uv-lock
 
       - name: Build dependencies
-        run: poetry build
+        run: uv build
 
       - name: Upload dist
         uses: actions/upload-artifact@v6
@@ -83,7 +70,7 @@ jobs:
         env:
           PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword"
         run: |
-          poetry run pytest -c pyproject.toml \
+          uv run pytest -c pyproject.toml \
           --cov-config=pyproject.toml \
           --cov-report=html \
           --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \

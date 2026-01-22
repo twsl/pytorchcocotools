@@ -1,4 +1,4 @@
-name: Delete Copier PR branch on close
+name: Copier PR Clean
 
 on:
   pull_request:

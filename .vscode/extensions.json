@@ -1,7 +1,7 @@
 {
     "recommendations": [
         "ms-python.python",
-        "ms-python.vscode-pylance",
+        "astral-sh.ty",
         "ms-toolsai.jupyter",
         "GitHub.copilot",
         "GitHub.copilot-chat",
@@ -20,6 +20,7 @@
         "njpwerner.autodocstring",
         "rodolphebarbanneau.python-docstring-highlighter",
         "mechatroner.rainbow-csv",
+        "oderwat.indent-rainbow",
         "uctakeoff.vscode-counter",
         "bierner.github-markdown-preview",
         "yahyabatulu.vscode-markdown-alert",
