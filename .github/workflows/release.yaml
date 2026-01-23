@@ -33,7 +33,7 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
 
       - name: Install dependencies
-        run: uv sync --all-groups --all-extras
+        run: uv sync --all-groups --all-extras --frozen
 
       - name: Build dependencies
         run: uv build

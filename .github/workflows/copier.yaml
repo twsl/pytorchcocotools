@@ -11,6 +11,7 @@ concurrency:
 
 env:
   python-version: "3.11"
+  UV_DYNAMIC_VERSIONING_BYPASS: "1.0.0"
 
 jobs:
   copier-update:
@@ -42,10 +43,14 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
 
       - name: Install dependencies
-        run: uv sync --all-groups --all-extras
+        run: uv sync --all-groups --all-extras --frozen
 
       - name: Build dependencies
         run: uv build
+
+      - name: Git Status
+        id: git-status
+        run: git status
 
       - name: Run copier update
         id: run-update
@@ -76,8 +81,8 @@ jobs:
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run poetry lock
-        run: poetry lock
+      - name: Run uv lock
+        run: uv lock
 
       - name: Extract commit from copier answers
         id: copier-commit
