@@ -49,7 +49,7 @@ jobs:
 
       - name: Publish
         run: |
-          poetry publish -u "__token__" -p ${{ secrets.PYPI_API_TOKEN }}
+          uv publish --username "__token__" --password ${{ secrets.PYPI_API_TOKEN }}
 
   upload-packages:
     runs-on: ["ubuntu-latest"]
