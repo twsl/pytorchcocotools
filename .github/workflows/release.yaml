@@ -47,9 +47,9 @@ jobs:
       - name: Show
         run: ls -l dist/
 
-      - name: Publish
-        run: |
-          uv publish --username "__token__" --password ${{ secrets.PYPI_API_TOKEN }}
+      # - name: Publish
+      #   run: |
+      #     uv publish --username "__token__" --password ${{ secrets.PYPI_API_TOKEN }}
 
   upload-packages:
     runs-on: ["ubuntu-latest"]
