@@ -25,10 +25,11 @@
         "ghcr.io/devcontainers-extra/features/actionlint:1": {},
         "ghcr.io/devcontainers-extra/features/pre-commit:2": {},
         "ghcr.io/dhoeric/features/act:1": {},
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {
-            "version": "latest",
-            "moby": true
-        }
+        // https://github.com/devcontainers/features/issues/1543
+        // "ghcr.io/devcontainers/features/docker-in-docker:2": {
+        //     "version": "latest",
+        //     "moby": true
+        // }
     },
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
