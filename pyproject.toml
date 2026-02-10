@@ -275,7 +275,6 @@ skips = ['*_test.py', '*/test_*.py']
 [tool.ty.environment]
 python-version = "3.11"
 python-platform = "linux"
-python = "/usr/local/bin/python"
 root = ["./src"]
 
 [tool.pre-commit-update.yaml]
