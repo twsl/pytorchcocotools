@@ -58,7 +58,7 @@ default-groups = "all"
 [dependency-groups]
 dev = [
     "ruff>=0.15.0",
-    "ty>=0.0.15",
+    "ty>=0.0.16",
     "bandit>=1.9.3",
     "prek>=0.3.2",
     "vulture>=2.14",
