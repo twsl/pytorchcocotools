@@ -56,3 +56,31 @@ def rleFrString(  # noqa: N802
     # uneven number of values means we cant reshape
     # result = result.view(-1, 2)
     return RLE(h, w, result)
+
+
+@torch.no_grad
+# @torch.compile
+def rleFrStringBatch(  # noqa: N802
+    strings: list[bytes],
+    heights: list[int],
+    widths: list[int],
+    *,
+    device: TorchDevice | None = None,
+    requires_grad: bool | None = None,
+) -> RLEs:
+    """Convert from compressed string representation of encoded masks (batch version).
+
+    Args:
+        strings: List of byte strings of run length encoded masks.
+        heights: List of heights of the encoded masks.
+        widths: List of widths of the encoded masks.
+        device: The desired device of the bounding boxes.
+        requires_grad: Whether the bounding boxes require gradients.
+
+    Returns:
+        List of RLE encoded masks.
+    """
+    return RLEs([
+        rleFrString(s, h, w, device=device, requires_grad=requires_grad)
+        for s, h, w in zip(strings, heights, widths, strict=True)
+    ])
