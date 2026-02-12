@@ -35,7 +35,7 @@ metrics = [
     "torchmetrics>=1.8.2",
 ]
 lightning = [
-    "lightning>=2.6.0",
+    "lightning>=2.6.1",
 ]
 profiling = [
     "line-profiler>=5.0.0",
