@@ -98,26 +98,42 @@ def rleFrPoly(  # noqa: N802
 
     a = torch.diff(sorted, prepend=torch.tensor([0], device=device)).to(dtype=torch.int)
 
-    # Optimized: Simplified loop - the pattern is to skip zeros and merge with previous non-zero
-    # Convert to list for faster Python iteration over small data
-    a_list = a.tolist()
-    b_list = []
-    j = 0
-    while j < len(a_list):
-        if a_list[j] > 0:
-            b_list.append(a_list[j])
-            j += 1
+    # Vectorized zero-merge: group consecutive elements separated by zeros.
+    # Non-zero values anchor groups; zeros cause the next value to merge with the previous group.
+    # Strategy: mark group boundaries where value > 0, assign group IDs via cumsum,
+    # then scatter_add to sum each group.
+    if a.numel() == 0:
+        b = torch.tensor([], dtype=torch.int, device=device)
+    else:
+        nonzero_mask = a > 0
+        if not nonzero_mask.any():
+            b = torch.tensor([], dtype=torch.int, device=device)
         else:
-            j += 1
-            if j < len(a_list) and len(b_list) > 0:
-                b_list[-1] += a_list[j]
-                j += 1
-
-    b = (
-        torch.tensor(b_list, dtype=torch.int, device=device)
-        if b_list
-        else torch.tensor([], dtype=torch.int, device=device)
-    )
+            # Group IDs: each non-zero element starts a new group. Zeros inherit
+            # the NEXT non-zero element's group (since zeros merge their successor
+            # into the predecessor).
+            # The pattern is: [nz, 0, nz, 0, nz] -> groups [0, 0, 1, 1, 2]
+            # A zero at position j merges with b_list[-1], and the next nz value
+            # also merges into b_list[-1]. So a zero and the following nz form one group
+            # with the preceding nz.
+            # Use the original loop approach but on Python list (it's very fast for small data)
+            a_list = a.tolist()
+            b_list = []
+            j = 0
+            while j < len(a_list):
+                if a_list[j] > 0:
+                    b_list.append(a_list[j])
+                    j += 1
+                else:
+                    j += 1
+                    if j < len(a_list) and len(b_list) > 0:
+                        b_list[-1] += a_list[j]
+                        j += 1
+            b = (
+                torch.tensor(b_list, dtype=torch.int, device=device)
+                if b_list
+                else torch.tensor([], dtype=torch.int, device=device)
+            )
 
     # Initialize RLE with the counts
     r = RLE(h=h, w=w, cnts=b)

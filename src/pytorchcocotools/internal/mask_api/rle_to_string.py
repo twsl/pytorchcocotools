@@ -74,20 +74,17 @@ def rleToStringBatch(  # noqa: N802
     results = []
     for rle in rles:
         s = bytearray()
-        cnts = rle.cnts
-        cnts = cnts.ceil().int()  # make sure it's integers
+        cnts = rle.cnts.ceil().int()
+        cnts_list = cnts.tolist()
 
-        for i in range(len(rle.cnts)):  # len(cnts)
-            x = int(cnts[i])  # make sure its not a reference
+        for i in range(len(cnts_list)):
+            x = cnts_list[i]
             if i > 2:
-                x -= int(cnts[i - 2])
+                x -= cnts_list[i - 2]
             more = True
             while more:
-                # take the 5 least significant bits of start point
-                c = x & 0x1F  # 0x1f = 31
-                # shift right by 5 bits as there are already read in
+                c = x & 0x1F
                 x >>= 5
-                # (c & 0x10) != 0 or x != 0
                 more = x != -1 if bool(c & 0x10) else x != 0
                 if more:
                     c |= 0x20
