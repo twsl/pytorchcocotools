@@ -50,11 +50,11 @@ default-groups = "all"
 [dependency-groups]
 dev = [
     "ruff>=0.15.2",
-    "ty>=0.0.17",
+    "ty>=0.0.18",
     "bandit>=1.9.3",
     "prek>=0.3.3",
     "vulture>=2.14",
-    "copier>=9.11.3",
+    "copier>=9.12.0",
     "ipykernel>=6.31.0",
     "ipywidgets>=8.1.8",
     "ipython>=9.10.0",
