@@ -100,7 +100,7 @@ jobs:
         uses: juliangruber/read-file-action@v1
         with:
           path: code-coverage-results.md
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' && runner.os == 'Linux' }}
 
       - name: Add coverage PR comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -111,7 +111,7 @@ jobs:
             ${{ steps.coverage-file.outputs.content }}
 
             Results for commit ${{ github.sha }}.
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' && runner.os == 'Linux' }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
@@ -126,26 +126,4 @@ jobs:
           check_name: Test Results ${{ runner.os }} ${{ matrix.python-version }}
           report_individual_runs: true
           files: junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' }}
-
-      - name: Run benchmark
-        env:
-          PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword"
-        run: |
-          uv run pytest -c pyproject.toml --cov-report=html \
-          --cov-report=xml:coverage-${{ runner.os }}-${{ matrix.python-version }}.xml \
-          --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml \
-          --benchmark-enable \
-          --benchmark-only \
-          --benchmark-sort=mean \
-          --benchmark-group-by=group,param \
-          --benchmark-warmup-iterations=25 \
-          --benchmark-histogram=.benchmarks/bench-${{ runner.os }}-${{ matrix.python-version }}
-
-      - name: Upload benchmark histogram
-        uses: actions/upload-artifact@v6
-        with:
-          name: benchmark-histogram-${{ runner.os }}-${{ matrix.python-version }}
-          path: .benchmarks/*
-          include-hidden-files: true
-        if: ${{ always() }}
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.workflow_run.conclusion != 'skipped' && runner.os == 'Linux' }}
