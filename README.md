@@ -76,7 +76,8 @@ from pytorchcocotools.cocoeval import COCOeval
 
 All methods now have a optional `device` and `requires_grad` parameters that allows to specify the device on which the masks should be created and whether gradients are required. This is useful for acceleration.
 
-> [!IMPORTANT] > `decode`, `encode`, `toBbox` and `frPyObjects` now always return the batch/channel dimension implementation as opposed to a single return element if only a single element was passed.
+> [!IMPORTANT]
+> `decode`, `encode`, `toBbox` and `frPyObjects` now always return the batch/channel dimension implementation as opposed to a single return element if only a single element was passed.
 > This was done to make the API more consistent by providing single, defined return types, but is open for further discussion.
 
 ### `COCO`
