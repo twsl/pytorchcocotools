@@ -69,7 +69,7 @@ repos:
       - id: ty-check
 
   - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.14
+    rev: v2.15
     hooks:
       - id: vulture
 
