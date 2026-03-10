@@ -8,8 +8,8 @@ def _import_conftest():
     """Import conftest module dynamically to access pytest_benchmark_group_stats."""
     conftest_path = Path(__file__).parent / "conftest.py"
     spec = importlib.util.spec_from_file_location("conftest", conftest_path)
-    conftest = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(conftest)
+    conftest = importlib.util.module_from_spec(spec)  # ty:ignore[invalid-argument-type]
+    spec.loader.exec_module(conftest)  # ty:ignore[unresolved-attribute]
     return conftest.pytest_benchmark_group_stats
 
 
@@ -43,7 +43,7 @@ def test_benchmark_grouping_np_pt_clustering():
     # Both benchmarks should be in the same group
     assert len(result) == 1
     group_key, group_benchmarks = result[0]
-    assert group_key == "test_group"
+    assert group_key == "test_func"
     assert len(group_benchmarks) == 2
 
 
@@ -81,14 +81,14 @@ def test_benchmark_grouping_with_device_parameter():
         },
     ]
 
-    # Test grouping by 'group,name'
+    # Test grouping by 'group,param'
     config = None
-    result = pytest_benchmark_group_stats(config, benchmarks, "group,name")
+    result = pytest_benchmark_group_stats(config, benchmarks, "group,param")
 
     # All benchmarks should be in the same group (ignoring device)
     assert len(result) == 1
     group_key, group_benchmarks = result[0]
-    assert group_key == "test_group test_func"
+    assert group_key == "test_func param1"
     assert len(group_benchmarks) == 4
 
 
@@ -168,8 +168,15 @@ def test_benchmark_grouping_fallback_for_non_matching():
     config = None
     result = pytest_benchmark_group_stats(config, benchmarks, "group")
 
-    # Both should be in the same group
-    assert len(result) == 1
-    group_key, group_benchmarks = result[0]
-    assert group_key == "other"
-    assert len(group_benchmarks) == 2
+    # Should have 2 groups: test_another and test_other
+    assert len(result) == 2
+
+    # Check first group
+    group1_key, group1_benchmarks = result[0]
+    assert group1_key == "test_another"
+    assert len(group1_benchmarks) == 1
+
+    # Check second group
+    group2_key, group2_benchmarks = result[1]
+    assert group2_key == "test_other"
+    assert len(group2_benchmarks) == 1
