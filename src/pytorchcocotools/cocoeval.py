@@ -301,20 +301,19 @@ class COCOeval:
             dx = xd.unsqueeze(1) - xg.unsqueeze(0)  # [num_dts, num_gts, k]
             dy = yd.unsqueeze(1) - yg.unsqueeze(0)  # [num_dts, num_gts, k]
 
-            # Handle cases where k1 == 0
-            # For these cases, we need to use bounds
-            z = torch.zeros(k, device=self.device)
-            for j in range(len(gts)):
-                if k1[j] == 0:
-                    for i in range(len(dts)):
-                        dx_bound, _ = torch.max(torch.stack([z, x0[j] - xd[i]]), dim=0) + torch.max(
-                            torch.stack([z, xd[i] - x1[j]]), dim=0
-                        )
-                        dy_bound, _ = torch.max(torch.stack([z, y0[j] - yd[i]]), dim=0) + torch.max(
-                            torch.stack([z, yd[i] - y1[j]]), dim=0
-                        )
-                        dx[i, j] = dx_bound
-                        dy[i, j] = dy_bound
+            # Vectorised replacement for the k1==0 bounds inner loop.
+            k1_zero = k1 == 0  # [G]
+            if k1_zero.any():
+                # dx/dy bounds for k1==0 GTs: clamp(x0[j]-xd[i], 0) + clamp(xd[i]-x1[j], 0).
+                # Shapes after broadcasting: [D, G, k].
+                lower_x = (x0[None, :, None] - xd[:, None, :]).clamp(min=0)
+                upper_x = (xd[:, None, :] - x1[None, :, None]).clamp(min=0)
+                lower_y = (y0[None, :, None] - yd[:, None, :]).clamp(min=0)
+                upper_y = (yd[:, None, :] - y1[None, :, None]).clamp(min=0)
+                dx_bounds = lower_x + upper_x  # [D, G, k]
+                dy_bounds = lower_y + upper_y  # [D, G, k]
+                dx = torch.where(k1_zero[None, :, None], dx_bounds, dx)
+                dy = torch.where(k1_zero[None, :, None], dy_bounds, dy)
 
             # Compute OKS for all pairs
             e = (
@@ -324,16 +323,20 @@ class COCOeval:
                 / 2
             )
 
-            # Apply visibility mask
-            for j in range(len(gts)):
-                if k1[j] > 0:
-                    visible_mask = vg[j] > 0  # [k]
-                    e[:, j, :] = torch.where(
-                        visible_mask.unsqueeze(0), e[:, j, :], torch.tensor(float("inf"), device=self.device)
-                    )
-                    ious[:, j] = torch.sum(torch.exp(-e[:, j, visible_mask]), dim=1) / torch.count_nonzero(visible_mask)
-                else:
-                    ious[:, j] = torch.sum(torch.exp(-e[:, j, :]), dim=1) / k
+            # Vectorised visibility masking (replaces per-GT loop).
+            # For k1>0 GTs: non-visible keypoints get e=inf so exp(-inf)=0.
+            # For k1==0 GTs: all keypoints contribute.
+            visible_all = vg > 0  # [G, k]
+            k1_pos = k1 > 0  # [G]
+            e = torch.where(
+                k1_pos[None, :, None] & ~visible_all[None, :, :],
+                torch.full_like(e, float("inf")),
+                e,
+            )  # [D, G, k]
+            exp_neg_e = torch.exp(-e).sum(dim=2)  # [D, G]
+            # Denominator: number of visible keypoints (k1) or k (for k1==0).
+            denom_counts = torch.where(k1_pos, k1.float(), torch.full_like(k1, float(k), dtype=torch.float32))  # [G]
+            ious = exp_neg_e / denom_counts[None, :]  # [D, G]
 
         return ious
 
@@ -393,30 +396,54 @@ class COCOeval:
         dtm = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         dt_ig = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         if len(ious) != 0:
-            for tind, t in enumerate(self.params.iouThrs):
-                for dind, d in enumerate(dt):
-                    # information about best match so far (m=-1 -> unmatched)
-                    iou = torch.min(t.detach().clone().to(device=self.device), limit)
-                    m = -1
-                    for gind, g in enumerate(gt):  # noqa: B007
-                        # if this gt already matched, and not a crowd, continue
-                        if gtm[tind, gind] > 0 and not iscrowd[gind]:
-                            continue
-                        # if dt matched to reg gt, and on ignore gt, stop
-                        if m > -1 and gt_ig[m] == 0 and gt_ig[gind] == 1:
-                            break
-                        # continue to next gt unless better match made
-                        if ious[dind, gind] < iou:
-                            continue
-                        # if match successful and best so far, store appropriately
-                        iou = ious[dind, gind]
-                        m = gind
-                    # if match made store id of match for both dt and gt
-                    if m == -1:
-                        continue
-                    dt_ig[tind, dind] = gt_ig[m]
-                    dtm[tind, dind] = gt[m].id
-                    gtm[tind, m] = d.id
+            # Precompute tensors used in every dind iteration.
+            iscrowd_bool = iscrowd.bool()  # [G]
+            gt_ig_bool = gt_ig.bool()  # [G]
+            gt_ids = torch.tensor([g.id for g in gt], dtype=torch.float32, device=self.device)  # [G]
+            limit_scalar = limit.item()
+            # Cap each threshold at limit (matches original t = min(t, limit)).
+            t_thresholds = torch.stack([t.detach().clone().to(device=self.device) for t in self.params.iouThrs]).clamp(
+                max=limit_scalar
+            )  # [T]
+
+            for dind, d in enumerate(dt):
+                iou_row = ious[dind]  # [G]
+
+                # available[t, g]: GT g can still be matched at threshold t.
+                # A non-crowd GT is unavailable once matched; crowd GTs are always available.
+                available = (gtm == 0) | iscrowd_bool[None, :]  # [T, G]
+
+                # Candidate mask: available AND IoU >= threshold.
+                above = iou_row[None, :] >= t_thresholds[:, None]  # [T, G]
+                cands = available & above  # [T, G]
+
+                # Separate non-ignored / ignored candidates (gt sorted: non-ignored first).
+                non_ign_cands = cands & ~gt_ig_bool[None, :]  # [T, G]
+                ign_cands = cands & gt_ig_bool[None, :]  # [T, G]
+
+                has_non_ign = non_ign_cands.any(dim=1)  # [T]
+                has_ign = ign_cands.any(dim=1)  # [T]
+                has_match = has_non_ign | has_ign  # [T]
+
+                if not has_match.any():
+                    continue
+
+                # Best non-ignored match per threshold (argmax of IoU).
+                iou_exp = iou_row[None, :].expand(num_iou_thrs, num_gt)  # [T, G]
+                m_non_ign = torch.where(non_ign_cands, iou_exp, torch.zeros_like(iou_exp)).argmax(dim=1)  # [T]
+                m_ign = torch.where(ign_cands, iou_exp, torch.zeros_like(iou_exp)).argmax(dim=1)  # [T]
+
+                # Prefer non-ignored match; fall back to ignored.
+                m_final = torch.where(has_non_ign, m_non_ign, m_ign)  # [T]
+                m_safe = m_final.clamp(0, num_gt - 1)
+
+                # Update dtm and dt_ig for all thresholds at once.
+                dtm[:, dind] = torch.where(has_match, gt_ids[m_safe], dtm[:, dind])
+                dt_ig[:, dind] = torch.where(has_match, gt_ig[m_safe], dt_ig[:, dind])
+
+                # Update gtm: scatter d.id into (tind, m) for each matched threshold.
+                matched_tinds = has_match.nonzero(as_tuple=True)[0]  # [K]
+                gtm[matched_tinds, m_safe[matched_tinds]] = float(d.id)
         # set unmatched detections outside of area range to ignore
         a = torch.tensor(
             [d.area < aRng[0] or d.area > aRng[1] for d in dt], device=self.device, requires_grad=self.requires_grad
