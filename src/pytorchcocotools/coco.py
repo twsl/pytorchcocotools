@@ -42,7 +42,7 @@ class COCO:
         *,
         enable_logging: bool = True,
         device: TorchDevice | None = None,
-        requires_grad: bool | None = None,
+        requires_grad: bool = False,
     ) -> None:
         """Constructor of Microsoft COCO helper class for reading and visualizing annotations.
 

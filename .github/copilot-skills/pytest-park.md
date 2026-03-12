@@ -56,13 +56,29 @@ This enables comparing different implementations of the same logical function.
 
 Benchmarks can be grouped for analysis using precedence order:
 
-1. **custom:<key>** - Custom metadata from `extra_info["custom_groups"]["<key>"]`
-2. **group** - Base method name (e.g., `test_func1`)
-3. **name**, **method**, **func** - Base method name (e.g., `test_func1`)
-4. **fullname**, **fullfunc** - Full path with base method name
-5. **param** - All parameters combined (can ignore specific parameters via `ignore_params`)
-6. **param:<name>** - Specific parameter (e.g., `param:device`)
-7. **postfix**, **benchmark_postfix** - The parsed postfix (e.g., `_original`)
+Default precedence (when no `--group-by` is given): `custom > benchmark_group > marks > params`
+
+**Tokens supported by the `analyze` and `serve` CLI** (pass to `--group-by`, repeatable):
+
+| Token          | Alias(es)                  | Resolves to                                                  |
+| -------------- | -------------------------- | ------------------------------------------------------------ |
+| `custom:<key>` | —                          | Value of `extra_info["custom_groups"]["<key>"]` for that key |
+| `custom`       | `custom_group`             | All custom group keys combined (`key1=v1,key2=v2`)           |
+| `group`        | `benchmark_group`          | Benchmark group label                                        |
+| `marks`        | `mark`                     | Comma-joined pytest marks                                    |
+| `params`       | —                          | All parameter key=value pairs combined                       |
+| `param:<name>` | —                          | Value of a specific parameter (e.g., `param:device`)         |
+| `name`         | `method`, `benchmark_name` | Normalized method name                                       |
+| `fullname`     | `nodeid`                   | Full test node path with normalized method name              |
+
+Multiple tokens can be combined; the resulting label is joined with `|`.
+
+**Additional tokens available only in the `pytest_benchmark_group_stats` helper** (not the CLI):
+
+| Token                           | Resolves to                                               |
+| ------------------------------- | --------------------------------------------------------- |
+| `func` / `fullfunc`             | Node path or base name (mirrors `fullname`/`name` logic)  |
+| `postfix` / `benchmark_postfix` | Parsed postfix label mapped via `group_values_by_postfix` |
 
 ### 5. Performance Metrics
 

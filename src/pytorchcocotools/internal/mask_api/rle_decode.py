@@ -10,11 +10,12 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
+@torch.compile(dynamic=True)
 def rleDecode(  # noqa: N802
     rles: RLEs,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> Annotated[tv.Mask, "H W N"]:
     """Decode binary masks encoded via RLE.
 
@@ -52,4 +53,4 @@ def rleDecode(  # noqa: N802
         objs.append(mask_flat.view(w, h).t())
 
     data = torch.stack(objs, dim=-1)
-    return tv.Mask(data, device=device, requires_grad=requires_grad)  # pyright: ignore[reportCallIssue]
+    return tv.Mask(data, device=device, requires_grad=requires_grad)  # ty:ignore[no-matching-overload]

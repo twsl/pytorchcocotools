@@ -10,7 +10,7 @@ def rleMerge(  # noqa: N802
     intersect: bool,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RLE:
     """Compute union or intersection of encoded masks.
 

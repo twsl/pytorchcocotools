@@ -28,7 +28,7 @@ class IoUCases:
             torch.tensor([min1, min1, max1 - min1, max1 - min1], dtype=torch.int32).unsqueeze(0),
             format=tv.BoundingBoxFormat.XYWH,
             canvas_size=(self.h, self.w),
-        )  # pyright: ignore[reportCallIssue]
+        )  # ty:ignore[no-matching-overload]
 
     def case_start_area_same(self) -> tuple[tv.Mask, tv.Mask, list[bool], float]:
         return (self._build_mask(0, 5), self._build_mask(0, 5), [False], 1)

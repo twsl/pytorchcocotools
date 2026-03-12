@@ -13,7 +13,7 @@ def iou(
     pyiscrowd: Bools,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """Compute intersection over union between masks.
 
@@ -49,7 +49,7 @@ def merge(
     intersect: bool = False,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RleObj:
     """Compute union or intersection of encoded masks.
 
@@ -71,7 +71,7 @@ def frPyObjects(  # noqa: N802
     w: int,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RleObjs:
     """Convert (list of) polygon, bbox, or uncompressed RLE to encoded RLE mask.
 
@@ -93,7 +93,7 @@ def encode(
     channel_last: bool = True,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RleObjs:
     """Encode binary masks using RLE.
 
@@ -128,7 +128,7 @@ def decode(
     rleObjs: RleObj | RleObjs,  # noqa: N803
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> Annotated[tv.Mask, "H W N"]:
     """Decode binary masks encoded via RLE.
 
@@ -157,7 +157,7 @@ def area(
     rleObjs: RleObj | RleObjs,  # noqa: N803
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> list[int]:
     """Compute area of encoded masks.
 
@@ -183,7 +183,7 @@ def toBbox(  # noqa: N803, N802
     rleObjs: RleObj | RleObjs,  # noqa: N803, N802
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> tv.BoundingBoxes:
     """Get bounding boxes surrounding encoded masks.
 

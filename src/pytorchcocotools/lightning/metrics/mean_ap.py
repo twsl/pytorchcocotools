@@ -23,6 +23,8 @@ from pytorchcocotools.internal.structure.categories import CocoCategoriesObjectD
 from pytorchcocotools.internal.structure.coco import CocoDetectionDataset
 from pytorchcocotools.internal.structure.images import CocoImage
 
+IoUType = Literal["bbox", "segm"]
+
 
 class MeanAveragePrecision(Metric):
     r"""Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)`_ for object detection predictions.
@@ -281,11 +283,11 @@ class MeanAveragePrecision(Metric):
 
     """
 
-    is_differentiable: bool | None = False
+    is_differentiable: bool = False
     higher_is_better: bool | None = True
-    full_state_update: bool | None = True
-    plot_lower_bound: float | None = 0.0
-    plot_upper_bound: float | None = 1.0
+    full_state_update: bool = True
+    plot_lower_bound: float = 0.0
+    plot_upper_bound: float = 1.0
 
     detection_box: list[Tensor]
     detection_mask: list[Tensor]
@@ -307,12 +309,14 @@ class MeanAveragePrecision(Metric):
         "plot_legend_name",
         "metric_state",
         "_update_called",
+        # below is added for specifically for this metric
+        "_coco_backend",
     ]
 
     def __init__(
         self,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
-        iou_type: Literal["bbox", "segm"] | tuple[str] = "bbox",
+        iou_type: Literal["bbox", "segm"] | tuple[Literal["bbox", "segm"], ...] = "bbox",
         iou_thresholds: list[float] | None = None,
         rec_thresholds: list[float] | None = None,
         max_detection_thresholds: list[int] | None = None,
@@ -400,7 +404,7 @@ class MeanAveragePrecision(Metric):
                 If any score is not type float and of length 1
 
         """
-        _input_validator(preds, target, iou_type=self.iou_type)  # type: ignore[arg-type]
+        _input_validator(preds, target, iou_type=self.iou_type)
 
         for item in preds:
             bbox_detection, mask_detection = self._get_safe_item_values(item, warn=self.warn_on_many_detections)
@@ -435,58 +439,64 @@ class MeanAveragePrecision(Metric):
                     for anno in coco_preds.dataset["annotations"]:
                         anno["area"] = anno[f"area_{i_type}"]
 
-                coco_eval = COCOeval(coco_target, coco_preds, iouType=i_type)  # type: ignore[operator]
-                coco_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
-                coco_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
-                coco_eval.params.maxDets = self.max_detection_thresholds
+                if len(coco_preds.imgs) == 0 or len(coco_target.imgs) == 0:
+                    result_dict.update(self._coco_stats_to_tensor_dict(torch.full((12,), -1.0), prefix=prefix))
+                    map_per_class_values = torch.tensor([-1], dtype=torch.float32)
+                    mar_per_class_values = torch.tensor([-1], dtype=torch.float32)
+                else:
+                    coco_eval = COCOeval(coco_target, coco_preds, iouType=i_type)
+                    coco_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
+                    coco_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
+                    coco_eval.params.maxDets = self.max_detection_thresholds
 
-                coco_eval.evaluate()
-                coco_eval.accumulate()
-                coco_eval.summarize()
-                stats = self._coco_stats_to_tensor_dict(coco_eval.stats, prefix=prefix)
-                result_dict.update(stats)
+                    coco_eval.evaluate()
+                    coco_eval.accumulate()
+                    coco_eval.summarize()
+                    stats = self._coco_stats_to_tensor_dict(coco_eval.stats, prefix=prefix)
+                    result_dict.update(stats)
 
-                summary = {}
-                if self.extended_summary:
-                    summary = {
-                        f"{prefix}ious": apply_to_collection(
-                            coco_eval.ious, torch.Tensor, lambda x: x.detach().clone().to(dtype=torch.float32)
-                        ),
-                        f"{prefix}precision": coco_eval.eval["precision"].detach().clone(),
-                        f"{prefix}recall": coco_eval.eval["recall"].detach().clone(),
-                        f"{prefix}scores": coco_eval.eval["scores"].detach().clone(),
-                    }
-                result_dict.update(summary)
+                    summary = {}
+                    if self.extended_summary:
+                        summary = {
+                            f"{prefix}ious": apply_to_collection(
+                                coco_eval.ious, torch.Tensor, lambda x: x.detach().clone().to(dtype=torch.float32)
+                            ),
+                            f"{prefix}precision": coco_eval.eval["precision"].detach().clone(),
+                            f"{prefix}recall": coco_eval.eval["recall"].detach().clone(),
+                            f"{prefix}scores": coco_eval.eval["scores"].detach().clone(),
+                        }
+                    result_dict.update(summary)
 
-                # if class mode is enabled, evaluate metrics per class
-                if self.class_metrics:
-                    if self.average == "micro":
-                        # since micro averaging have all the data in one class, we need to reinitialize the coco_eval
-                        # object in macro mode to get the per class stats
-                        coco_preds, coco_target = self._get_coco_datasets(average="macro")
-                        coco_eval = COCOeval(coco_target, coco_preds, iouType=i_type)  # type: ignore[operator]
+                    # if class mode is enabled, evaluate metrics per class
+                    if self.class_metrics:
+                        class_coco_preds, class_coco_target = self._get_coco_datasets(average="macro")
+                        if len(self.iou_type) > 1:
+                            for anno in class_coco_preds.dataset["annotations"]:
+                                anno["area"] = anno[f"area_{i_type}"]
+
+                        coco_eval = COCOeval(class_coco_target, class_coco_preds, iouType=i_type)
                         coco_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
                         coco_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
                         coco_eval.params.maxDets = self.max_detection_thresholds
 
-                    map_per_class_list = []
-                    mar_per_class_list = []
-                    for class_id in self._get_classes():
-                        coco_eval.params.catIds = [class_id]
-                        with contextlib.redirect_stdout(io.StringIO()):
-                            coco_eval.evaluate()
-                            coco_eval.accumulate()
-                            coco_eval.summarize()
-                            class_stats = coco_eval.stats
+                        map_per_class_list = []
+                        mar_per_class_list = []
+                        for class_id in self._get_classes():
+                            coco_eval.params.catIds = [class_id]
+                            with contextlib.redirect_stdout(io.StringIO()):
+                                coco_eval.evaluate()
+                                coco_eval.accumulate()
+                                coco_eval.summarize()
+                                class_stats = coco_eval.stats
 
-                        map_per_class_list.append(torch.tensor([class_stats[0]]))
-                        mar_per_class_list.append(torch.tensor([class_stats[8]]))
+                            map_per_class_list.append(torch.tensor([class_stats[0]]))
+                            mar_per_class_list.append(torch.tensor([class_stats[8]]))
 
-                    map_per_class_values = torch.tensor(map_per_class_list, dtype=torch.float32)
-                    mar_per_class_values = torch.tensor(mar_per_class_list, dtype=torch.float32)
-                else:
-                    map_per_class_values = torch.tensor([-1], dtype=torch.float32)
-                    mar_per_class_values = torch.tensor([-1], dtype=torch.float32)
+                        map_per_class_values = torch.tensor(map_per_class_list, dtype=torch.float32)
+                        mar_per_class_values = torch.tensor(mar_per_class_list, dtype=torch.float32)
+                    else:
+                        map_per_class_values = torch.tensor([-1], dtype=torch.float32)
+                        mar_per_class_values = torch.tensor([-1], dtype=torch.float32)
                 prefix = "" if len(self.iou_type) == 1 else f"{i_type}_"
                 result_dict.update(
                     {
@@ -508,10 +518,14 @@ class MeanAveragePrecision(Metric):
             groundtruth_labels = self.groundtruth_labels
             detection_labels = self.detection_labels
 
-        coco_target, coco_preds = COCO(), COCO()  # type: ignore[operator]
+        all_labels = [0] if average == "micro" else self._get_classes()
+
+        coco_target, coco_preds = COCO(), COCO()
 
         coco_target.dataset = self._get_coco_format(
             labels=groundtruth_labels,
+            all_labels=all_labels,
+            average=average,
             boxes=self.groundtruth_box if len(self.groundtruth_box) > 0 else None,
             masks=self.groundtruth_mask if len(self.groundtruth_mask) > 0 else None,
             crowds=self.groundtruth_crowds,
@@ -519,6 +533,8 @@ class MeanAveragePrecision(Metric):
         )
         coco_preds.dataset = self._get_coco_format(
             labels=detection_labels,
+            all_labels=all_labels,
+            average=average,
             boxes=self.detection_box if len(self.detection_box) > 0 else None,
             masks=self.detection_mask if len(self.detection_mask) > 0 else None,
             scores=self.detection_scores,
@@ -688,8 +704,11 @@ class MeanAveragePrecision(Metric):
             >>> metric.tm_to_coco("tm_map_input")
 
         """
+        all_labels = self._get_classes()
         target_dataset = self._get_coco_format(
             labels=self.groundtruth_labels,
+            all_labels=all_labels,
+            average=self.average,
             boxes=self.groundtruth_box if len(self.groundtruth_box) > 0 else None,
             masks=self.groundtruth_mask if len(self.groundtruth_mask) > 0 else None,
             crowds=self.groundtruth_crowds,
@@ -697,6 +716,8 @@ class MeanAveragePrecision(Metric):
         )
         preds_dataset = self._get_coco_format(
             labels=self.detection_labels,
+            all_labels=all_labels,
+            average=self.average,
             boxes=self.detection_box if len(self.detection_box) > 0 else None,
             masks=self.detection_mask if len(self.detection_mask) > 0 else None,
             scores=self.detection_scores,
@@ -744,7 +765,8 @@ class MeanAveragePrecision(Metric):
         if "segm" in self.iou_type:
             masks = []
             for i in item["masks"]:
-                rle = cast(RleObj, mask_utils.encode(i))
+                encoded = mask_utils.encode(i)
+                rle = encoded[0]
                 masks.append((tuple(rle.size), rle.counts))
             output[1] = tuple(masks)  # type: ignore[call-overload]
         if warn and (
@@ -763,6 +785,8 @@ class MeanAveragePrecision(Metric):
     def _get_coco_format(
         self,
         labels: list[torch.Tensor],
+        all_labels: list[int],
+        average: Literal["macro", "micro"],
         boxes: list[torch.Tensor] | None = None,
         masks: list[torch.Tensor] | None = None,
         scores: list[torch.Tensor] | None = None,
@@ -776,81 +800,82 @@ class MeanAveragePrecision(Metric):
 
         """
         dataset = CocoDetectionDataset()
-        # annotation_id = 1  # has to start with 1, otherwise COCOEval results are wrong
+        annotation_id = 1  # has to start with 1, otherwise COCOEval results are wrong
 
-        # for image_id, image_labels in enumerate(labels):
-        #     if boxes is not None:
-        #         image_boxes = boxes[image_id]
-        #     if masks is not None:
-        #         image_masks = masks[image_id]
-        #         if len(image_masks) == 0 and boxes is None:
-        #             continue
+        for image_id, image_labels in enumerate(labels):
+            if boxes is not None:
+                image_boxes = boxes[image_id]
+            if masks is not None:
+                image_masks = masks[image_id]
+                if len(image_masks) == 0 and boxes is None:
+                    continue
 
-        #     image = CocoImage(id=image_id)
-        #     if "segm" in self.iou_type and len(image_masks) > 0:
-        #         image.height, image.width = image_masks[0][0][0], image_masks[0][0][1]  # type: ignore[assignment]
-        #     dataset.images.append(image)
+            image = CocoImage(id=image_id)
+            if "segm" in self.iou_type and len(image_masks) > 0:
+                image.height, image.width = image_masks[0][0][0], image_masks[0][0][1]  # type: ignore[assignment]
+            dataset.images.append(image)
 
-        #     for k, image_label in enumerate(image_labels):
-        #         if boxes is not None:
-        #             image_box = image_boxes[k]
-        #         if masks is not None and len(image_masks) > 0:
-        #             image_mask = image_masks[k]
-        #             image_mask = RleObj(size=image_mask[0], counts=image_mask[1])
+            for k, image_label in enumerate(image_labels):
+                if boxes is not None:
+                    image_box = image_boxes[k]
+                if masks is not None and len(image_masks) > 0:
+                    image_mask = image_masks[k]
+                    image_mask = RleObj(size=image_mask[0], counts=image_mask[1])
 
-        #         if "bbox" in self.iou_type and len(image_box) != 4:
-        #             raise ValueError(
-        #                 f"Invalid input box of sample {image_id}, element {k} (expected 4 values, got {len(image_box)})" # noqa: W505
-        #             )
+                if "bbox" in self.iou_type and len(image_box) != 4:
+                    raise ValueError(
+                        f"Invalid input box of sample {image_id}, element {k} (expected 4 values, got {len(image_box)})"  # noqa: W505
+                    )
 
-        #         if not isinstance(image_label, int):
-        #             raise TypeError(
-        #                 f"Invalid input class of sample {image_id}, element {k}"
-        #                 f" (expected value of type integer, got type {type(image_label)})"
-        #             )
+                image_label = int(image_label)
+                if not isinstance(image_label, int):
+                    raise TypeError(
+                        f"Invalid input class of sample {image_id}, element {k}"
+                        f" (expected value of type integer, got type {type(image_label)})"
+                    )
 
-        #         area_stat_box = None
-        #         area_stat_mask = None
-        #         if area is not None and area[image_id][k] > 0:
-        #             area_stat = area[image_id][k]
-        #         else:
-        #             area_stat = (
-        #                 mask_utils.area(image_mask)[0]
-        #                 if "segm" in self.iou_type
-        #                 else (image_box[2] * image_box[3]).item()
-        #             )
-        #             if len(self.iou_type) > 1:
-        #                 area_stat_box = image_box[2] * image_box[3]
-        #                 area_stat_mask = mask_utils.area(image_mask)[0]
+                area_stat_box = None
+                area_stat_mask = None
+                if area is not None and area[image_id][k] > 0:
+                    area_stat = float(area[image_id][k])
+                else:
+                    area_stat = (
+                        mask_utils.area(image_mask)[0]
+                        if "segm" in self.iou_type
+                        else (image_box[2] * image_box[3]).item()
+                    )
+                    if len(self.iou_type) > 1:
+                        area_stat_box = image_box[2] * image_box[3]
+                        area_stat_mask = mask_utils.area(image_mask)[0]
 
-        #         annotation = CocoAnnotationObjectDetection(
-        #             id=annotation_id,
-        #             image_id=image_id,
-        #             area=area_stat,
-        #             category_id=image_label,
-        #             iscrowd=crowds[image_id][k] if crowds is not None else 0,
-        #         )
-        #         if area_stat_box is not None:
-        #             annotation["area_bbox"] = area_stat_box
-        #             annotation["area_segm"] = area_stat_mask
+                annotation = CocoAnnotationObjectDetection(
+                    id=annotation_id,
+                    image_id=image_id,
+                    area=area_stat,
+                    category_id=image_label,
+                    iscrowd=int(crowds[image_id][k]) if crowds is not None else 0,
+                )
+                if area_stat_box is not None:
+                    annotation["area_bbox"] = area_stat_box
+                    annotation["area_segm"] = area_stat_mask
 
-        #         if boxes is not None:
-        #             annotation.bbox = image_box
-        #         if masks is not None:
-        #             annotation.segmentation = image_mask
+                if boxes is not None:
+                    annotation.bbox = image_box.tolist()
+                if masks is not None:
+                    annotation["segmentation"] = image_mask
 
-        #         if scores is not None:
-        #             score = scores[image_id][k].cpu().tolist()
-        #             if not isinstance(score, float):
-        #                 raise ValueError(
-        #                     f"Invalid input score of sample {image_id}, element {k}"
-        #                     f" (expected value of type float, got type {type(score)})"
-        #                 )
-        #             annotation.score = score
-        #         dataset.annotations.append(annotation)
-        #         annotation_id += 1
+                if scores is not None:
+                    score = scores[image_id][k].cpu().tolist()
+                    if not isinstance(score, float):
+                        raise ValueError(
+                            f"Invalid input score of sample {image_id}, element {k}"
+                            f" (expected value of type float, got type {type(score)})"
+                        )
+                    annotation.score = score
+                dataset.annotations.append(annotation)
+                annotation_id += 1
 
-        classes = [CocoCategoriesObjectDetection(id=i, name=str(i)) for i in self._get_classes()]
+        classes = [CocoCategoriesObjectDetection(id=i, name=str(i)) for i in all_labels]
         dataset.categories = classes
         return dataset
 
@@ -961,11 +986,15 @@ class MeanAveragePrecision(Metric):
             list of tuples gathered across devices
 
         """
-        world_size = dist.get_world_size(group=process_group)
-        dist.barrier(group=process_group)
+        world_size = dist.get_world_size(group=process_group)  # type: ignore[attr-defined]
+        dist.barrier(group=process_group)  # type: ignore[attr-defined]
 
         list_gathered = [None for _ in range(world_size)]
-        dist.all_gather_object(list_gathered, list_to_gather, group=process_group)
+        dist.all_gather_object(  # type: ignore[attr-defined]
+            list_gathered,
+            list_to_gather,
+            group=process_group,
+        )
 
         return [list_gathered[rank][idx] for idx in range(len(list_gathered[0])) for rank in range(world_size)]  # type: ignore[arg-type,index]
 

@@ -87,7 +87,7 @@ class CocoDetection(VisionDataset):
                 batched_target["bbox"],
                 format=tvt.BoundingBoxFormat.XYWH,
                 canvas_size=canvas_size,
-            ),  # pyright: ignore[reportCallIssue]
+            ),  # ty:ignore[no-matching-overload]
             new_format=self.out_bbox_fmt,
         )
         target["masks"] = tvt.Mask(

@@ -9,7 +9,7 @@ def rleArea(  # noqa: N802
     rles: RLEs,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> list[int]:
     """Compute area of encoded masks.
 

@@ -1453,3 +1453,240 @@ def eval_keypoints_pt(coco_keypoint_gt_pt: COCOpt, coco_keypoint_dt_pt: COCOpt) 
     eval = COCOevalpt(coco_keypoint_gt_pt, coco_keypoint_dt_pt, "keypoints", enable_logging=False)
     eval._prepare()
     return eval
+
+
+# ---- New fixtures for _inputs bbox data ----
+
+
+@fixture(scope="session")
+def dataset_inputs_gt() -> dict:
+    ann_id = 1001
+    annotations = []
+
+    # image 101, cat 4
+    annotations.append(
+        {
+            "id": ann_id,
+            "image_id": 101,
+            "category_id": 4,
+            "bbox": [214.15, 41.29, 348.26, 243.78],
+            "area": 348.26 * 243.78,
+            "iscrowd": 0,
+        }
+    )
+    ann_id += 1
+
+    # image 102, cat 2 (2 boxes)
+    annotations.append(
+        {
+            "id": ann_id,
+            "image_id": 102,
+            "category_id": 2,
+            "bbox": [13.0, 22.75, 535.98, 609.67],
+            "area": 535.98 * 609.67,
+            "iscrowd": 0,
+        }
+    )
+    ann_id += 1
+    annotations.append(
+        {
+            "id": ann_id,
+            "image_id": 102,
+            "category_id": 2,
+            "bbox": [1.66, 3.32, 268.6, 271.91],
+            "area": 268.6 * 271.91,
+            "iscrowd": 0,
+        }
+    )
+    ann_id += 1
+
+    # image 103, cats: 4, 1, 0 (x5)
+    for cat, bbox in [
+        (4, [61.87, 276.25, 296.42, 103.18]),
+        (1, [2.75, 3.66, 159.4, 312.4]),
+        (0, [295.55, 93.96, 18.42, 58.83]),
+        (0, [326.94, 97.05, 13.55, 25.93]),
+        (0, [356.62, 95.47, 15.71, 52.08]),
+        (0, [462.08, 105.09, 31.66, 41.9]),
+        (0, [277.11, 103.84, 15.33, 46.88]),
+    ]:
+        x, y, w, h = bbox
+        annotations.append(
+            {"id": ann_id, "image_id": 103, "category_id": cat, "bbox": bbox, "area": w * h, "iscrowd": 0}
+        )
+        ann_id += 1
+
+    # image 104, cat 49 (10 GT boxes)
+    for bbox in [
+        [72.92, 45.96, 18.31, 34.61],
+        [50.17, 45.34, 21.11, 34.49],
+        [81.28, 47.04, 17.38, 31.46],
+        [63.96, 46.17, 20.39, 34.31],
+        [75.29, 23.01, 16.56, 27.84],
+        [56.39, 21.65, 19.27, 23.89],
+        [73.14, 1.10, 25.82, 27.23],
+        [62.34, 55.23, 15.80, 24.34],
+        [44.17, 45.78, 19.82, 32.70],
+        [58.18, 44.80, 8.24, 11.45],
+    ]:
+        x, y, w, h = bbox
+        annotations.append(
+            {"id": ann_id, "image_id": 104, "category_id": 49, "bbox": bbox, "area": w * h, "iscrowd": 0}
+        )
+        ann_id += 1
+
+    return {
+        "annotations": annotations,
+        "images": [
+            {"id": 101, "height": 300, "width": 650},
+            {"id": 102, "height": 650, "width": 600},
+            {"id": 103, "height": 400, "width": 500},
+            {"id": 104, "height": 100, "width": 100},
+        ],
+        "categories": [{"id": 0}, {"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 49}],
+    }
+
+
+@fixture(scope="session")
+def dataset_inputs_dt() -> dict:
+    dt_id = 2001
+    annotations = []
+
+    # image 101, cat 4
+    annotations.append(
+        {
+            "id": dt_id,
+            "image_id": 101,
+            "category_id": 4,
+            "bbox": [258.15, 41.29, 348.26, 243.78],
+            "area": 348.26 * 243.78,
+            "iscrowd": 0,
+            "score": 0.236,
+        }
+    )
+    dt_id += 1
+
+    # image 102, cats 3 and 2
+    annotations.append(
+        {
+            "id": dt_id,
+            "image_id": 102,
+            "category_id": 3,
+            "bbox": [61.0, 22.75, 504.0, 609.67],
+            "area": 504.0 * 609.67,
+            "iscrowd": 0,
+            "score": 0.318,
+        }
+    )
+    dt_id += 1
+    annotations.append(
+        {
+            "id": dt_id,
+            "image_id": 102,
+            "category_id": 2,
+            "bbox": [12.66, 3.32, 268.6, 271.91],
+            "area": 268.6 * 271.91,
+            "iscrowd": 0,
+            "score": 0.726,
+        }
+    )
+    dt_id += 1
+
+    # image 103, cats: 4, 1, 0 (x5)
+    for cat, score, bbox in [
+        (4, 0.546, [87.87, 276.25, 296.42, 103.18]),
+        (1, 0.300, [0.0, 3.66, 142.15, 312.4]),
+        (0, 0.407, [296.55, 93.96, 18.42, 58.83]),
+        (0, 0.611, [328.94, 97.05, 13.55, 25.93]),
+        (0, 0.335, [356.62, 95.47, 15.71, 52.08]),
+        (0, 0.805, [464.08, 105.09, 31.66, 41.9]),
+        (0, 0.953, [276.11, 103.84, 15.33, 46.88]),
+    ]:
+        x, y, w, h = bbox
+        annotations.append(
+            {
+                "id": dt_id,
+                "image_id": 103,
+                "category_id": cat,
+                "bbox": bbox,
+                "area": w * h,
+                "iscrowd": 0,
+                "score": score,
+            }
+        )
+        dt_id += 1
+
+    # image 104, cat 49 (9 DT boxes)
+    for score, bbox in [
+        (0.532, [72.92, 45.96, 18.31, 34.61]),
+        (0.204, [45.17, 45.34, 21.11, 34.49]),
+        (0.782, [82.28, 47.04, 17.38, 31.46]),
+        (0.202, [59.96, 46.17, 20.39, 34.31]),
+        (0.883, [75.29, 23.01, 16.56, 27.84]),
+        (0.271, [71.14, 1.10, 25.82, 27.23]),
+        (0.561, [61.34, 55.23, 15.80, 24.34]),
+        (0.204, [41.17, 45.78, 19.82, 32.70]),
+        (0.349, [56.18, 44.80, 8.24, 11.45]),
+    ]:
+        x, y, w, h = bbox
+        annotations.append(
+            {"id": dt_id, "image_id": 104, "category_id": 49, "bbox": bbox, "area": w * h, "iscrowd": 0, "score": score}
+        )
+        dt_id += 1
+
+    return {
+        "annotations": annotations,
+        "images": [
+            {"id": 101, "height": 300, "width": 650},
+            {"id": 102, "height": 650, "width": 600},
+            {"id": 103, "height": 400, "width": 500},
+            {"id": 104, "height": 100, "width": 100},
+        ],
+        "categories": [{"id": 0}, {"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 49}],
+    }
+
+
+@fixture(scope="session")
+def coco_inputs_gt_np(dataset_inputs_gt: dict) -> COCOnp:
+    coco = COCOnp()
+    coco.dataset = dataset_inputs_gt  # pyright: ignore[reportAttributeAccessIssue]
+    coco.createIndex()
+    return coco
+
+
+@fixture(scope="session")
+def coco_inputs_dt_np(dataset_inputs_dt: dict) -> COCOnp:
+    coco = COCOnp()
+    coco.dataset = dataset_inputs_dt  # pyright: ignore[reportAttributeAccessIssue]
+    coco.createIndex()
+    return coco
+
+
+@fixture(scope="session")
+def coco_inputs_gt_pt(dataset_inputs_gt: dict) -> COCOpt:
+    coco = COCOpt(enable_logging=False)
+    coco.dataset = CocoDetectionDataset.from_dict(dataset_inputs_gt)
+    coco.createIndex()
+    return coco
+
+
+@fixture(scope="session")
+def coco_inputs_dt_pt(dataset_inputs_dt: dict) -> COCOpt:
+    coco = COCOpt(enable_logging=False)
+    coco.dataset = CocoDetectionDataset.from_dict(dataset_inputs_dt)
+    coco.createIndex()
+    return coco
+
+
+@fixture(scope="session")
+def eval_bbox_inputs_np(coco_inputs_gt_np: COCOnp, coco_inputs_dt_np: COCOnp) -> COCOevalnp:
+    eval = COCOevalnp(coco_inputs_gt_np, coco_inputs_dt_np, "bbox")
+    eval._prepare()  # pyright: ignore[reportAttributeAccessIssue]
+    return eval
+
+
+@fixture(scope="session")
+def eval_bbox_inputs_pt(coco_inputs_gt_pt: COCOpt, coco_inputs_dt_pt: COCOpt) -> COCOevalpt:
+    eval = COCOevalpt(coco_inputs_gt_pt, coco_inputs_dt_pt, "bbox", enable_logging=False)
+    eval._prepare()
+    return eval

@@ -12,7 +12,7 @@ def rleFrString(  # noqa: N802
     w: int,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RLE:
     """Convert from compressed string representation of encoded mask.
 

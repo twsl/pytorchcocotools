@@ -14,7 +14,7 @@ def rleFrBbox(  # noqa: N802
     bb: tv.BoundingBoxes,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RLEs:
     """Convert bounding boxes to encoded masks.
 
@@ -42,7 +42,7 @@ def rleFrBbox(  # noqa: N802
     r = RLEs(
         [
             rleFrPoly(
-                Polygon(xy[i], canvas_size=bb.canvas_size),  # pyright: ignore[reportCallIssue]
+                Polygon(xy[i], canvas_size=bb.canvas_size),  # ty:ignore[no-matching-overload]
                 device=device,
                 requires_grad=requires_grad,
             )

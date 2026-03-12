@@ -10,7 +10,7 @@ def rleToString(  # noqa: N802
     rle: RLE,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> bytes:
     """Get compressed string representation of encoded mask.
 
@@ -56,7 +56,7 @@ def rleToStringBatch(  # noqa: N802
     rles: RLEs,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RleObjs:
     """Get compressed string representation of encoded mask.
 

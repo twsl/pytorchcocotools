@@ -6,11 +6,12 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
+@torch.compile(dynamic=True)
 def rleToBbox(  # noqa: N802,
     rles: RLEs,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> tv.BoundingBoxes:
     """Get bounding boxes surrounding encoded masks.
 
@@ -37,7 +38,7 @@ def rleToBbox(  # noqa: N802,
         torch.zeros((n, 4), dtype=torch.float32, device=device),
         format=tv.BoundingBoxFormat.XYWH,
         canvas_size=(canvas_h, canvas_w),
-    )  # pyright: ignore[reportCallIssue]
+    )  # ty:ignore[no-matching-overload]
 
     if max_len == 0:
         return zeros_n4
@@ -112,4 +113,4 @@ def rleToBbox(  # noqa: N802,
         canvas_size=(canvas_h, canvas_w),
         device=device,
         requires_grad=requires_grad,
-    )  # pyright: ignore[reportCallIssue]
+    )  # ty:ignore[no-matching-overload]

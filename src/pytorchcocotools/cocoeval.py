@@ -37,7 +37,7 @@ class COCOeval:
         *,
         enable_logging: bool = True,
         device: TorchDevice | None = None,
-        requires_grad: bool | None = None,
+        requires_grad: bool = False,
     ) -> None:
         """Initialize CocoEval using coco APIs for gt and dt.
 
@@ -168,7 +168,7 @@ class COCOeval:
 
         gt = cast(list[CocoAnnotationObjectDetection], gt)
         dt = cast(list[CocoAnnotationObjectDetection], dt)
-        if len(gt) == 0 and len(dt) == 0:
+        if len(gt) == 0 or len(dt) == 0:
             return Tensor([])
         inds = torch.argsort(
             torch.tensor(
@@ -203,7 +203,7 @@ class COCOeval:
         #         canvas_size=(size[0], size[1]),
         #         device=self.device,
         #         requires_grad=self.requires_grad,
-        #     )  # pyright: ignore[reportCallIssue]
+        #     )  # ty:ignore[no-matching-overload]
         #     return rleFrPoly(poly, device=self.device, requires_grad=self.requires_grad)
 
         img = self.cocoGt.loadImgs(imgId)[0]
@@ -221,7 +221,7 @@ class COCOeval:
                 canvas_size=size,
                 device=self.device,
                 requires_grad=self.requires_grad,
-            )  # pyright: ignore[reportCallIssue]
+            )  # ty:ignore[no-matching-overload]
             d = tv.BoundingBoxes(
                 torch.tensor(
                     [d.bbox for d in dt], dtype=torch.float32, device=self.device, requires_grad=self.requires_grad
@@ -230,7 +230,9 @@ class COCOeval:
                 canvas_size=size,
                 device=self.device,
                 requires_grad=self.requires_grad,
-            )  # pyright: ignore[reportCallIssue]
+            )  # ty:ignore[no-matching-overload]
+            if g.numel() == 0 or d.numel() == 0:
+                return Tensor([])
         else:
             raise ValueError("Unknown iouType for iou computation.")  # noqa: TRY002
 
@@ -370,6 +372,7 @@ class COCOeval:
         gt_ig = torch.tensor(ignored, device=self.device, requires_grad=self.requires_grad)
         # sort dt highest score first, sort gt ignore last
         gtind = torch.argsort(gt_ig, stable=True)
+        gt_ig = gt_ig[gtind]
         # Optimized: Convert to list once for indexing
         gt = [gt[i] for i in gtind.tolist()]
         dtind = torch.argsort(
@@ -396,54 +399,30 @@ class COCOeval:
         dtm = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         dt_ig = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         if len(ious) != 0:
-            # Precompute tensors used in every dind iteration.
-            iscrowd_bool = iscrowd.bool()  # [G]
-            gt_ig_bool = gt_ig.bool()  # [G]
-            gt_ids = torch.tensor([g.id for g in gt], dtype=torch.float32, device=self.device)  # [G]
-            limit_scalar = limit.item()
-            # Cap each threshold at limit (matches original t = min(t, limit)).
-            t_thresholds = torch.stack([t.detach().clone().to(device=self.device) for t in self.params.iouThrs]).clamp(
-                max=limit_scalar
-            )  # [T]
-
-            for dind, d in enumerate(dt):
-                iou_row = ious[dind]  # [G]
-
-                # available[t, g]: GT g can still be matched at threshold t.
-                # A non-crowd GT is unavailable once matched; crowd GTs are always available.
-                available = (gtm == 0) | iscrowd_bool[None, :]  # [T, G]
-
-                # Candidate mask: available AND IoU >= threshold.
-                above = iou_row[None, :] >= t_thresholds[:, None]  # [T, G]
-                cands = available & above  # [T, G]
-
-                # Separate non-ignored / ignored candidates (gt sorted: non-ignored first).
-                non_ign_cands = cands & ~gt_ig_bool[None, :]  # [T, G]
-                ign_cands = cands & gt_ig_bool[None, :]  # [T, G]
-
-                has_non_ign = non_ign_cands.any(dim=1)  # [T]
-                has_ign = ign_cands.any(dim=1)  # [T]
-                has_match = has_non_ign | has_ign  # [T]
-
-                if not has_match.any():
-                    continue
-
-                # Best non-ignored match per threshold (argmax of IoU).
-                iou_exp = iou_row[None, :].expand(num_iou_thrs, num_gt)  # [T, G]
-                m_non_ign = torch.where(non_ign_cands, iou_exp, torch.zeros_like(iou_exp)).argmax(dim=1)  # [T]
-                m_ign = torch.where(ign_cands, iou_exp, torch.zeros_like(iou_exp)).argmax(dim=1)  # [T]
-
-                # Prefer non-ignored match; fall back to ignored.
-                m_final = torch.where(has_non_ign, m_non_ign, m_ign)  # [T]
-                m_safe = m_final.clamp(0, num_gt - 1)
-
-                # Update dtm and dt_ig for all thresholds at once.
-                dtm[:, dind] = torch.where(has_match, gt_ids[m_safe], dtm[:, dind])
-                dt_ig[:, dind] = torch.where(has_match, gt_ig[m_safe], dt_ig[:, dind])
-
-                # Update gtm: scatter d.id into (tind, m) for each matched threshold.
-                matched_tinds = has_match.nonzero(as_tuple=True)[0]  # [K]
-                gtm[matched_tinds, m_safe[matched_tinds]] = float(d.id)
+            for tind, t in enumerate(self.params.iouThrs):
+                for dind, d in enumerate(dt):
+                    # information about best match so far (m=-1 -> unmatched)
+                    iou = torch.min(t.detach().clone().to(device=self.device), limit)
+                    m = -1
+                    for gind, g in enumerate(gt):  # noqa: B007
+                        # if this gt already matched, and not a crowd, continue
+                        if gtm[tind, gind] > 0 and not iscrowd[gind]:
+                            continue
+                        # if dt matched to reg gt, and on ignore gt, stop
+                        if m > -1 and gt_ig[m] == 0 and gt_ig[gind] == 1:
+                            break
+                        # continue to next gt unless better match made
+                        if ious[dind, gind] < iou:
+                            continue
+                        # if match successful and best so far, store appropriately
+                        iou = ious[dind, gind]
+                        m = gind
+                    # if match made store id of match for both dt and gt
+                    if m == -1:
+                        continue
+                    dt_ig[tind, dind] = gt_ig[m]
+                    dtm[tind, dind] = gt[m].id
+                    gtm[tind, m] = d.id
         # set unmatched detections outside of area range to ignore
         a = torch.tensor(
             [d.area < aRng[0] or d.area > aRng[1] for d in dt], device=self.device, requires_grad=self.requires_grad
@@ -499,16 +478,19 @@ class COCOeval:
         precision = -torch.ones(
             (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
             device=self.device,
+            dtype=torch.float64,
             requires_grad=self.requires_grad,
         )  # -1 for the precision of absent categories
         recall = -torch.ones(
             (num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets),
             device=self.device,
+            dtype=torch.float64,
             requires_grad=self.requires_grad,
         )
         scores = -torch.ones(
             (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
             device=self.device,
+            dtype=torch.float64,
             requires_grad=self.requires_grad,
         )
 
@@ -535,7 +517,9 @@ class COCOeval:
                     eval_img_results = [el for el in eval_img_results if el is not None]
                     if len(eval_img_results) == 0:
                         continue
-                    dt_scores = torch.concatenate([el.dtScores[0:max_det] for el in eval_img_results])
+                    dt_scores = torch.concatenate([el.dtScores[0:max_det] for el in eval_img_results]).to(
+                        dtype=torch.float64
+                    )
 
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
@@ -551,19 +535,31 @@ class COCOeval:
                     tps = torch.logical_and(dt_matches, torch.logical_not(dt_ig))
                     fps = torch.logical_and(torch.logical_not(dt_matches), torch.logical_not(dt_ig))
 
-                    tp_sum = torch.cumsum(tps, dim=1).to(dtype=torch.float)
-                    fp_sum = torch.cumsum(fps, dim=1).to(dtype=torch.float)
+                    tp_sum = torch.cumsum(tps, dim=1, dtype=torch.float64)
+                    fp_sum = torch.cumsum(fps, dim=1, dtype=torch.float64)
                     for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum, strict=False)):
                         nd = len(tp)
                         rc = tp / npig
-                        pr = tp / (fp + tp + torch.finfo(torch.float32).eps)
-                        q = torch.zeros((num_rec_thrs,), device=self.device, requires_grad=self.requires_grad)
-                        ss = torch.zeros((num_rec_thrs,), device=self.device, requires_grad=self.requires_grad)
+                        pr = tp / (fp + tp + torch.finfo(torch.float64).eps)
+                        q = torch.zeros(
+                            (num_rec_thrs,),
+                            device=self.device,
+                            dtype=torch.float64,
+                            requires_grad=self.requires_grad,
+                        )
+                        ss = torch.zeros(
+                            (num_rec_thrs,),
+                            device=self.device,
+                            dtype=torch.float64,
+                            requires_grad=self.requires_grad,
+                        )
 
                         recall[t, k, a, m] = rc[-1] if nd else 0
 
-                        cum_val, _cum_ind = torch.cummax(torch.flip(pr, dims=[0]), dim=0)
-                        pr = torch.flip(cum_val, dims=[0])
+                        if nd:
+                            for i in range(nd - 1, 0, -1):
+                                if pr[i] > pr[i - 1]:
+                                    pr[i - 1] = pr[i]
 
                         inds = torch.searchsorted(rc, p.recThrs, side="left")
 
@@ -602,17 +598,19 @@ class COCOeval:
             title = "Average Precision" if ap else "Average Recall"
             type_abbrv = "(AP)" if ap else "(AR)"
             iou = (
-                f"{self.params.iouThrs[0]:0.2f}:{self.params.iouThrs[-1]:0.2f}" if iouThr is None else f"{iouThr:0.2f}"
+                f"{self.params.iouThrs[0].item():0.2f}:{self.params.iouThrs[-1].item():0.2f}"
+                if iouThr is None
+                else f"{iouThr:0.2f}"
             )
 
             aind = [i for i, aRng in enumerate(self.params.areaRngLbl) if aRng == areaRng]
             mind = [i for i, mDet in enumerate(self.params.maxDets) if mDet == maxDets]
-            iou_thr_tensor = torch.tensor(iouThr, device=self.device, requires_grad=self.requires_grad)
             if ap:
                 # dimension of precision: [TxRxKxAxM]
                 prec = self.eval.precision
                 # IoU
                 if iouThr is not None:
+                    iou_thr_tensor = torch.tensor(iouThr, device=self.device, requires_grad=self.requires_grad)
                     thr = torch.where(iou_thr_tensor == self.params.iouThrs)[0]
                     prec = prec[thr]
                 prec = prec[:, :, :, aind, mind]
@@ -620,6 +618,7 @@ class COCOeval:
                 # dimension of recall: [TxKxAxM]
                 prec = self.eval.recall
                 if iouThr is not None:
+                    iou_thr_tensor = torch.tensor(iouThr, device=self.device, requires_grad=self.requires_grad)
                     thr = torch.where(iou_thr_tensor == self.params.iouThrs)[0]
                     prec = prec[thr]
                 prec = prec[:, :, aind, mind]
@@ -628,7 +627,7 @@ class COCOeval:
                 if len(prec[prec > -1]) == 0
                 else torch.mean(prec[prec > -1])
             )
-            self.logger.info(template.format(title, type_abbrv, iou, areaRng, maxDets, mean_s))
+            self.logger.info(template.format(title, type_abbrv, iou, areaRng, maxDets, mean_s.item()))
             return mean_s
 
         def _summarizeDets() -> Tensor:  # noqa: N802

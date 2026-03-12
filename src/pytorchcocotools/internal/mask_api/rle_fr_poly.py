@@ -11,7 +11,7 @@ def rleFrPoly(  # noqa: N802
     xy: Polygon,
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RLE:
     """Convert polygon to encoded mask.
 

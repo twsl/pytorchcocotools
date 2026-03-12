@@ -8,11 +8,12 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
+@torch.compile(dynamic=True)
 def rleEncode(  # noqa: N802
     mask: Annotated[tv.Mask, "N H W"],
     *,
     device: TorchDevice | None = None,
-    requires_grad: bool | None = None,
+    requires_grad: bool = False,
 ) -> RLEs:
     """Encode binary masks using RLE.
 

@@ -25,7 +25,7 @@ class _LabelBase(TVTensor):
         categories: Sequence[str] | None = None,
         dtype: torch.dtype | None = None,
         device: torch.device | str | int | None = None,
-        requires_grad: bool | None = None,
+        requires_grad: bool = False,
     ) -> L:
         tensor = cls._to_tensor(data, dtype=dtype, device=device, requires_grad=requires_grad)
         return cls._wrap(tensor, categories=categories)
@@ -38,7 +38,7 @@ class _LabelBase(TVTensor):
         categories: Sequence[str],
         **kwargs: Any,
     ) -> L:
-        return cls(categories.index(category), categories=categories, **kwargs)  # pyright: ignore[reportCallIssue]
+        return cls(categories.index(category), categories=categories, **kwargs)  # ty:ignore[no-matching-overload]
 
 
 class Label(_LabelBase):

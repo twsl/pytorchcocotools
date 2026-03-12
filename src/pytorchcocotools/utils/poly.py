@@ -56,7 +56,7 @@ class Polygons(TVTensor):
         canvas_size: tuple[int, int],
         dtype: torch.dtype | None = None,
         device: torch.device | str | int | None = None,
-        requires_grad: bool | None = None,
+        requires_grad: bool = False,
     ) -> Self:
         data_nested = torch.nested.as_nested_tensor(data, dtype=dtype)  # TODO: add device
         tensor = cls._to_tensor(data_nested, dtype=dtype, device=device, requires_grad=requires_grad)
@@ -81,7 +81,7 @@ class Polygons(TVTensor):
         if isinstance(output, torch.Tensor) and not isinstance(output, Polygons):
             output = Polygon._wrap(output, canvas_size=canvas_size, check_dims=False)
         elif isinstance(output, tuple | list):
-            output = type(output)(Polygons._wrap(part, canvas_size=canvas_size, check_dims=False) for part in output)  # pyright: ignore[reportCallIssue]
+            output = type(output)(Polygons._wrap(part, canvas_size=canvas_size, check_dims=False) for part in output)  # ty:ignore[no-matching-overload]
         return output  # pyright: ignore[reportReturnType]
 
     def __repr__(self, *, tensor_contents: Any = None) -> str:  # type: ignore[override]
@@ -134,7 +134,7 @@ class Polygon(TVTensor):
         canvas_size: tuple[int, int],
         dtype: torch.dtype | None = None,
         device: torch.device | str | int | None = None,
-        requires_grad: bool | None = None,
+        requires_grad: bool = False,
     ) -> Self:
         tensor = cls._to_tensor(data, dtype=dtype, device=device, requires_grad=requires_grad)
         return cls._wrap(tensor, canvas_size=canvas_size)
@@ -158,7 +158,7 @@ class Polygon(TVTensor):
         if isinstance(output, torch.Tensor) and not isinstance(output, Polygon):
             output = Polygon._wrap(output, canvas_size=canvas_size, check_dims=False)
         elif isinstance(output, tuple | list):
-            output = type(output)(Polygon._wrap(part, canvas_size=canvas_size, check_dims=False) for part in output)  # pyright: ignore[reportCallIssue]
+            output = type(output)(Polygon._wrap(part, canvas_size=canvas_size, check_dims=False) for part in output)  # ty:ignore[no-matching-overload]
         return output  # pyright: ignore[reportReturnType]
 
     def __repr__(self, *, tensor_contents: Any = None) -> str:  # type: ignore[override]
