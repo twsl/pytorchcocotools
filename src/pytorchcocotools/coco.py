@@ -200,7 +200,7 @@ class COCO:
         Returns:
             Loaded ann objects.
         """
-        ann_ids: int | list[int] = ids if ids else []
+        ann_ids: int | list[int] = ids if ids is not None else []
         if isinstance(ann_ids, list):
             return [self.anns[id] for id in ann_ids]
         elif isinstance(ann_ids, int):
@@ -215,7 +215,7 @@ class COCO:
         Returns:
             Loaded cat objects.
         """
-        cat_ids: int | list[int] = ids if ids else []
+        cat_ids: int | list[int] = ids if ids is not None else []
         if isinstance(cat_ids, list):
             return [self.cats[id] for id in cat_ids]
         elif isinstance(cat_ids, int):
@@ -230,7 +230,7 @@ class COCO:
         Returns:
             Loaded img objects.
         """
-        img_ids: int | list[int] = ids if ids else []
+        img_ids: int | list[int] = ids if ids is not None else []
         if isinstance(img_ids, list):
             return [self.imgs[id] for id in img_ids]
         elif isinstance(img_ids, int):
