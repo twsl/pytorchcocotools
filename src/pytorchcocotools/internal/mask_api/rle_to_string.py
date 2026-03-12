@@ -5,7 +5,6 @@ from pytorchcocotools.internal.entities import RLE, RleObj, RleObjs, RLEs, Torch
 
 
 @torch.no_grad
-# @torch.compile
 def rleToString(  # noqa: N802
     rle: RLE,
     *,

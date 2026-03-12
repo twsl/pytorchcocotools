@@ -5,7 +5,6 @@ from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 @torch.no_grad
-# @torch.compile
 def rleFrString(  # noqa: N802
     s: bytes,
     h: int,

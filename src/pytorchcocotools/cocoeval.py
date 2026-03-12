@@ -241,6 +241,7 @@ class COCOeval:
         ious = mask.iou(d, g, iscrowd)
         return ious
 
+    @torch.compile
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         # dimention here should be Nxm
         gts = cast(list[CocoAnnotationKeypointDetection], self._gts[imgId, catId])
@@ -573,9 +574,9 @@ class COCOeval:
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
             date=datetime.datetime.now(),  # .strftime("%Y-%m-%d %H:%M:%S"),
-            precision=precision,
-            recall=recall,
-            scores=scores,
+            precision=precision.to(dtype=torch.float32),
+            recall=recall.to(dtype=torch.float32),
+            scores=scores.to(dtype=torch.float32),
         )
         toc = time.time()
         self.logger.info(f"DONE (t={toc - tic:0.2f}s).")

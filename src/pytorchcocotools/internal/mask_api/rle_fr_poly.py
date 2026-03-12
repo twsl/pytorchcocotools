@@ -1,12 +1,11 @@
 import torch
-from torch import Tensor
 
-from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
+from pytorchcocotools.internal.entities import RLE, TorchDevice
 from pytorchcocotools.utils.poly import Polygon
 
 
 @torch.no_grad
-# @torch.compile
+# @torch.compile(dynamic=True)
 def rleFrPoly(  # noqa: N802
     xy: Polygon,
     *,
@@ -23,16 +22,16 @@ def rleFrPoly(  # noqa: N802
     Returns:
         The RLE encoded mask.
     """
-    # k = xy.num_coordinates
     h = xy.canvas_size[0]
     w = xy.canvas_size[1]
     device = xy.device
     # upsample and get discrete points densely along entire boundary
     scale = 5.0
-    x = ((scale * xy[:, 0]) + 0.5).int()
-    x = torch.cat((x, x[0:1]))
-    y = ((scale * xy[:, 1]) + 0.5).int()
-    y = torch.cat((y, y[0:1]))
+    # Combine x/y scaling + wrap into one cat (was two separate cats)
+    xy_int = (scale * xy + 0.5).int()
+    xy_closed = torch.cat((xy_int, xy_int[0:1]))
+    x = xy_closed[:, 0]
+    y = xy_closed[:, 1]
 
     xs = x[:-1]
     xe = x[1:]
@@ -41,99 +40,97 @@ def rleFrPoly(  # noqa: N802
     dx = torch.abs(xe - xs)
     dy = torch.abs(ys - ye)
     flip = ((dx >= dy) & (xs > xe)) | ((dx < dy) & (ys > ye))
-    _xs = torch.where(flip, xe, xs)
-    _xe = torch.where(flip, xs, xe)
-    _ys = torch.where(flip, ye, ys)
-    _ye = torch.where(flip, ys, ye)
-    xs = _xs
-    xe = _xe
-    ys = _ys
-    ye = _ye
+    xs, xe = torch.where(flip, xe, xs), torch.where(flip, xs, xe)
+    ys, ye = torch.where(flip, ye, ys), torch.where(flip, ys, ye)
     xy_cond = dx >= dy
-    s = torch.where(xy_cond, (ye - ys).to(dtype=torch.float64) / dx, (xe - xs).to(dtype=torch.float64) / dy)  # double
-    seq_lens = torch.where(xy_cond, dx, dy).unsqueeze(-1)
+    # Safe denominators guard against division by zero on axis-aligned edges.
+    # torch.where evaluates both branches; clamping avoids silent inf/nan on GPU.
+    s = torch.where(
+        xy_cond,
+        (ye - ys).to(dtype=torch.float64) / dx.clamp(min=1),
+        (xe - xs).to(dtype=torch.float64) / dy.clamp(min=1),
+    )  # double
+    # Deduplicate: seq_lens and dxy are the same where-expression; compute once
+    dxy = torch.where(xy_cond, dx, dy)
+    seq_lens = dxy.unsqueeze(-1)
 
-    max_len = torch.max(seq_lens)
-    max_len_int = int(max_len.int().item()) + 1
+    max_len_int = int(dxy.max().item()) + 1
     d = torch.arange(0, max_len_int, device=device).unsqueeze(0)
     d = d.expand(seq_lens.size(0), d.size(1))
     d_mask = d <= seq_lens
 
-    dxy = torch.where(xy_cond, dx, dy)
     t = torch.where(flip.unsqueeze(1), dxy.unsqueeze(1) - d, d)
-    # t = torch.clamp(t, 0, d)
 
-    u = torch.where(xy_cond.unsqueeze(1), t + xs.unsqueeze(1), (xs.unsqueeze(1) + s.unsqueeze(1) * t + 0.5).int())
-    v = torch.where(xy_cond.unsqueeze(1), (ys.unsqueeze(1) + s.unsqueeze(1) * t + 0.5).int(), t + ys.unsqueeze(1))
+    # Precompute s⊗t once; it was computed twice (for u and v) in the original
+    xs2 = xs.unsqueeze(1)
+    ys2 = ys.unsqueeze(1)
+    cond2 = xy_cond.unsqueeze(1)
+    s_t = s.unsqueeze(1) * t  # float64, computed once
+    u = torch.where(cond2, t + xs2, (xs2 + s_t + 0.5).int())
+    v = torch.where(cond2, (ys2 + s_t + 0.5).int(), t + ys2)
 
     u = u[d_mask]
     v = v[d_mask]
-    # assert u.size(0) == m  # noqa: S101
 
     # get points along y-boundary and downsample
-    changed = u[1:] != u[:-1]
-    xd = torch.where(u[1:] < u[:-1], u[1:], u[1:] - 1)
-    xd = (xd + 0.5) / scale - 0.5
+    # Cache slices — each is referenced twice below
+    u_next = u[1:]
+    u_prev = u[:-1]
+    v_next = v[1:]
+    v_prev = v[:-1]
 
-    fl_mask = torch.floor(xd) != xd
-    sm_mask = xd < 0
-    lg_mask = xd > w - 1
-    or_mask = torch.logical_or(fl_mask, torch.logical_or(sm_mask, lg_mask))
-    cont_mask = torch.logical_not(or_mask)
+    changed = u_next != u_prev
 
-    full_mask = torch.logical_and(cont_mask, changed)
+    # Integer-domain boundary x coordinate before downsampling
+    xd_int = torch.where(u_next < u_prev, u_next, u_next - 1)
 
-    yd = torch.where(v[1:] < v[:-1], v[1:], v[:-1])
-    yd = (yd + 0.5) / scale - 0.5
-    yd = torch.clamp(yd, 0, h)
-    yd = torch.ceil(yd)
+    # Boundary checks entirely in integer space — avoids float floor/compare.
+    # xd = (xd_int - 2) / 5.0; it is an integer iff xd_int ≡ 2 (mod 5).
+    # range: xd ∈ [0, w-1] ↔ xd_int ∈ [2, 5*(w-1)+2]
+    x_is_pixel = xd_int % 5 == 2
+    x_in_range = (xd_int >= 2) & (xd_int <= 5 * (w - 1) + 2)
+    full_mask = x_is_pixel & x_in_range & changed
 
-    xd = xd[full_mask]
-    yd = yd[full_mask]
-    # compute rle encoding given y-boundary points
-    a = xd * h + yd
-    a = torch.cat((a, torch.tensor([h * w], device=device)))
+    # Apply full_mask before any float work — compute only for surviving points
+    xd_int_f = xd_int[full_mask]
+    yd_int = torch.where(v_next < v_prev, v_next, v_prev)
+    yd_int_f = yd_int[full_mask]
 
-    sorted, _ = torch.sort(a)
+    # Compute final pixel coordinates as integers (no float needed).
+    # xd guaranteed integer since xd_int ≡ 2 (mod 5) → exact division.
+    # yd formula: ceil(clamp((yd_int-2)/5, 0, h)) = clamp(⌈(yd_int-2)/5⌉, 0, h)
+    #           = clamp((yd_int+2) // 5, 0, h)  using ceiling = (n+d-1)//d for d=5
+    xd_coord = (xd_int_f - 2).div(5, rounding_mode="floor")
+    yd_coord = ((yd_int_f + 2).div(5, rounding_mode="floor")).clamp(0, h)
 
-    a = torch.diff(sorted, prepend=torch.tensor([0], device=device)).to(dtype=torch.int)
+    # compute rle encoding given y-boundary points — all-integer computation
+    a = xd_coord * h + yd_coord
+    a = torch.cat((a, a.new_tensor([h * w])))
 
-    # Vectorized zero-merge: group consecutive elements separated by zeros.
-    # Non-zero values anchor groups; zeros cause the next value to merge with the previous group.
-    # Strategy: mark group boundaries where value > 0, assign group IDs via cumsum,
-    # then scatter_add to sum each group.
+    sorted_a = torch.sort(a).values
+    a = torch.diff(sorted_a, prepend=sorted_a.new_zeros(1)).to(dtype=torch.int32)
+
+    # Zero-merge: Python loop is faster than scatter_add for typical small arrays (n<400)
     if a.numel() == 0:
-        b = torch.tensor([], dtype=torch.int, device=device)
+        b = torch.empty(0, dtype=torch.int32, device=device)
     else:
-        nonzero_mask = a > 0
-        if not nonzero_mask.any():
-            b = torch.tensor([], dtype=torch.int, device=device)
-        else:
-            # Group IDs: each non-zero element starts a new group. Zeros inherit
-            # the NEXT non-zero element's group (since zeros merge their successor
-            # into the predecessor).
-            # The pattern is: [nz, 0, nz, 0, nz] -> groups [0, 0, 1, 1, 2]
-            # A zero at position j merges with b_list[-1], and the next nz value
-            # also merges into b_list[-1]. So a zero and the following nz form one group
-            # with the preceding nz.
-            # Use the original loop approach but on Python list (it's very fast for small data)
-            a_list = a.tolist()
-            b_list = []
-            j = 0
-            while j < len(a_list):
-                if a_list[j] > 0:
-                    b_list.append(a_list[j])
+        a_list = a.tolist()
+        b_list: list[int] = []
+        j = 0
+        while j < len(a_list):
+            if a_list[j] > 0:
+                b_list.append(a_list[j])
+                j += 1
+            else:
+                j += 1
+                if j < len(a_list) and b_list:
+                    b_list[-1] += a_list[j]
                     j += 1
-                else:
-                    j += 1
-                    if j < len(a_list) and len(b_list) > 0:
-                        b_list[-1] += a_list[j]
-                        j += 1
-            b = (
-                torch.tensor(b_list, dtype=torch.int, device=device)
-                if b_list
-                else torch.tensor([], dtype=torch.int, device=device)
-            )
+        b = (
+            torch.tensor(b_list, dtype=torch.int32, device=device)
+            if b_list
+            else torch.empty(0, dtype=torch.int32, device=device)
+        )
 
     # Initialize RLE with the counts
     r = RLE(h=h, w=w, cnts=b)

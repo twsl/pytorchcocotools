@@ -9,7 +9,6 @@ from pytorchcocotools.utils.poly import Polygon
 
 
 @torch.no_grad
-# @torch.compile
 def rleFrBbox(  # noqa: N802
     bb: tv.BoundingBoxes,
     *,
