@@ -386,12 +386,13 @@ class COCOeval:
         )
         # Optimized: Convert to list once for indexing
         dt = [dt[i] for i in dtind[0:maxDet].tolist()]
-        iscrowd = torch.tensor([int(o.iscrowd) for o in gt], device=self.device, requires_grad=self.requires_grad)
+        iscrowd_t = torch.tensor([int(o.iscrowd) for o in gt], device=self.device, requires_grad=self.requires_grad)
         # load computed ious
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
-        limit = 1 - 1e-10
-        limit = torch.tensor(1, device=self.device, requires_grad=self.requires_grad) - torch.finfo(torch.float32).eps
+        # Precompute clamped IoU thresholds once (avoids tensor alloc per loop iteration).
+        _limit = float(1.0 - torch.finfo(torch.float32).eps)
+        iou_thrs_py: list[float] = [min(float(t.item()), _limit) for t in self.params.iouThrs]
 
         num_iou_thrs = len(self.params.iouThrs)  # T
         num_gt = len(gt)  # G
@@ -400,30 +401,40 @@ class COCOeval:
         dtm = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         dt_ig = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         if len(ious) != 0:
-            for tind, t in enumerate(self.params.iouThrs):
+            iscrowd_list: list[int] = iscrowd_t.tolist()
+            gt_ig_list: list[float] = gt_ig.tolist()
+            # Cache ious as a nested Python list for O(1) element access in the tight inner loop.
+            ious_list: list[list[float]] = ious.tolist()
+            for tind in range(num_iou_thrs):
+                t_thr = iou_thrs_py[tind]
+                # Track matched GTs with a Python list to avoid per-element tensor overhead.
+                matched_gt: list[bool] = [False] * num_gt
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = torch.min(t.detach().clone().to(device=self.device), limit)
+                    iou = t_thr
                     m = -1
-                    for gind, g in enumerate(gt):  # noqa: B007
+                    ious_d = ious_list[dind]
+                    for gind in range(num_gt):  # noqa: B007
                         # if this gt already matched, and not a crowd, continue
-                        if gtm[tind, gind] > 0 and not iscrowd[gind]:
+                        if matched_gt[gind] and not iscrowd_list[gind]:
                             continue
                         # if dt matched to reg gt, and on ignore gt, stop
-                        if m > -1 and gt_ig[m] == 0 and gt_ig[gind] == 1:
+                        if m > -1 and gt_ig_list[m] == 0 and gt_ig_list[gind] == 1:
                             break
                         # continue to next gt unless better match made
-                        if ious[dind, gind] < iou:
+                        if ious_d[gind] < iou:
                             continue
                         # if match successful and best so far, store appropriately
-                        iou = ious[dind, gind]
+                        iou = ious_d[gind]
                         m = gind
                     # if match made store id of match for both dt and gt
                     if m == -1:
                         continue
-                    dt_ig[tind, dind] = gt_ig[m]
+                    dt_ig[tind, dind] = gt_ig_list[m]
                     dtm[tind, dind] = gt[m].id
                     gtm[tind, m] = d.id
+                    if not iscrowd_list[m]:
+                        matched_gt[m] = True
         # set unmatched detections outside of area range to ignore
         a = torch.tensor(
             [d.area < aRng[0] or d.area > aRng[1] for d in dt], device=self.device, requires_grad=self.requires_grad
@@ -538,38 +549,36 @@ class COCOeval:
 
                     tp_sum = torch.cumsum(tps, dim=1, dtype=torch.float64)
                     fp_sum = torch.cumsum(fps, dim=1, dtype=torch.float64)
-                    for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum, strict=False)):
-                        nd = len(tp)
-                        rc = tp / npig
-                        pr = tp / (fp + tp + torch.finfo(torch.float64).eps)
-                        q = torch.zeros(
-                            (num_rec_thrs,),
-                            device=self.device,
-                            dtype=torch.float64,
-                            requires_grad=self.requires_grad,
-                        )
-                        ss = torch.zeros(
-                            (num_rec_thrs,),
-                            device=self.device,
-                            dtype=torch.float64,
-                            requires_grad=self.requires_grad,
-                        )
-
-                        recall[t, k, a, m] = rc[-1] if nd else 0
-
-                        if nd:
-                            for i in range(nd - 1, 0, -1):
-                                if pr[i] > pr[i - 1]:
-                                    pr[i - 1] = pr[i]
-
-                        inds = torch.searchsorted(rc, p.recThrs, side="left")
-
-                        valid = (inds >= 0) & (inds < pr.size(0))
-                        q[valid] = pr[inds[valid]]
-                        ss[valid] = dt_scores_sorted[inds[valid]]
-
-                        precision[t, :, k, a, m] = q
-                        scores[t, :, k, a, m] = ss
+                    # Vectorized over all T IoU thresholds at once:
+                    nd = tp_sum.shape[1]
+                    if nd == 0:
+                        # No detections: set recall/precision/scores to 0 for all thresholds.
+                        recall[:, k, a, m] = 0.0
+                        precision[:, :, k, a, m] = 0.0
+                        scores[:, :, k, a, m] = 0.0
+                        continue
+                    eps64 = torch.finfo(torch.float64).eps
+                    # rc_all, pr_all: [T, nd]
+                    rc_all = tp_sum / npig
+                    pr_all = tp_sum / (fp_sum + tp_sum + eps64)
+                    # Backward cummax: each position becomes max(itself, all positions to its right).
+                    # Equivalent to the original Python loop: for i in range(nd-1,0,-1): pr[i-1]=max(pr[i-1],pr[i])
+                    pr_all = torch.flip(torch.cummax(torch.flip(pr_all, dims=[1]), dim=1).values, dims=[1])
+                    recall[:, k, a, m] = rc_all[:, -1]
+                    # Vectorized searchsorted across all T thresholds: [T, R]
+                    rec_thrs_2d = (
+                        p.recThrs.to(device=rc_all.device, dtype=rc_all.dtype).unsqueeze(0).expand(num_iou_thrs, -1)
+                    )
+                    rec_inds = torch.searchsorted(rc_all, rec_thrs_2d, side="left")  # [T, R]
+                    valid = rec_inds < nd  # always >= 0 for side="left"
+                    rec_inds_c = rec_inds.clamp(0, nd - 1)
+                    # Gather precision and score values for valid positions
+                    q_all = pr_all.gather(1, rec_inds_c)  # [T, R]
+                    q_all[~valid] = 0.0
+                    ss_all = dt_scores_sorted.unsqueeze(0).expand(num_iou_thrs, nd).gather(1, rec_inds_c)  # [T, R]
+                    ss_all[~valid] = 0.0
+                    precision[:, :, k, a, m] = q_all
+                    scores[:, :, k, a, m] = ss_all
         self.eval = EvalResult(
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],

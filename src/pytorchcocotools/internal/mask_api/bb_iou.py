@@ -6,7 +6,7 @@ from torchvision.transforms.v2 import functional as F  # noqa: N812
 
 
 @torch.no_grad
-# @torch.compile
+@torch.compile(dynamic=True)
 def bbIou(dt: tv.BoundingBoxes, gt: tv.BoundingBoxes, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """Compute intersection over union between bounding boxes.
 
@@ -43,7 +43,7 @@ def bbIou(dt: tv.BoundingBoxes, gt: tv.BoundingBoxes, iscrowd: list[bool]) -> Te
 
         # Compute union
         union_area = dt_area[:, None] + gt_area - intersect_area
-        union_area[torch.tensor(iscrowd)] = dt_area[:, None]  # Adjust for crowd
+        union_area[:, torch.tensor(iscrowd)] = dt_area[:, None]  # Adjust for crowd
 
         # Compute IoU
         iou = intersect_area / union_area

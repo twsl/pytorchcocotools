@@ -1,5 +1,4 @@
 import torch
-from torch import Tensor
 
 from pytorchcocotools.internal.entities import RLE, RleObj, RleObjs, RLEs, TorchDevice
 
@@ -25,15 +24,9 @@ def rleToString(  # noqa: N802
         Byte string of run length encoded mask.
     """
     s = bytearray()
-    cnts = rle.cnts
-    # make sure it's integers
-    cnts = cnts.ceil().int()
+    cnts_list = rle.cnts.tolist()
 
-    # Optimized: Convert to Python list once instead of repeated .item() calls
-    cnts_list = cnts.tolist()
-
-    for i in range(len(cnts_list)):
-        x = cnts_list[i]
+    for i, x in enumerate(cnts_list):
         if i > 2:
             x -= cnts_list[i - 2]
         more = True
@@ -73,11 +66,9 @@ def rleToStringBatch(  # noqa: N802
     results = []
     for rle in rles:
         s = bytearray()
-        cnts = rle.cnts.ceil().int()
-        cnts_list = cnts.tolist()
+        cnts_list = rle.cnts.tolist()
 
-        for i in range(len(cnts_list)):
-            x = cnts_list[i]
+        for i, x in enumerate(cnts_list):
             if i > 2:
                 x -= cnts_list[i - 2]
             more = True

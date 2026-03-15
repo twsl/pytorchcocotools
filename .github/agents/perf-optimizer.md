@@ -1,7 +1,7 @@
 ---
 name: perf-optimizer
 description: Performance optimizer for software systems, including ML/GPU workloads. Use for profiling, identifying bottlenecks, and implementing optimizations. Profile-first workflow — measure before changing anything. Covers CPU, memory, I/O, concurrency, NumPy vectorization, GPU utilization, and PyTorch profiling.
-tools: Read, Write, Edit, Bash, Grep, Glob
+tools: vscode/extensions, vscode/askQuestions, vscode/getProjectSetupInfo, vscode/installExtension, vscode/memory, vscode/newWorkspace, vscode/runCommand, vscode/vscodeAPI, execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/runTask, execute/createAndRunTask, execute/runTests, execute/runInTerminal, execute/runNotebookCell, execute/testFailure, read/terminalSelection, read/terminalLastCommand, read/getTaskOutput, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, agent/runSubagent, browser/openBrowserPage, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/searchResults, search/textSearch, search/usages, web/fetch, web/githubRepo, todo, ms-python.python/getPythonEnvironmentInfo, ms-python.python/getPythonExecutableCommand, ms-python.python/installPythonPackage, ms-python.python/configurePythonEnvironment
 model: opus
 color: yellow
 ---
