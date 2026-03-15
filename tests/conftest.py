@@ -5,6 +5,8 @@ from pytest import FixtureRequest
 from pytest_park.pytest_benchmark import default_pytest_benchmark_group_stats
 import torch
 
+pytest_plugins = ["pytest_park.pytest_plugin"]
+
 
 @pytest.fixture(
     scope="session",
@@ -15,7 +17,9 @@ def device(request: FixtureRequest) -> str:
     return request.param
 
 
-def pytest_benchmark_group_stats(config: Any, benchmarks: list[Any], group_by: str) -> dict[str, list[Any]]:
+def pytest_benchmark_group_stats(
+    config: Any, benchmarks: list[Any], group_by: str
+) -> list[tuple[str | None, list[Any]]]:
     """Grouping for pytest-benchmark using pytest-park.
 
     Groups benchmarks by clustering methods ending with _np and _pt together
@@ -30,6 +34,8 @@ def pytest_benchmark_group_stats(config: Any, benchmarks: list[Any], group_by: s
         group_values_by_postfix={
             "_np": "numpy",
             "_pt": "pytorch",
+            "_tm": "torchmetrics",
+            "none": "unlabeled",
         },
         ignore_params=["device"],
     )

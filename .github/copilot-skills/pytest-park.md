@@ -90,6 +90,16 @@ Multiple tokens can be combined; the resulting label is joined with `|`.
     - `<1.0` = regression
 - **Threshold**: Changes within ±1e-9 considered "unchanged"
 
+### 6. Recommended Workflow
+
+The default recommendation is to use `pytest-park` directly inside the normal pytest workflow:
+
+1. register `pytest_plugins = ["pytest_park.pytest_plugin"]`,
+2. run the benchmarked unit tests with `pytest`, and
+3. read the `pytest-park` terminal summary.
+
+Use `pytest-park analyze` or `pytest-park serve` only when the user wants more specific historical analysis, artifact-to-artifact comparisons, or dashboard exploration.
+
 ---
 
 ## Prerequisites and Setup
@@ -155,9 +165,16 @@ def test_process_data_optimized(benchmark: BenchmarkFixture):
 - Keep test logic identical except for the function being benchmarked
 - Use descriptive names that indicate what's being measured
 
-### Step 2: Configure pytest-park Integration (Optional but Recommended)
+### Step 2: Configure pytest-park Integration (Recommended Default)
 
-Add pytest-park grouping to your `conftest.py`:
+First, enable the plugin in your test suite:
+
+```python
+# tests/conftest.py
+pytest_plugins = ["pytest_park.pytest_plugin"]
+```
+
+Then, if needed, add pytest-park grouping to your `conftest.py`:
 
 ```python
 # tests/conftest.py
@@ -186,6 +203,8 @@ This configuration:
 - Groups `test_func_original` and `test_func_optimized` together
 - Creates friendly labels for visualization
 - Can ignore specific parameters (like `device`) when grouping by `param`
+
+If the user mainly wants quick feedback during development, stop here and recommend running the tests with `pytest`. That inline summary is the default workflow.
 
 ### Step 3: Add Custom Metadata for Tracking Optimization Techniques (Optional)
 
@@ -237,6 +256,20 @@ pytest tests/ --benchmark-only --benchmark-save=optimized_v1 --benchmark-save-da
 
 ### Step 7: Compare Runs
 
+#### Default day-to-day workflow
+
+After the plugin is enabled, the normal recommendation is:
+
+```bash
+pytest
+```
+
+This prints a `pytest-park` summary after the benchmark output, comparing the current run against the latest saved benchmark artifact.
+
+Use this as the first recommendation unless the user specifically asks for saved-run analysis, historical comparisons, or the dashboard.
+
+If pytest is launched from VS Code Test Explorer and benchmark execution is effectively disabled or reduced to a single-shot run, `pytest-park` prints a warning so the user knows the output is not a full benchmark measurement.
+
 #### Quick Comparison (Latest vs Previous)
 
 ```bash
@@ -286,7 +319,7 @@ pytest-park analyze ./.benchmarks --exclude-param device
 
 ### Step 8: Interactive Dashboard
 
-For exploratory analysis:
+For exploratory or specifically targeted analysis:
 
 ```bash
 pytest-park serve ./.benchmarks --reference baseline --port 8080
@@ -316,6 +349,8 @@ pytest-park version
 ### `pytest-park` (no arguments)
 
 Launch interactive mode. Presents a numbered menu for `analyze`, `serve`, and `version`, then prompts for required arguments.
+
+This is not the default recommendation for everyday use. Prefer the pytest plugin summary for routine development feedback, and use interactive mode when a guided CLI flow is specifically helpful.
 
 ```bash
 pytest-park
@@ -364,6 +399,17 @@ pytest-park serve ./.benchmarks --reference baseline --host 127.0.0.1 --port 808
 ---
 
 ## Best Practices
+
+### Prefer the plugin for routine work
+
+Recommended order of operations:
+
+1. Enable `pytest_park.pytest_plugin` in the test suite.
+2. Run benchmarked tests with `pytest`.
+3. Read the inline `pytest-park` summary.
+4. Reach for `pytest-park analyze` or `pytest-park serve` only when the user needs deeper artifact analysis.
+
+This keeps the common workflow lightweight while still preserving the richer tooling for focused investigations.
 
 ### Naming Conventions
 
@@ -563,6 +609,27 @@ benchmark.pedantic(func, rounds=50, iterations=100)
 top  # Ensure CPU is mostly idle
 ```
 
+### Issue: Running from VS Code only shows a single execution
+
+**Cause**: VS Code Python Test Explorer often runs pytest without full benchmark mode enabled.
+
+**What pytest-park does**:
+
+- Prints a warning when the run looks like single-shot benchmark execution.
+- Mentions that this commonly happens in VS Code Test Explorer.
+
+**Recommended fix**:
+
+```bash
+pytest --benchmark-compare
+```
+
+And save a baseline when needed:
+
+```bash
+pytest --benchmark-save baseline --benchmark-save-data
+```
+
 ### Issue: Can't group by custom metadata
 
 **Cause**: `extra_info["custom_groups"]` not set, or key name typo.
@@ -598,8 +665,9 @@ When a user asks about benchmarking function improvements:
    └─ Yes → Continue
 
 4. What do they want to do?
-   ├─ Compare two specific runs → Use: pytest-park analyze --reference <A> --candidate <B>
-   ├─ Compare latest vs previous → Use: pytest-park analyze (no args)
+    ├─ Day-to-day benchmark feedback while coding → Enable plugin and use: pytest
+    ├─ Compare two specific runs → Use: pytest-park analyze --reference <A> --candidate <B>
+    ├─ Compare latest vs previous saved artifacts → Use: pytest-park analyze (no args)
    ├─ Explore interactively → Use: pytest-park serve
    ├─ Group by technique/metadata → Use: pytest-park analyze --group-by custom:<key>
    ├─ Group by parameters → Use: pytest-park analyze --group-by param:<name>
