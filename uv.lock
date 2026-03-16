@@ -2937,14 +2937,14 @@ wheels = [
 
 [[package]]
 name = "pytest-park"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/c2/b3c97866208d3c32860e040cd2c359e765d4fc27b68527ae6d1da83d3ab7/pytest_park-0.2.0.tar.gz", hash = "sha256:b7666824ffa23b9ebc28cda8995fa383066943e88517730ddb13dfca9d051c15", size = 30194, upload-time = "2026-03-14T18:33:53.278Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/fc/469c3ab265f394c5e052610e8a5c9e502b35903f6b4fba2be7c6d9998966/pytest_park-0.2.1.tar.gz", hash = "sha256:bf29b1f6ed570ff9f6eca2db64f19a11cbdf0c732fc2e51cdbb454d7ef251813", size = 30391, upload-time = "2026-03-16T02:10:05.353Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/f8/d6928a9e591edeeadabd907c436d551548d0cdde783f24a3e82820edcc29/pytest_park-0.2.0-py3-none-any.whl", hash = "sha256:573041bcf69d45b22cfb47132ed53ea935d85dca8b3f6784b8f696fbd80dc682", size = 33675, upload-time = "2026-03-14T18:33:52.457Z" },
+    { url = "https://files.pythonhosted.org/packages/04/f0/896d0db463c864aef2393742a7046bc1214d2fb8e8dcfc9260347d4bed11/pytest_park-0.2.1-py3-none-any.whl", hash = "sha256:a3cbecf592a81a535ca7b5062f36a42ad8065abe90fc925ccfa6a78e08b75c33", size = 33901, upload-time = "2026-03-16T02:10:04.216Z" },
 ]
 
 [[package]]
@@ -3085,7 +3085,7 @@ test = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-github-actions-annotate-failures", specifier = ">=0.4.0" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
-    { name = "pytest-park", specifier = ">=0.2.0" },
+    { name = "pytest-park", specifier = ">=0.2.1" },
 ]
 
 [[package]]
