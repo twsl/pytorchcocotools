@@ -51,7 +51,7 @@ jobs:
         run: uv sync --all-groups --all-extras --frozen
 
       - name: Run prek
-        uses: j178/prek-action@v1
+        uses: j178/prek-action@v2
         continue-on-error: true
         env:
           SKIP: uv-lock
