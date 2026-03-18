@@ -10,9 +10,9 @@
             "VARIANT": "3.11-bookworm"
         }
     },
-    "runArgs": [
-        "--gpus=all"
-    ],
+    // "runArgs": [
+    //     "--gpus=all"
+    // ],
     "remoteEnv": {
         "UV_SYSTEM_PYTHON": "1",
         "UV_PROJECT_ENVIRONMENT": "/usr/local",
