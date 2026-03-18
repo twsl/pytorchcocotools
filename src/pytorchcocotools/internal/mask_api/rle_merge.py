@@ -58,6 +58,7 @@ def _rle_merge_two(
     return result
 
 
+@torch.inference_mode()
 def rleMerge(  # noqa: N802
     rles: RLEs,
     intersect: bool,

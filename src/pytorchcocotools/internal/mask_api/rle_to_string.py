@@ -3,7 +3,7 @@ import torch
 from pytorchcocotools.internal.entities import RLE, RleObj, RleObjs, RLEs, TorchDevice
 
 
-@torch.no_grad
+@torch.inference_mode()
 def rleToString(  # noqa: N802
     rle: RLE,
     *,

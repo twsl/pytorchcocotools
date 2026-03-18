@@ -4,8 +4,9 @@ from pytorchcocotools.internal.entities import RLE, TorchDevice
 from pytorchcocotools.utils.poly import Polygon
 
 
-@torch.no_grad
-# @torch.compile(dynamic=True)
+@torch.inference_mode()
+# @torch.compile — disabled: Polygon is a tensor subclass (like tv_tensors),
+# causes dynamo recursion in __torch_function__. Fix expected in next PyTorch version.
 def rleFrPoly(  # noqa: N802
     xy: Polygon,
     *,
@@ -54,7 +55,7 @@ def rleFrPoly(  # noqa: N802
     dxy = torch.where(xy_cond, dx, dy)
     seq_lens = dxy.unsqueeze(-1)
 
-    max_len_int = int(dxy.max().item()) + 1
+    max_len_int = int(dxy.max().clamp(min=0).to(dtype=torch.long)) + 1
     d = torch.arange(0, max_len_int, device=device).unsqueeze(0)
     d = d.expand(seq_lens.size(0), d.size(1))
     d_mask = d <= seq_lens
@@ -110,27 +111,80 @@ def rleFrPoly(  # noqa: N802
     sorted_a = torch.sort(a).values
     a = torch.diff(sorted_a, prepend=sorted_a.new_zeros(1)).to(dtype=torch.int32)
 
-    # Zero-merge: Python loop is faster than scatter_add for typical small arrays (n<400)
+    # Zero-merge: remove zero-count runs by merging adjacent same-parity runs.
+    # Fully vectorized so torch.compile can trace the entire function without graph breaks.
+    #
+    # Algorithm translated to tensors:
+    #   "claimed[j] = (a[j-1]==0) & ~claimed[j-1]" recurrence →
+    #   an element is  "claimed" if the element immediately to its left is zero AND
+    #   that zero was not itself claimed.
+    #
+    # We compute claimed via two observations:
+    #  (a) A zero is "active" (claims its right neighbour) iff it is NOT claimed.
+    #  (b) Because active zeros eat pairs (zero, next), within a run of consecutive
+    #      zeros the alternating pattern means only odd-indexed zeros (0-based) in
+    #      the run are active.
+    # Using this we can compute the claimed mask in O(1) tensor passes.
     if a.numel() == 0:
         b = torch.empty(0, dtype=torch.int32, device=device)
     else:
-        a_list = a.tolist()
-        b_list: list[int] = []
-        j = 0
-        while j < len(a_list):
-            if a_list[j] > 0:
-                b_list.append(a_list[j])
-                j += 1
-            else:
-                j += 1
-                if j < len(a_list) and b_list:
-                    b_list[-1] += a_list[j]
-                    j += 1
-        b = (
-            torch.tensor(b_list, dtype=torch.int32, device=device)
-            if b_list
-            else torch.empty(0, dtype=torch.int32, device=device)
-        )
+        # claimed[j] = (a[j-1] == 0) & ~claimed[j-1], claimed[0]=False
+        # Compute via: within each run of consecutive zeros, alternate True/False.
+        zm = a == 0  # zero mask [n]
+        # shifted: is the previous element a zero?
+        prev_zm = torch.cat([zm.new_zeros(1), zm[:-1]])  # [n]
+        # Within a consecutive-zero run, the position parity determines claimed.
+        # run_start[j] = True if this is the beginning of a consecutive-zero run.
+        run_start = prev_zm & ~torch.cat([prev_zm.new_zeros(1), prev_zm[:-1]])  # [n]
+        # offset within each zero-run (0-indexed): cumsum(prev_zm) - cumsum at run start
+        cum = torch.cumsum(prev_zm.long(), dim=0)
+        # cumsum value at the start of each run (broadcast across the run):
+        cum_at_start = torch.cumsum(run_start.long() * cum, dim=0)
+        # offset[j] = cum[j] - cum[j at start of its run] = position within run
+        # We need cum_at_start to contain, for each j, the cum value frozen at the
+        # most recent run_start. Use a scatter + cummax trick:
+        frozen = cum * run_start  # non-zero only at run starts
+        # Propagate forward: frozen_propagated[j] = max(frozen[0..j]) among run starts
+        frozen_propagated = torch.cummax(frozen, dim=0).values  # [n]
+        offset_in_run = cum - frozen_propagated  # 0-indexed position in current zero-run
+        # claimed[j] = prev_zm[j] AND (offset_in_run[j] is even, i.e. % 2 == 0)
+        # (because the 0th element in a run is active, so offset 0 → next is claimed=True)
+        # Note: offset_in_run is 0 for the first member of a run that follows a zero,
+        # 1 for the second, etc.
+        claimed = prev_zm & ((offset_in_run % 2) == 0)  # [n]
+
+        # "active zeros": zero positions that are NOT claimed
+        active_zero = zm & ~claimed  # [n]
+
+        # Positions that are "skipped" (not output as a regular element):
+        # - Active zero positions (they contribute nothing, their value is 0)
+        # - Claimed positions (their value is added to the previous regular element)
+        skipped = active_zero | claimed  # [n]
+        regular = ~skipped  # positions that become output elements
+
+        # Output segment for each position: regular positions start new segments,
+        # claimed positions belong to the PREVIOUS regular segment.
+        seg_id = torch.cumsum(regular.long(), dim=0) - 1  # 0-indexed segment id, -1 for
+        # elements before the first regular (these have regular=False and seg_id<0 → claimed)
+        # Claimed elements at the very start (before any regular element) have seg_id=-1,
+        # but b_list is empty so they must be dropped—use torch.clamp to handle.
+        seg_id_clamped = seg_id.clamp(min=0)
+
+        # Number of output segments — use tensor max to avoid .item() graph break.
+        # seg_id is -1 for elements before the first regular, so max(seg_id)+1 = num_segs.
+        num_segs = seg_id.max().clamp(min=-1).to(dtype=torch.long) + 1
+
+        # Allocate output and scatter_add all contributing elements in one pass.
+        # regular elements → their own segment; claimed elements → preceding segment.
+        # Using max(num_segs, 1) ensures we always have at least size-1 output
+        # so scatter_add is safe even when num_segs==0 (output will be sliced to 0).
+        out = torch.zeros(num_segs.clamp(min=1), dtype=a.dtype, device=device)
+        # Regular elements contribute to their own segment
+        out.scatter_add_(0, seg_id_clamped[regular], a[regular])
+        # Claimed elements merge into the preceding regular segment
+        valid_claimed = claimed & (seg_id >= 0)
+        out.scatter_add_(0, seg_id_clamped[valid_claimed], a[valid_claimed])
+        b = out[:num_segs]
 
     # Initialize RLE with the counts
     r = RLE(h=h, w=w, cnts=b)

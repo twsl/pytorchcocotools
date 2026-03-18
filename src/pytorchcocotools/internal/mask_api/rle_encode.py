@@ -7,8 +7,7 @@ from torchvision import tv_tensors as tv
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-@torch.no_grad
-@torch.compile(dynamic=True)
+@torch.inference_mode()
 def rleEncode(  # noqa: N802
     mask: Annotated[tv.Mask, "N H W"],
     *,
@@ -29,21 +28,18 @@ def rleEncode(  # noqa: N802
         Run length encoded masks.
     """
     n, h, w = mask.shape
-    # Transpose to column-major layout and flatten
-    mask_p = mask.permute(0, 2, 1)
+
+    # Compute transition positions
+    mask_data = mask.as_subclass(Tensor)
+    mask_p = mask_data.permute(0, 2, 1)
     flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
-    start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask.device)
+    start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask_data.device)
     sentinel = torch.ones((1, n), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
     flat_tensor_with_sentinels = torch.cat([start_sentinel, flattened_mask, sentinel])
 
-    # Compute transitions once for all masks
     transitions = flat_tensor_with_sentinels[:-1, :] != flat_tensor_with_sentinels[1:, :]
     transition_indices = transitions.nonzero()  # (K, 2): [position, mask_index]
 
-    # transition_indices is already sorted by (position, mask_index), but we need
-    # to group by mask_index. Since nonzero() returns in row-major order and
-    # transitions has shape (positions, masks), indices are sorted by position first.
-    # Sort by mask_index to group them.
     if transition_indices.shape[0] == 0:
         return RLEs([RLE(h, w, torch.zeros(1, dtype=torch.long, device=mask.device)) for _ in range(n)])
 

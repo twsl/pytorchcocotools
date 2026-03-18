@@ -4,7 +4,9 @@ from torch import Tensor
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
-@torch.no_grad
+@torch.inference_mode()
+# TODO: https://github.com/pytorch/pytorch/commit/5b1fba3ed503a0e0e7b5c719857cd15b5c46d4cb
+# @torch.compile()
 def rleFrString(  # noqa: N802
     s: bytes,
     h: int,

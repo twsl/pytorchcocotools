@@ -239,9 +239,9 @@ class COCOeval:
         # compute iou between each dt and gt region
         iscrowd = [bool(o.iscrowd) for o in gt]
         ious = mask.iou(d, g, iscrowd)
-        return ious
+        return ious.float()  # Normalize to float32; evaluateImg upcasts to float64 internally
 
-    @torch.compile
+    @torch.compile(fullgraph=False, mode="reduce-overhead")
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         # dimention here should be Nxm
         gts = cast(list[CocoAnnotationKeypointDetection], self._gts[imgId, catId])
@@ -392,7 +392,11 @@ class COCOeval:
 
         # Precompute clamped IoU thresholds once (avoids tensor alloc per loop iteration).
         _limit = float(1.0 - torch.finfo(torch.float32).eps)
-        iou_thrs_py: list[float] = [min(float(t.item()), _limit) for t in self.params.iouThrs]
+        iou_thrs_t = torch.tensor(
+            [min(float(t.item()), _limit) for t in self.params.iouThrs],
+            device=self.device,
+            dtype=torch.float64,
+        )  # [T]
 
         num_iou_thrs = len(self.params.iouThrs)  # T
         num_gt = len(gt)  # G
@@ -401,40 +405,78 @@ class COCOeval:
         dtm = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         dt_ig = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
         if len(ious) != 0:
-            iscrowd_list: list[int] = iscrowd_t.tolist()
-            gt_ig_list: list[float] = gt_ig.tolist()
-            # Cache ious as a nested Python list for O(1) element access in the tight inner loop.
-            ious_list: list[list[float]] = ious.tolist()
-            for tind in range(num_iou_thrs):
-                t_thr = iou_thrs_py[tind]
-                # Track matched GTs with a Python list to avoid per-element tensor overhead.
-                matched_gt: list[bool] = [False] * num_gt
-                for dind, d in enumerate(dt):
-                    # information about best match so far (m=-1 -> unmatched)
-                    iou = t_thr
-                    m = -1
-                    ious_d = ious_list[dind]
-                    for gind in range(num_gt):  # noqa: B007
-                        # if this gt already matched, and not a crowd, continue
-                        if matched_gt[gind] and not iscrowd_list[gind]:
-                            continue
-                        # if dt matched to reg gt, and on ignore gt, stop
-                        if m > -1 and gt_ig_list[m] == 0 and gt_ig_list[gind] == 1:
-                            break
-                        # continue to next gt unless better match made
-                        if ious_d[gind] < iou:
-                            continue
-                        # if match successful and best so far, store appropriately
-                        iou = ious_d[gind]
-                        m = gind
-                    # if match made store id of match for both dt and gt
-                    if m == -1:
-                        continue
-                    dt_ig[tind, dind] = gt_ig_list[m]
-                    dtm[tind, dind] = gt[m].id
-                    gtm[tind, m] = d.id
-                    if not iscrowd_list[m]:
-                        matched_gt[m] = True
+            # --- Vectorized matching: iterate over D detections, vectorize over T thresholds ---
+            # GTs are already sorted: non-ignored (gt_ig==0) first, ignored (gt_ig==1) last.
+            iscrowd_bool = iscrowd_t.bool()  # [G]
+            gt_ig_bool = gt_ig.bool()  # [G]
+            non_ignored = ~gt_ig_bool  # [G]
+
+            # Pre-extract GT and DT ids as tensors for fast assignment
+            gt_ids_t = torch.tensor([g.id for g in gt], dtype=dtm.dtype, device=self.device)  # [G]
+            dt_ids_t = torch.tensor([d.id for d in dt], dtype=gtm.dtype, device=self.device)  # [D]
+
+            # ious: [D, G] already (subset-selected above)
+            ious_f = ious.to(dtype=torch.float64, device=self.device)  # [D, G]
+
+            # matched_gt_t[t, g] = True when GT g has been matched at threshold t
+            matched_gt_t = torch.zeros((num_iou_thrs, num_gt), dtype=torch.bool, device=self.device)
+
+            # Greedy matching per detection (sequential over D), vectorized over T:
+            for dind in range(num_dt):
+                iou_d = ious_f[dind]  # [G] – IoU of this detection against all GTs
+
+                # Expand across thresholds: [T, G]
+                iou_dt = iou_d.unsqueeze(0).expand(num_iou_thrs, -1)  # [T, G]
+                t_thrs = iou_thrs_t.unsqueeze(1)  # [T, 1]
+                above_thr = iou_dt >= t_thrs  # [T, G]
+
+                # GT is available: not matched yet OR is a crowd annotation
+                avail = ~matched_gt_t | iscrowd_bool.unsqueeze(0)  # [T, G]
+
+                # --- Non-ignored GT candidates ---
+                # Valid: above threshold, available, and non-ignored
+                ni_valid = above_thr & avail & non_ignored.unsqueeze(0)  # [T, G]
+                ni_score = iou_dt.masked_fill(~ni_valid, -1.0)  # [T, G]
+                best_ni_val, best_ni_idx = ni_score.max(dim=1)  # [T]
+                has_ni = best_ni_val >= 0  # [T]  (>= threshold because we masked with >=)
+                # Note: best_ni_val == -1 means no valid non-ignored match
+
+                # --- Ignored GT candidates (only if no non-ignored match found) ---
+                # (Original algorithm: once a non-ignored match is found at threshold t,
+                #  we stop before considering ignored GTs → they won't be looked at.)
+                ig_valid = above_thr & avail & gt_ig_bool.unsqueeze(0) & ~has_ni.unsqueeze(1)  # [T, G]
+                ig_score = iou_dt.masked_fill(~ig_valid, -1.0)  # [T, G]
+                best_ig_val, best_ig_idx = ig_score.max(dim=1)  # [T]
+                has_ig = best_ig_val >= 0  # [T]
+
+                # Best match per threshold: prefer non-ignored
+                best_idx = torch.where(has_ni, best_ni_idx, best_ig_idx)  # [T]
+                has_match = has_ni | has_ig  # [T]
+
+                if not has_match.any():
+                    continue
+
+                # Clamp for safe indexing (irrelevant values masked by has_match)
+                safe_idx = best_idx.clamp(0, num_gt - 1)  # [T]
+
+                # Update dtm[t, dind] = gt[m].id  for matched thresholds
+                dtm[:, dind] = torch.where(has_match, gt_ids_t[safe_idx], dtm[:, dind])
+
+                # Update dt_ig[t, dind] = gt_ig[m]  for matched thresholds
+                dt_ig[:, dind] = torch.where(has_match, gt_ig_bool[safe_idx].to(dt_ig.dtype), dt_ig[:, dind])
+
+                # Update gtm[t, m] = dt[dind].id  — scatter to different g per t
+                t_indices = torch.where(has_match)[0]  # which thresholds matched
+                g_indices = safe_idx[t_indices]  # which GT they matched
+                gtm[t_indices, g_indices] = dt_ids_t[dind]
+
+                # Mark matched GTs (not crowds): matched_gt_t[t, m] = True
+                is_crowd_match = iscrowd_bool[safe_idx]  # [T]
+                should_mark = has_match & ~is_crowd_match
+                t_mark = torch.where(should_mark)[0]
+                g_mark = safe_idx[t_mark]
+                matched_gt_t[t_mark, g_mark] = True
+
         # set unmatched detections outside of area range to ignore
         a = torch.tensor(
             [d.area < aRng[0] or d.area > aRng[1] for d in dt], device=self.device, requires_grad=self.requires_grad
