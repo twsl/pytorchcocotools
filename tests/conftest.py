@@ -5,8 +5,6 @@ from pytest import FixtureRequest
 from pytest_park.pytest_benchmark import default_pytest_benchmark_group_stats
 import torch
 
-pytest_plugins = ["pytest_park.pytest_plugin"]
-
 
 @pytest.fixture(
     scope="session",
