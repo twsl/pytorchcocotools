@@ -567,7 +567,10 @@ class COCOeval:
                     recall[:, k, a, m] = rc_all[:, -1]
                     # Vectorized searchsorted across all T thresholds: [T, R]
                     rec_thrs_2d = (
-                        p.recThrs.to(device=rc_all.device, dtype=rc_all.dtype).unsqueeze(0).expand(num_iou_thrs, -1)
+                        p.recThrs.to(device=rc_all.device, dtype=rc_all.dtype)
+                        .unsqueeze(0)
+                        .expand(num_iou_thrs, -1)
+                        .contiguous()
                     )
                     rec_inds = torch.searchsorted(rc_all, rec_thrs_2d, side="left")  # [T, R]
                     valid = rec_inds < nd  # always >= 0 for side="left"
