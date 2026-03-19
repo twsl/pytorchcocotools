@@ -30,8 +30,13 @@ dependencies = [
     "torchvision>=0.25.0",
 ]
 
-#[project.optional-dependencies]
-#extra = []
+[project.optional-dependencies]
+data = [
+    "lightning>=2.6.0",
+]
+metrics = [
+    "torchmetrics>=1.9.0",
+]
 
 [project.urls]
 homepage = "https://twsl.github.io/pytorchcocotools/"
@@ -88,10 +93,8 @@ debug = [
 ]
 ref = [
     "faster-coco-eval>=1.7.1",
-    "lightning>=2.6.0",
     "pycocotools>=2.0.11",
     "scikit-image>=0.26.0",
-    "torchmetrics>=1.8.2",
 ]
 
 [project.scripts]
@@ -136,6 +139,9 @@ addopts = "--doctest-glob='test_*.md' --cov=src/pytorchcocotools --cov-config=py
 testpaths = [
     "tests",
 ]
+
+[tool.pytest-benchmark]
+min_rounds = 10
 
 [tool.coverage.run]
 branch = true
