@@ -13,6 +13,7 @@ jobs:
     name: Benchmark
     permissions:
       contents: read
+      actions: read
     strategy:
       fail-fast: true
       matrix:
@@ -45,30 +46,40 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups --all-extras --frozen
 
+      - name: Download previous benchmark results
+        uses: dawidd6/action-download-artifact@v19
+        with:
+          workflow: benchmark.yaml
+          name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
+          path: .benchmarks
+          if_no_artifact_found: warn
+          search_artifacts: true
+
       - name: Run benchmarks
         id: benchmark
         env:
           PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword"
         run: |
+          BENCHMARK_ARGS="--benchmark-only --benchmark-save=current --benchmark-storage=.benchmarks"
+          if [ -f .benchmarks/*.json ]; then
+            BENCHMARK_ARGS="$BENCHMARK_ARGS --benchmark-compare"
+          fi
           uv run pytest -c pyproject.toml \
-          --benchmark-only \
-          --benchmark-json=benchmark-results.json \
+          $BENCHMARK_ARGS \
           | tee benchmark-output.txt
 
-      - name: Set benchmark results output
-        id: results
+      - name: Prepare benchmark artifacts
+        if: ${{ always() }}
         run: |
-          {
-            echo "results<<EOF"
-            cat benchmark-output.txt
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          # Copy the saved benchmark json to a well-known name for artifact upload
+          find .benchmarks -name '*.json' -newer pyproject.toml -exec cp {} benchmark-results.json \; 2>/dev/null || true
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
         with:
           name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
           path: benchmark-results.json
+          overwrite: true
         if: ${{ always() }}
 
       - name: Post benchmark results to job summary
