@@ -1,0 +1,82 @@
+---
+name: Benchmark
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.11"]
+    runs-on: ["ubuntu-latest"]
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Free Disk Space
+        uses: twsl/gha-free-disk-space@v1
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --all-groups --all-extras --frozen
+
+      - name: Run benchmarks
+        id: benchmark
+        env:
+          PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword"
+        run: |
+          uv run pytest -c pyproject.toml \
+          --benchmark-only \
+          --benchmark-json=benchmark-results.json \
+          | tee benchmark-output.txt
+
+      - name: Set benchmark results output
+        id: results
+        run: |
+          {
+            echo "results<<EOF"
+            cat benchmark-output.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
+          path: benchmark-results.json
+        if: ${{ always() }}
+
+      - name: Post benchmark results to job summary
+        run: |
+          echo "## Benchmark Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat benchmark-output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Results for commit ${{ github.sha }}." >> "$GITHUB_STEP_SUMMARY"
