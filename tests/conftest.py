@@ -27,7 +27,7 @@ def pytest_benchmark_group_stats(
         config,
         benchmarks,
         group_by,
-        original_postfix="_np",
+        original_postfix=["_np", "_tm"],
         reference_postfix="_pt",
         group_values_by_postfix={
             "_np": "numpy",
