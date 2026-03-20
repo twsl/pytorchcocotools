@@ -65,7 +65,7 @@ jobs:
           PYTHONWARNINGS: "ignore:__array__ implementation doesn't accept a copy keyword"
         run: |
           BENCHMARK_ARGS="--benchmark-only --benchmark-save=current --benchmark-storage=.benchmarks"
-          if [ -f .benchmarks/*.json ]; then
+          if find .benchmarks -name '*.json' -print -quit 2>/dev/null | grep -q .; then
             BENCHMARK_ARGS="$BENCHMARK_ARGS --benchmark-compare"
           fi
           uv run pytest -c pyproject.toml \
