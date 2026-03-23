@@ -21,13 +21,4 @@ def rleArea(  # noqa: N802
     Returns:
         A list of areas of the encoded masks.
     """
-    if not rles:
-        return []
-    # Fast path when all cnts are the same length: stack into a 2D tensor and sum odd columns
-    lengths = [r.cnts.numel() for r in rles]
-    if lengths and all(l == lengths[0] for l in lengths) and lengths[0] > 0:
-        src_device = rles[0].cnts.device
-        stacked = torch.stack([r.cnts for r in rles], dim=0)  # [N, max_len]
-        return stacked[:, 1::2].sum(dim=1).tolist()
-    # General path: variable length cnts (list comprehension, one .item() per RLE)
-    return [int(rle.cnts[1::2].sum().item()) for rle in rles]
+    return [sum(r.cnts[1::2].tolist()) for r in rles]
