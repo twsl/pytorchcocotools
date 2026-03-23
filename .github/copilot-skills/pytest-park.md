@@ -4,10 +4,10 @@ description: Track and analyze Python function performance improvements across m
 license: Apache-2.0
 compatibility: Requires Python 3.8+, pytest, pytest-benchmark, pytest-park
 metadata:
-    author: twsl
-    version: "1.0"
-    domain: performance-testing
-    repository: github.com/twsl/pytest-park
+  author: twsl
+  version: "1.0"
+  domain: performance-testing
+  repository: github.com/twsl/pytest-park
 ---
 
 # Benchmarking Function Improvements with pytest-park
@@ -90,7 +90,7 @@ pytest-park reuses the baseline resolved by pytest-benchmark from its configured
 
 ### Name normalization with postfixes
 
-If test names encode variant postfixes (e.g. `test_func_orig`, `test_func_ref`), add the `pytest_benchmark_group_stats` hook to pair and label them in the comparison table:
+If test names encode variant postfixes (e.g. `test_func_orig`, `test_func_ref`, `test_func_np`, `test_func_pt`), add the `pytest_benchmark_group_stats` hook to pair and label them in the comparison table:
 
 ```python
 # tests/conftest.py
@@ -101,24 +101,47 @@ def pytest_benchmark_group_stats(config, benchmarks, group_by):
         config,
         benchmarks,
         group_by,
-        original_postfix="_orig",
-        reference_postfix="_ref",
+        original_postfix="_orig",      # or a list: ["_np", "_numpy"]
+        reference_postfix="_ref",       # or a list: ["_pt", "_torch"]
         group_values_by_postfix={
-            "_orig": "original",
-            "_ref": "reference",
+            "orig": "original",         # leading underscores are stripped for matching
+            "ref": "reference",
         },
     )
 ```
 
 This stores parsed parts in `extra_info["pytest_park_name_parts"]` (`base_name`, `parameters`, `postfix`) and groups paired variants under the same row.
 
-To expose postfix options as pytest flags:
+Multiple postfixes can be specified as a list or comma-separated string. Postfix matching is underscore-agnostic: `"_original"`, `"original"`, and `"__original"` all match the same postfix.
 
-```python
-def pytest_addoption(parser):
-    parser.addoption("--benchmark-original-postfix", action="store", default="")
-    parser.addoption("--benchmark-reference-postfix", action="store", default="")
+### CLI postfix options
+
+pytest-park registers `--benchmark-original-postfix` and `--benchmark-reference-postfix` automatically. These accept comma-separated values and **override** any postfixes passed directly to `default_pytest_benchmark_group_stats`:
+
+```bash
+# Single postfix
+pytest --benchmark-original-postfix="_original" --benchmark-reference-postfix="_new"
+
+# Multiple postfixes (comma-separated)
+pytest --benchmark-original-postfix="_np,_numpy" --benchmark-reference-postfix="_pt,_torch"
 ```
+
+When postfixes are configured, three output sections are produced:
+
+1. **Regression table** — flat per-method comparison of the current run vs the previous saved run (requires a reference benchmark file).
+2. **Postfix comparison table** — compares original-postfix methods vs reference-postfix methods within the current run (no saved reference needed).
+3. **Grouped comparison table** — the existing detailed comparison with grouping.
+
+Postfixes can also be set persistently in `pyproject.toml`, `pytest.ini`, or `setup.cfg` so you don't have to pass them on every run:
+
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+benchmark_original_postfix = "_orig,_numpy"
+benchmark_reference_postfix = "_ref,_torch"
+```
+
+CLI flags always override ini-file values.
 
 ### Custom grouping metadata
 
@@ -274,6 +297,27 @@ Test names changed between runs, or postfix configuration does not match:
 
 ```bash
 pytest-park analyze ./.benchmarks --original-postfix _orig --reference-postfix _ref
+```
+
+### pytest-park section shows "No reference benchmark file found"
+
+No saved artifact was found for comparison. The regression table is skipped and a warning is printed. To enable it:
+
+```bash
+pytest --benchmark-autosave        # rolling: always compare against the latest saved run
+pytest --benchmark-save baseline    # save a stable reference point
+```
+
+Until a file is saved, the postfix comparison table still works (it compares within the current run only).
+
+### pytest-park section shows "Postfix comparison table skipped"
+
+both `--benchmark-original-postfix` and `--benchmark-reference-postfix` must be set. Check the `debug:` lines in the `pytest-park` output to see which values were detected, then provide the missing flag or add them to `pyproject.toml`:
+
+```toml
+[tool.pytest.ini_options]
+benchmark_original_postfix = "_orig"
+benchmark_reference_postfix = "_ref"
 ```
 
 ### Delta shows 0% but code changed
