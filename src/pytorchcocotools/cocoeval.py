@@ -241,6 +241,7 @@ class COCOeval:
         ious = mask.iou(d, g, iscrowd)
         return ious.float()  # Normalize to float32; evaluateImg upcasts to float64 internally
 
+    @torch.inference_mode()
     @torch.compile(fullgraph=False, mode="reduce-overhead")
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         # dimention here should be Nxm
