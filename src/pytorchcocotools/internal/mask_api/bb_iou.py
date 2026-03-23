@@ -5,6 +5,7 @@ from torchvision.ops.boxes import box_iou
 from torchvision.transforms.v2 import functional as F  # noqa: N812
 
 
+@torch.inference_mode()
 @torch.compile(dynamic=True, mode="reduce-overhead")
 def _bb_iou_crowd(dt_xyxy: Tensor, gt_xyxy: Tensor, iscrowd_t: Tensor) -> Tensor:
     """Compute IoU with crowd support. Fully compilable kernel."""
