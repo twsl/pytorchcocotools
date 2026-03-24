@@ -26,7 +26,7 @@ dynamic = [
 ]
 dependencies = [
     "matplotlib>=3.10.8",
-    "torch>=2.10.0",
+    "torch>=2.11.0",
     "torchvision>=0.25.0",
 ]
 
@@ -138,6 +138,9 @@ minversion = "8.0"
 addopts = "--doctest-glob='test_*.md' --cov=src/pytorchcocotools --cov-config=pyproject.toml"
 testpaths = [
     "tests",
+]
+markers = [
+    "profiling: marks tests as profiling tests using torch.profiler (deselect with '-m \"not profiling\"')",
 ]
 
 [tool.pytest-benchmark]
