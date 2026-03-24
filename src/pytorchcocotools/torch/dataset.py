@@ -56,7 +56,7 @@ class CocoDetection(VisionDataset):
 
     def _load_image(self, id: int) -> tvt.Image:
         path = self.coco.loadImgs(id)[0].file_name
-        img = read_image(str(self.root / path))
+        img = read_image(str(self.root / path))  # ty:ignore[unsupported-operator]
         return tvt.Image(img)
 
     def _load_target(self, id: int) -> list[CocoAnnotationDetection]:
@@ -66,7 +66,7 @@ class CocoDetection(VisionDataset):
         segmentation = (
             mask.frPyObjects(segmentation, *canvas_size)
             if isinstance(segmentation, dict) and "counts" in segmentation
-            else mask.merge(cast(RleObjs, mask.frPyObjects(segmentation, *canvas_size)))
+            else mask.merge(mask.frPyObjects(segmentation, *canvas_size))
         )
         return tvt.Mask(mask.decode(segmentation))
 

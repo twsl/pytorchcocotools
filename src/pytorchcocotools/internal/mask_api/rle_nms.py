@@ -5,6 +5,7 @@ from pytorchcocotools.internal.mask_api.rle_iou import rleIou
 
 
 # TODO: Not used in python api
+@torch.inference_mode()
 def rleNms(dt: RLEs, n: int, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding masks.
 
@@ -19,7 +20,7 @@ def rleNms(dt: RLEs, n: int, thr: float) -> list[bool]:  # noqa: N802
     if n <= 1:
         return [True] * n
     # Precompute the full n×n IoU matrix in one batched call.
-    iou_matrix = rleIou(dt, dt, [False] * n)  # [n, n]
+    iou_matrix = rleIou(dt[:n], dt[:n], [False] * n)  # [n, n]
 
     # Vectorized greedy suppression (matches the original sequential algorithm):
     # For each detection i (in order), suppress all j > i with IoU > thr if i is kept.

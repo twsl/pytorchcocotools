@@ -5,7 +5,7 @@ from torchvision.ops import box_convert, nms
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
 
 
-@torch.no_grad
+@torch.inference_mode()
 def bbNms(dt: tv.BoundingBoxes, thr: float) -> list[bool]:  # noqa: N802
     """Compute non-maximum suppression between bounding boxes.
 

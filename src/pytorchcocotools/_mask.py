@@ -215,7 +215,7 @@ def iou(
                 objs_clean = [
                     RleObj(counts=obj["counts"], size=obj["size"]) if isinstance(obj, dict) else obj for obj in objs
                 ]
-                return _frString(objs_clean)  # pyright: ignore[reportArgumentType]
+                return _frString(objs_clean)  # ty:ignore[invalid-argument-type]
             else:
                 raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")  # noqa: TRY002
         else:
@@ -236,7 +236,7 @@ def iou(
     if type(dt_clean) is not type(gt_clean):
         raise Exception("The dt and gt should have the same data type, either RLEs, list or torch.Tensor")  # noqa: TRY002
     if is_list_of_type(dt_clean, RLE) and is_list_of_type(gt_clean, RLE):
-        return rleIou(dt_clean, gt_clean, is_crowd)  # pyright: ignore[reportArgumentType]
+        return rleIou(dt_clean, gt_clean, is_crowd)  # ty:ignore[invalid-argument-type]
     if isinstance(dt_clean, tv.BoundingBoxes) and isinstance(gt_clean, tv.BoundingBoxes):
         return bbIou(dt_clean, gt_clean, is_crowd)
     else:
