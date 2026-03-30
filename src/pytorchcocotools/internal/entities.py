@@ -5,7 +5,6 @@ from torch import Tensor
 from torchvision import tv_tensors as tv
 
 from pytorchcocotools.utils.dataclass import dataclass_dict
-from pytorchcocotools.utils.poly import Polygon
 
 RangeLabel: TypeAlias = Literal["all", "small", "medium", "large"]
 

@@ -1,11 +1,11 @@
 import torch
 from torch import Tensor
 from torchvision import tv_tensors as tv
-from torchvision.transforms.v2 import functional as F  # noqa: N812
+from torchvision.transforms.v2 import functional as f
+from torchvision.tv_tensors import KeyPoints
 
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
-from pytorchcocotools.utils.poly import Polygon
 
 
 @torch.inference_mode()
@@ -25,7 +25,7 @@ def rleFrBbox(  # noqa: N802
     Returns:
         The RLE encoded masks.
     """
-    bb = tv.wrap(F.convert_bounding_box_format(bb, new_format=tv.BoundingBoxFormat.XYWH), like=bb)
+    bb = tv.wrap(f.convert_bounding_box_format(bb, new_format=tv.BoundingBoxFormat.XYWH), like=bb)
 
     n = bb.shape[0]
     # Precompute the xy coordinates for all bounding boxes
@@ -41,7 +41,7 @@ def rleFrBbox(  # noqa: N802
     r = RLEs(
         [
             rleFrPoly(
-                Polygon(xy[i], canvas_size=bb.canvas_size),  # ty:ignore[no-matching-overload]
+                KeyPoints(xy[i], canvas_size=bb.canvas_size),  # ty:ignore[no-matching-overload]
                 device=device,
                 requires_grad=requires_grad,
             )

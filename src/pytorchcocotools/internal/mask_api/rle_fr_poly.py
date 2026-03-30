@@ -1,8 +1,8 @@
 import torch
 from torch import Tensor
+from torchvision.tv_tensors import KeyPoints
 
 from pytorchcocotools.internal.entities import RLE, TorchDevice
-from pytorchcocotools.utils.poly import Polygon
 
 
 @torch.inference_mode()
@@ -11,7 +11,7 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     """Core polygon→RLE computation on plain Tensors.
 
     Outlined from rleFrPoly so torch.compile can trace without
-    hitting Polygon (TVTensor subclass) dynamo recursion.
+    hitting KeyPoints (TVTensor subclass) dynamo recursion.
     """
     device = xy.device
 
@@ -77,7 +77,7 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
 
 @torch.inference_mode()
 def rleFrPoly(  # noqa: N802
-    xy: Polygon,
+    xy: KeyPoints,
     *,
     device: TorchDevice | None = None,
     requires_grad: bool = False,

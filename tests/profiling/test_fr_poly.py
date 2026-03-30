@@ -8,12 +8,12 @@ from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
 import torch
 from torch import profiler
+from torchvision.tv_tensors import KeyPoints
 
 from pytorchcocotools.internal.entities import RLE, RleObj
 from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
 from pytorchcocotools.internal.mask_api.rle_to_string import rleToString
 from pytorchcocotools.utils.callable import resolve_actual_function
-from pytorchcocotools.utils.poly import Polygon
 
 
 class RleFrPolyCases:
@@ -22,31 +22,31 @@ class RleFrPolyCases:
     h = 25
     w = 25
 
-    def case_simple_polygon(self) -> tuple[int, int, Polygon, RleObj]:
+    def case_simple_polygon(self) -> tuple[int, int, KeyPoints, RleObj]:
         """Simple polygon."""
         flat = torch.tensor([[10, 10, 20, 10, 20, 20, 21, 21, 10, 20]], dtype=torch.float64)
-        poly = Polygon(flat.reshape(-1, 2), canvas_size=(self.h, self.w))  # ty:ignore[no-matching-overload]
+        poly = KeyPoints(flat.reshape(-1, 2), canvas_size=(self.h, self.w))  # ty:ignore[no-matching-overload]
         expected = RleObj(size=[self.h, self.w], counts=b"T8:?00000000001O00000:F`2")
         return (self.h, self.w, poly, expected)
 
-    def case_triangle(self) -> tuple[int, int, Polygon, RleObj]:
+    def case_triangle(self) -> tuple[int, int, KeyPoints, RleObj]:
         """Triangle polygon."""
         flat = torch.tensor([[10, 10, 20, 10, 15, 20]], dtype=torch.float64)
-        poly = Polygon(flat.reshape(-1, 2), canvas_size=(self.h, self.w))  # ty:ignore[no-matching-overload]
+        poly = KeyPoints(flat.reshape(-1, 2), canvas_size=(self.h, self.w))  # ty:ignore[no-matching-overload]
         expected = RleObj(
             size=[self.h, self.w],
             counts=b"T81h02N2N2N2N00N2N2N2Ne3",
         )
         return (self.h, self.w, poly, expected)
 
-    def case_rectangle_polygon(self) -> tuple[int, int, Polygon, RleObj]:
+    def case_rectangle_polygon(self) -> tuple[int, int, KeyPoints, RleObj]:
         """Rectangle as polygon."""
         flat = torch.tensor([[5, 5, 15, 5, 15, 15, 5, 15]], dtype=torch.float64)
-        poly = Polygon(flat.reshape(-1, 2), canvas_size=(self.h, self.w))  # ty:ignore[no-matching-overload]
+        poly = KeyPoints(flat.reshape(-1, 2), canvas_size=(self.h, self.w))  # ty:ignore[no-matching-overload]
         expected = RleObj(size=[self.h, self.w], counts=b"R4:?00000000000000000e7")
         return (self.h, self.w, poly, expected)
 
-    def case_complex_polygon(self) -> tuple[int, int, Polygon, RleObj]:
+    def case_complex_polygon(self) -> tuple[int, int, KeyPoints, RleObj]:
         """More complex polygon."""
         h, w = 427, 640
         flat = torch.tensor(
@@ -86,14 +86,14 @@ class RleFrPolyCases:
             ],
             dtype=torch.float64,
         )
-        poly = Polygon(flat.reshape(-1, 2), canvas_size=(h, w))  # ty:ignore[no-matching-overload]
+        poly = KeyPoints(flat.reshape(-1, 2), canvas_size=(h, w))  # ty:ignore[no-matching-overload]
         expected = RleObj(
             size=[h, w],
             counts=b"\\`_3;j<6B@nCc0Q<@kCc0S<;01N10001O001O00001O001O0000O1L4K6K4L4B]COh<O<O001O0O2Omk^4",
         )
         return (h, w, poly, expected)
 
-    def case_real_small_polygon(self) -> tuple[int, int, Polygon, RleObj]:
+    def case_real_small_polygon(self) -> tuple[int, int, KeyPoints, RleObj]:
         """Real-life small polygon (7 vertices) from data/example.json."""
         h, w = 427, 640
         flat = torch.tensor(
@@ -117,14 +117,14 @@ class RleFrPolyCases:
             ],
             dtype=torch.float64,
         )
-        poly = Polygon(flat.reshape(-1, 2), canvas_size=(h, w))  # ty:ignore[no-matching-overload]
+        poly = KeyPoints(flat.reshape(-1, 2), canvas_size=(h, w))  # ty:ignore[no-matching-overload]
         expected = RleObj(
             size=[h, w],
             counts=b"RT_32n<<O100O0010O000010O0001O00001O000O101O0ISPc4",
         )
         return (h, w, poly, expected)
 
-    def case_real_large_polygon(self) -> tuple[int, int, Polygon, RleObj]:
+    def case_real_large_polygon(self) -> tuple[int, int, KeyPoints, RleObj]:
         """Real-life large polygon (53 vertices) from data/example.json."""
         h, w = 640, 480
         flat = torch.tensor(
@@ -240,7 +240,7 @@ class RleFrPolyCases:
             ],
             dtype=torch.float64,
         )
-        poly = Polygon(flat.reshape(-1, 2), canvas_size=(h, w))  # ty:ignore[no-matching-overload]
+        poly = KeyPoints(flat.reshape(-1, 2), canvas_size=(h, w))  # ty:ignore[no-matching-overload]
         expected = RleObj(
             size=[h, w],
             counts=(
@@ -266,7 +266,7 @@ def test_rle_fr_poly_pt(
     device: str,
     h: int,
     w: int,
-    poly: Polygon,
+    poly: KeyPoints,
     expected: RleObj,
 ) -> None:
     """Test PyTorch implementation of rleFrPoly."""
@@ -285,7 +285,7 @@ def test_rle_fr_poly_pt_profiling(
     device: str,
     h: int,
     w: int,
-    poly: Polygon,
+    poly: KeyPoints,
     expected: RleObj,
 ) -> None:
     """Profile PyTorch implementation of rleFrPoly using torch.profiler."""
@@ -324,7 +324,7 @@ def test_rle_fr_poly_pt_line_profiling(
     device: str,
     h: int,
     w: int,
-    poly: Polygon,
+    poly: KeyPoints,
     expected: RleObj,
 ) -> None:
     """Profile PyTorch implementation of rleFrPoly using line_profiler."""

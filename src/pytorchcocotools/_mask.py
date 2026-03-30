@@ -3,6 +3,7 @@ from typing import Annotated, cast
 import torch
 from torch import Tensor
 from torchvision import tv_tensors as tv
+from torchvision.tv_tensors import KeyPoints
 
 from pytorchcocotools.internal.entities import RLE, IoUObject, Poly, PyObj, RleObj, RleObjs, RLEs, TorchDevice
 from pytorchcocotools.internal.mask_api import (
@@ -19,7 +20,6 @@ from pytorchcocotools.internal.mask_api import (
     rleToString,
 )
 from pytorchcocotools.utils.list import is_list_of_type
-from pytorchcocotools.utils.poly import Polygon, Polygons
 
 
 def _toString(  # noqa: N802
@@ -287,7 +287,7 @@ def frBbox(  # noqa: N802
 
 
 def frPoly(  # noqa: N802
-    poly: list[Polygon],
+    poly: list[KeyPoints],
     *,
     device: TorchDevice | None = None,
     requires_grad: bool = False,
@@ -381,7 +381,7 @@ def frPyObjects(  # noqa: N802
         return frBbox(boxes, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, list) and isinstance(py_obj[0], list) and len(py_obj[0]) > 4:
         poly_list = [
-            Polygon(
+            KeyPoints(
                 torch.tensor(obj, dtype=torch.float64, device=device, requires_grad=requires_grad).view(-1, 2),
                 canvas_size=(h, w),
                 device=device,
@@ -389,7 +389,7 @@ def frPyObjects(  # noqa: N802
             )  # ty:ignore[no-matching-overload]
             for obj in py_obj
         ]
-        polygons = poly_list  # Polygons(poly_list)
+        polygons = poly_list
         return frPoly(polygons, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, list) and any(
         isinstance(obj, RleObj | dict) and ("counts" in obj) and ("size" in obj) for obj in py_obj
@@ -404,13 +404,13 @@ def frPyObjects(  # noqa: N802
         )  # ty:ignore[no-matching-overload]
         return frBbox(boxes, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, list) and len(py_obj) > 4:
-        poly = Polygon(
+        poly = KeyPoints(
             torch.tensor(py_obj, dtype=torch.float64, device=device, requires_grad=requires_grad).view(-1, 2),
             canvas_size=(h, w),
             device=device,
             requires_grad=requires_grad,
         )  # ty:ignore[no-matching-overload]
-        polygons = [poly]  # Polygons([poly])
+        polygons = [poly]
         return frPoly(polygons, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, RleObj | dict) and "counts" in py_obj and "size" in py_obj:
         return frUncompressedRLE(

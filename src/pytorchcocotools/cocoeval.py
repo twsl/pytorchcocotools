@@ -196,14 +196,14 @@ class COCOeval:
         #             segmentation.size[1],
         #             torch.tensor(segmentation.counts, device=self.device, requires_grad=self.requires_grad),
         #         )
-        #     poly = Polygon(
+        #     poly = tv.KeyPoints(
         #         torch.tensor(
         #             segmentation, dtype=torch.float64, device=self.device, requires_grad=self.requires_grad
         #         ).view(-1, 2),
         #         canvas_size=(size[0], size[1]),
         #         device=self.device,
         #         requires_grad=self.requires_grad,
-        #     )  # ty:ignore[no-matching-overload]
+        #     )
         #     return rleFrPoly(poly, device=self.device, requires_grad=self.requires_grad)
 
         img = self.cocoGt.loadImgs(imgId)[0]
