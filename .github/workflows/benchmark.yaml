@@ -50,14 +50,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups --all-extras --frozen
 
-      - name: Download previous benchmark results
-        uses: dawidd6/action-download-artifact@v19
+      - name: Cache benchmark results
+        uses: actions/cache@v4
         with:
-          workflow: benchmark.yaml
-          name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
           path: .benchmarks
-          if_no_artifact_found: warn
-          search_artifacts: true
+          key: benchmark-${{ runner.os }}-${{ matrix.python-version }}-${{ github.sha }}
+          restore-keys: |
+            benchmark-${{ runner.os }}-${{ matrix.python-version }}-
 
       - name: Run benchmarks
         id: benchmark
@@ -71,14 +70,6 @@ jobs:
           uv run pytest -c pyproject.toml \
           $BENCHMARK_ARGS \
           | tee benchmark-output.txt
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v7
-        with:
-          name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
-          path: .benchmarks
-          overwrite: true
-        if: ${{ always() }}
 
       - name: Post benchmark results to job summary
         run: |
