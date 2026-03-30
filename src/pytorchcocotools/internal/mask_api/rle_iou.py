@@ -56,16 +56,19 @@ def _build_fg_intervals(rles: RLEs, src_device: torch.device) -> tuple[Tensor, T
     fg_col = torch.arange(1, max_len, 2, device=src_device)  # [max_fg]
     start_col = fg_col - 1  # even indices: 0, 2, 4, …
 
-    fg_starts = cums[:, start_col]          # [n, max_fg]
-    fg_ends = cums[:, fg_col] - 1           # [n, max_fg]
-    fg_counts = padded[:, fg_col]           # [n, max_fg]
+    fg_starts = cums[:, start_col]  # [n, max_fg]
+    fg_ends = cums[:, fg_col] - 1  # [n, max_fg]
+    fg_counts = padded[:, fg_col]  # [n, max_fg]
 
     # Valid mask: column index within this RLE's length AND run is non-empty
     valid = (fg_col.unsqueeze(0) < lengths.unsqueeze(1)) & (fg_counts > 0)  # [n, max_fg]
 
-    starts_t = torch.where(valid, fg_starts, torch.tensor(-1, dtype=torch.long, device=src_device))
-    ends_t = torch.where(valid, fg_ends, torch.tensor(-1, dtype=torch.long, device=src_device))
-    areas_t = torch.where(valid, fg_ends - fg_starts + 1, torch.tensor(0, dtype=torch.long, device=src_device)).sum(dim=1)
+    minus_one = torch.tensor(-1, dtype=torch.long, device=src_device)
+    starts_t = torch.where(valid, fg_starts, minus_one)
+    ends_t = torch.where(valid, fg_ends, minus_one)
+    areas_t = torch.where(valid, fg_ends - fg_starts + 1, torch.tensor(0, dtype=torch.long, device=src_device)).sum(
+        dim=1
+    )
 
     return starts_t, ends_t, areas_t
 
