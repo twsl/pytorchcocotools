@@ -6,7 +6,7 @@ from pytorchcocotools.utils.poly import Polygon
 
 
 @torch.inference_mode()
-@torch.compile(dynamic=True, mode="reduce-overhead")
+@torch.compile(mode="reduce-overhead")
 def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     """Core polygon→RLE computation on plain Tensors.
 
@@ -31,13 +31,12 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     ys, ye = torch.where(flip, ye, ys), torch.where(flip, ys, ye)
 
     xy_cond = dx >= dy
-    # Merged slope computation — single where for numerator and denominator
-    s = torch.where(xy_cond, ye - ys, xe - xs).double() / torch.where(xy_cond, dx, dy).clamp(min=1)
     dxy = torch.where(xy_cond, dx, dy)
+    # Merged slope computation — single where for numerator and denominator
+    s = torch.where(xy_cond, ye - ys, xe - xs).double() / dxy.clamp(min=1)
 
     # 2. Dense point expansion via 2D grid + mask
-    max_len_int = int(dxy.max().clamp(min=0).long()) + 1
-    d = torch.arange(max_len_int, device=device).unsqueeze(0).expand(dxy.size(0), -1)
+    d = torch.arange(dxy.max() + 1, device=device).unsqueeze(0).expand(dxy.size(0), -1)  # ty:ignore[no-matching-overload]
     d_mask = d <= dxy.unsqueeze(-1)
 
     t = torch.where(flip.unsqueeze(1), dxy.unsqueeze(1) - d, d)
@@ -63,35 +62,17 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     # 5. Extract surviving boundary points → pixel coordinates (integer only)
     xd_int_f = xd_int[full_mask]
     # Compute min(v_next, v_prev) first, then mask once
-    yd_int_f = torch.min(v[1:], v[:-1])[full_mask]
+    yd_int_f = torch.minimum(v[1:], v[:-1])[full_mask]
     xd_coord = (xd_int_f - 2).div(5, rounding_mode="floor")
     yd_coord = ((yd_int_f + 2).div(5, rounding_mode="floor")).clamp(0, h)
 
-    # 6–7. RLE encoding + zero-merge.
-    a_flat = xd_coord * h + yd_coord
-
-    # Large-array path: vectorized torch sort + diff + zero-merge.
-    a = torch.cat((a_flat, a_flat.new_tensor([h * w])))
-    sorted_a = a.sort().values
-    a = torch.diff(sorted_a, prepend=sorted_a.new_zeros(1)).int()
-
-    zm = a == 0
-    prev_zm = torch.cat([zm.new_zeros(1), zm[:-1]])
-    run_start = prev_zm & ~torch.cat([prev_zm.new_zeros(1), prev_zm[:-1]])
-    cum = prev_zm.long().cumsum(0)
-    frozen_propagated = (cum * run_start).cummax(0).values
-    offset_in_run = cum - frozen_propagated
-    claimed = prev_zm & ((offset_in_run & 1) == 0)
-    active_zero = zm & ~claimed
-    regular = ~(active_zero | claimed)
-    seg_id = regular.long().cumsum(0) - 1
-    seg_id_clamped = seg_id.clamp(min=0)
-    num_segs = seg_id.max().clamp(min=-1).long() + 1
-    out = torch.zeros(num_segs.clamp(min=1), dtype=torch.int32, device=device)  # ty:ignore[no-matching-overload]
-    out.scatter_add_(0, seg_id_clamped[regular], a[regular])
-    valid_claimed = claimed & (seg_id >= 0)
-    out.scatter_add_(0, seg_id_clamped[valid_claimed], a[valid_claimed])
-    return out[:num_segs]
+    # 6–7. RLE encoding with duplicate-boundary cancellation.
+    positions = torch.cat((xd_coord * h + yd_coord, xd_coord.new_tensor([h * w])))
+    sorted_positions = positions.sort().values
+    unique_positions, counts = torch.unique_consecutive(sorted_positions, return_counts=True)
+    keep = (counts & 1) == 1
+    keep[-1] = True
+    return torch.diff(unique_positions[keep], prepend=unique_positions.new_zeros(1)).to(torch.int32)
 
 
 @torch.inference_mode()
