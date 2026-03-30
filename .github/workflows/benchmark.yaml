@@ -72,17 +72,11 @@ jobs:
           $BENCHMARK_ARGS \
           | tee benchmark-output.txt
 
-      - name: Prepare benchmark artifacts
-        if: ${{ always() }}
-        run: |
-          # Copy the saved benchmark json to a well-known name for artifact upload
-          find .benchmarks -name '*.json' -newer pyproject.toml -exec cp {} benchmark-results.json \; 2>/dev/null || true
-
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
         with:
           name: benchmark-results-${{ runner.os }}-${{ matrix.python-version }}
-          path: benchmark-results.json
+          path: .benchmarks
           overwrite: true
         if: ${{ always() }}
 
