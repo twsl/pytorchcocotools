@@ -26,7 +26,6 @@ def bbNms(dt: tv.BoundingBoxes, thr: float) -> list[bool]:  # noqa: N802
     # NMS needs scores; use inverse index as proxy (earlier boxes have higher priority)
     scores = torch.arange(n, 0, -1, dtype=torch.float32, device=dt.device)
     keep_indices = nms(xyxy, scores, thr)
-    keep = [False] * n
-    for idx in keep_indices.tolist():
-        keep[idx] = True
-    return keep
+    keep_t = torch.zeros(n, dtype=torch.bool, device=dt.device)
+    keep_t[keep_indices] = True
+    return keep_t.tolist()
