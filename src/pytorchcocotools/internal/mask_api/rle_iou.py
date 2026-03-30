@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+from torch.nn.utils.rnn import pad_sequence
 
 from pytorchcocotools.internal.entities import RLE, RLEs
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
@@ -10,56 +11,62 @@ from pytorchcocotools.internal.mask_api.rle_to_bbox import rleToBbox
 def _build_fg_intervals(rles: RLEs, src_device: torch.device) -> tuple[Tensor, Tensor, Tensor]:
     """Convert RLEs to padded foreground-interval tensors.
 
+    Uses batch ``cumsum`` over padded count matrix to avoid per-mask Python loops
+    for interval extraction.
+
     Returns:
         starts: [N, K] – start pixel index of each foreground run (padding = -1)
         ends:   [N, K] – end pixel index (inclusive) of each foreground run (padding = -1)
         areas:  [N]    – total foreground pixel count
     """
     n = len(rles)
-    all_starts: list[Tensor] = []
-    all_ends: list[Tensor] = []
-    all_areas: list[int] = []
+    if n == 0:
+        return (
+            torch.full((0, 1), -1, dtype=torch.long, device=src_device),
+            torch.full((0, 1), -1, dtype=torch.long, device=src_device),
+            torch.zeros(0, dtype=torch.long, device=src_device),
+        )
 
-    for rle in rles:
-        cnts = rle.cnts.to(dtype=torch.long, device=src_device)
-        if cnts.numel() == 0:
-            all_starts.append(cnts.new_empty(0))
-            all_ends.append(cnts.new_empty(0))
-            all_areas.append(0)
-            continue
-        cums = torch.cumsum(cnts, dim=0)
-        # Foreground runs are at odd indices (0-based); cumsum before = start, cumsum = end+1
-        # bg: cnts[0], fg: cnts[1], bg: cnts[2], fg: cnts[3], ...
-        # fg run i: start = cums[2*i], end = cums[2*i+1] - 1  (for i=0,1,...)
-        fg_end_idx = torch.arange(1, cnts.numel(), 2, device=src_device)  # indices 1,3,5...
-        fg_start_idx = fg_end_idx - 1  # indices 0,2,4...
-        if fg_end_idx.numel() == 0:
-            all_starts.append(cnts.new_empty(0))
-            all_ends.append(cnts.new_empty(0))
-            all_areas.append(0)
-        else:
-            fg_starts = cums[fg_start_idx]  # start of each fg run
-            fg_ends = cums[fg_end_idx] - 1  # end of each fg run (inclusive)
-            # Only keep non-empty runs
-            non_empty = cnts[fg_end_idx] > 0
-            all_starts.append(fg_starts[non_empty])
-            all_ends.append(fg_ends[non_empty])
-            all_areas.append(int((fg_ends[non_empty] - fg_starts[non_empty] + 1).sum().item()))
+    # Collect count tensors and pad into [n, max_len]
+    count_list = [rle.cnts.to(dtype=torch.long, device=src_device) for rle in rles]
+    lengths = torch.tensor([c.numel() for c in count_list], dtype=torch.long, device=src_device)
+    max_len = int(lengths.max().item())
 
-    max_k = max((s.numel() for s in all_starts), default=0)
-    if max_k == 0:
-        starts_t = torch.full((n, 1), -1, dtype=torch.long, device=src_device)
-        ends_t = torch.full((n, 1), -1, dtype=torch.long, device=src_device)
-    else:
-        starts_t = torch.full((n, max_k), -1, dtype=torch.long, device=src_device)
-        ends_t = torch.full((n, max_k), -1, dtype=torch.long, device=src_device)
-        for i, (s, e) in enumerate(zip(all_starts, all_ends)):
-            k = s.numel()
-            if k > 0:
-                starts_t[i, :k] = s
-                ends_t[i, :k] = e
+    if max_len == 0:
+        return (
+            torch.full((n, 1), -1, dtype=torch.long, device=src_device),
+            torch.full((n, 1), -1, dtype=torch.long, device=src_device),
+            torch.zeros(n, dtype=torch.long, device=src_device),
+        )
 
-    areas_t = torch.tensor(all_areas, dtype=torch.long, device=src_device)
+    padded = pad_sequence(count_list, batch_first=True)  # [n, max_len]
+
+    # Batch cumulative sum
+    cums = torch.cumsum(padded, dim=1)  # [n, max_len]
+
+    # Foreground runs live at odd column indices (1, 3, 5, …)
+    max_fg = max_len // 2
+    if max_fg == 0:
+        return (
+            torch.full((n, 1), -1, dtype=torch.long, device=src_device),
+            torch.full((n, 1), -1, dtype=torch.long, device=src_device),
+            torch.zeros(n, dtype=torch.long, device=src_device),
+        )
+
+    fg_col = torch.arange(1, max_len, 2, device=src_device)  # [max_fg]
+    start_col = fg_col - 1  # even indices: 0, 2, 4, …
+
+    fg_starts = cums[:, start_col]          # [n, max_fg]
+    fg_ends = cums[:, fg_col] - 1           # [n, max_fg]
+    fg_counts = padded[:, fg_col]           # [n, max_fg]
+
+    # Valid mask: column index within this RLE's length AND run is non-empty
+    valid = (fg_col.unsqueeze(0) < lengths.unsqueeze(1)) & (fg_counts > 0)  # [n, max_fg]
+
+    starts_t = torch.where(valid, fg_starts, torch.tensor(-1, dtype=torch.long, device=src_device))
+    ends_t = torch.where(valid, fg_ends, torch.tensor(-1, dtype=torch.long, device=src_device))
+    areas_t = torch.where(valid, fg_ends - fg_starts + 1, torch.tensor(0, dtype=torch.long, device=src_device)).sum(dim=1)
+
     return starts_t, ends_t, areas_t
 
 
@@ -134,11 +141,10 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
 
     # Apply bbox pre-filter mask and dimension/size guard from original
     # For mismatched h/w: set to -1 (matching original behaviour)
-    same_size = torch.tensor(
-        [[dt[d].h == gt[g].h and dt[d].w == gt[g].w for g in range(n)] for d in range(m)],
-        dtype=torch.bool,
-        device=src_device,
-    )
+    dt_hw = torch.tensor([(r.h, r.w) for r in dt], dtype=torch.long, device=src_device)  # [m, 2]
+    gt_hw = torch.tensor([(r.h, r.w) for r in gt], dtype=torch.long, device=src_device)  # [n, 2]
+    same_size = (dt_hw[:, None, :] == gt_hw[None, :, :]).all(dim=2)  # [m, n]
+
     # Where bbox overlap is positive but sizes mismatch: set to -1
     size_mismatch = (o > 0) & ~same_size
     iou = torch.where(size_mismatch, torch.full_like(iou, -1.0), iou)
