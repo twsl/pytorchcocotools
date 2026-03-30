@@ -41,6 +41,13 @@ def _build_fg_intervals(rles: RLEs, src_device: torch.device) -> tuple[Tensor, T
 
     padded = pad_sequence(count_list, batch_first=True)  # [n, max_len]
 
+    return _build_fg_intervals_core(padded, lengths, n, max_len, src_device)
+
+
+def _build_fg_intervals_core(
+    padded: Tensor, lengths: Tensor, n: int, max_len: int, src_device: torch.device
+) -> tuple[Tensor, Tensor, Tensor]:
+    """Core interval extraction from padded count matrix."""
     # Batch cumulative sum
     cums = torch.cumsum(padded, dim=1)  # [n, max_len]
 
@@ -73,15 +80,59 @@ def _build_fg_intervals(rles: RLEs, src_device: torch.device) -> tuple[Tensor, T
     return starts_t, ends_t, areas_t
 
 
+@torch.compile(dynamic=True)
+def _rle_iou_core(
+    dt_starts: Tensor,
+    dt_ends: Tensor,
+    dt_areas: Tensor,
+    gt_starts: Tensor,
+    gt_ends: Tensor,
+    gt_areas: Tensor,
+    iscrowd_t: Tensor,
+) -> Tensor:
+    """Compiled kernel for all-pairs RLE IoU via interval intersection.
+
+    Fuses the 4D broadcast, intersection sum, union, and IoU division.
+    """
+    m = dt_starts.shape[0]
+    n = gt_starts.shape[0]
+
+    # Broadcast to [m, n, K, L] for all-pairs interval intersection
+    ds = dt_starts[:, None, :, None]  # [m, 1, K, 1]
+    de = dt_ends[:, None, :, None]  # [m, 1, K, 1]
+    gs = gt_starts[None, :, None, :]  # [1, n, 1, L]
+    ge = gt_ends[None, :, None, :]  # [1, n, 1, L]
+
+    # Overlap (in pixels) between each dt-interval and each gt-interval
+    overlap = (torch.minimum(de, ge) - torch.maximum(ds, gs) + 1).clamp(min=0)  # [m, n, K, L]
+
+    # Zero out padded entries (padding sentinel = -1)
+    valid = (ds >= 0) & (gs >= 0)  # [m, n, K, L]
+
+    intersection = (overlap * valid).sum(dim=(2, 3)).double()  # [m, n]
+
+    dt_area_f = dt_areas.double()
+    gt_area_f = gt_areas.double()
+
+    union = dt_area_f[:, None] + gt_area_f[None, :] - intersection
+    union = torch.where(iscrowd_t[None, :], dt_area_f[:, None].expand(m, n), union)
+
+    iou = torch.where(
+        (intersection == 0) & (union == 0),
+        torch.zeros_like(union),
+        intersection / union.clamp(min=1),
+    )
+    return iou
+
+
 @torch.inference_mode()
 def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """Compute intersection over union between masks.
 
-    Vectorized interval-intersection approach:
+    Vectorized interval-intersection approach with compiled IoU kernel:
     1. Convert each RLE to padded (start, end) foreground-interval tensors.
-    2. Use broadcasting to compute ALL pairwise interval intersections simultaneously.
-    3. Sum over interval dimensions to get per-pair intersection counts.
-    This replaces the O(D×G×R) nested Python loop with O(D×G×K×L) tensor ops.
+    2. Use a torch.compiled kernel for fused 4D broadcast intersection + IoU.
+    3. Apply bbox pre-filter and size-mismatch guards.
 
     Args:
         dt: The RLE encoded detection masks.
@@ -107,51 +158,17 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     dt_starts, dt_ends, dt_areas = _build_fg_intervals(dt, src_device)  # [m, K]
     gt_starts, gt_ends, gt_areas = _build_fg_intervals(gt, src_device)  # [n, L]
 
-    K = dt_starts.shape[1]
-    L = gt_starts.shape[1]
-
-    # Broadcast to [m, n, K, L] for all-pairs interval intersection
-    # dt: [m, 1, K, 1],  gt: [1, n, 1, L]
-    ds = dt_starts[:, None, :, None]  # [m, 1, K, 1]
-    de = dt_ends[:, None, :, None]  # [m, 1, K, 1]
-    gs = gt_starts[None, :, None, :]  # [1, n, 1, L]
-    ge = gt_ends[None, :, None, :]  # [1, n, 1, L]
-
-    # Overlap (in pixels) between each dt-interval and each gt-interval
-    overlap = (torch.minimum(de, ge) - torch.maximum(ds, gs) + 1).clamp(min=0)  # [m, n, K, L]
-
-    # Zero out padded entries (padding sentinel = -1)
-    valid = (ds >= 0) & (gs >= 0)  # [m, n, K, L]
-    # Use float64 (double) to match reference implementation's integer-arithmetic precision
-    intersection = (overlap * valid).sum(dim=(2, 3)).double()  # [m, n]
-
-    # Union: dt_area + gt_area - intersection  (for normal GTs)
-    # For crowd GTs: union = dt_area only
     iscrowd_t = torch.tensor(iscrowd, dtype=torch.bool, device=src_device)
-    dt_area_f = dt_areas.double()  # [m]
-    gt_area_f = gt_areas.double()  # [n]
 
-    union = dt_area_f[:, None] + gt_area_f[None, :] - intersection  # [m, n]
-    # For crowd GTs, override union with dt area
-    union = torch.where(iscrowd_t[None, :], dt_area_f[:, None].expand(m, n), union)
-
-    # IoU: 0 when both are empty (avoid division by zero)
-    iou = torch.where(
-        (intersection == 0) & (union == 0),
-        torch.zeros_like(union),
-        intersection / union.clamp(min=1),
-    )
+    iou = _rle_iou_core(dt_starts, dt_ends, dt_areas, gt_starts, gt_ends, gt_areas, iscrowd_t)
 
     # Apply bbox pre-filter mask and dimension/size guard from original
-    # For mismatched h/w: set to -1 (matching original behaviour)
     dt_hw = torch.tensor([(r.h, r.w) for r in dt], dtype=torch.long, device=src_device)  # [m, 2]
     gt_hw = torch.tensor([(r.h, r.w) for r in gt], dtype=torch.long, device=src_device)  # [n, 2]
     same_size = (dt_hw[:, None, :] == gt_hw[None, :, :]).all(dim=2)  # [m, n]
 
-    # Where bbox overlap is positive but sizes mismatch: set to -1
     size_mismatch = (o > 0) & ~same_size
     iou = torch.where(size_mismatch, torch.full_like(iou, -1.0), iou)
-    # Where no bbox overlap: IoU is 0 (already 0 from interval calculation)
     iou = torch.where(o <= 0, torch.zeros_like(iou), iou)
 
-    return iou.double()  # match original float64 output
+    return iou.double()

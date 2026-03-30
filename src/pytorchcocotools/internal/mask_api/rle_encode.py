@@ -16,8 +16,9 @@ def rleEncode(  # noqa: N802
 ) -> RLEs:
     """Encode binary masks using RLE.
 
-    Uses vectorized transition detection and per-mask grouping via
-    pre-sorted indices to avoid repeated boolean scans.
+    Uses vectorized transition detection with batch-first layout to avoid
+    expensive argsort. Transitions are computed on [N, H*W] so nonzero()
+    returns pairs already sorted by (mask_id, position).
 
     Args:
         mask: The binary masks to encode.
@@ -28,42 +29,40 @@ def rleEncode(  # noqa: N802
         Run length encoded masks.
     """
     n, h, w = mask.shape
+    hw = h * w
 
-    # Compute transition positions
+    # Flatten to column-major order: [N, H*W]
     mask_data = mask.as_subclass(Tensor)
-    mask_p = mask_data.permute(0, 2, 1)
-    flattened_mask = torch.flatten(mask_p, start_dim=1, end_dim=2).permute(1, 0)
-    start_sentinel = torch.zeros((1, n), dtype=flattened_mask.dtype, device=mask_data.device)
-    sentinel = torch.ones((1, n), dtype=flattened_mask.dtype, device=flattened_mask.device) * 2
-    flat_tensor_with_sentinels = torch.cat([start_sentinel, flattened_mask, sentinel])
+    flat = mask_data.permute(0, 2, 1).reshape(n, hw)
 
-    transitions = flat_tensor_with_sentinels[:-1, :] != flat_tensor_with_sentinels[1:, :]
-    transition_indices = transitions.nonzero()  # (K, 2): [position, mask_index]
+    # Sentinels: 0 at start, 2 at end to detect first/last transitions
+    start_sentinel = torch.zeros((n, 1), dtype=flat.dtype, device=mask_data.device)
+    end_sentinel = torch.full((n, 1), 2, dtype=flat.dtype, device=mask_data.device)
+    with_sentinels = torch.cat([start_sentinel, flat, end_sentinel], dim=1)  # [N, hw+2]
+
+    # Transitions: [N, hw+1] — batch-first so nonzero is sorted by (mask, position)
+    transitions = with_sentinels[:, :-1] != with_sentinels[:, 1:]
+    transition_indices = transitions.nonzero()  # [K, 2]: (mask_id, position)
 
     if transition_indices.shape[0] == 0:
-        return RLEs([RLE(h, w, torch.zeros(1, dtype=torch.long, device=mask.device)) for _ in range(n)])
+        return RLEs([RLE(h, w, torch.tensor([hw], dtype=torch.long, device=mask.device)) for _ in range(n)])
 
-    # Group by mask index using split_sizes from counts
-    mask_ids = transition_indices[:, 1]
-    positions = transition_indices[:, 0]
+    mask_ids = transition_indices[:, 0]
+    positions = transition_indices[:, 1]
 
-    # Count transitions per mask
+    # Count transitions per mask — already sorted by mask_id, no argsort needed
     counts_per_mask = torch.zeros(n, dtype=torch.long, device=mask.device)
     counts_per_mask.scatter_add_(0, mask_ids, torch.ones_like(mask_ids, dtype=torch.long))
 
-    # Sort by mask index, then by position within each mask
-    sort_order = torch.argsort(mask_ids, stable=True)
-    sorted_positions = positions[sort_order]
-
-    # Split into per-mask groups
+    # Split into per-mask groups (positions are already in order within each group)
     split_sizes = counts_per_mask.tolist()
-    groups = torch.split(sorted_positions, split_sizes)
+    groups = torch.split(positions, split_sizes)
 
-    zero = torch.zeros((1,), dtype=sorted_positions.dtype, device=mask.device)
+    zero = torch.zeros((1,), dtype=positions.dtype, device=mask.device)
     rles = []
     for i in range(n):
         if split_sizes[i] == 0:
-            rles.append(RLE(h, w, torch.tensor([h * w], dtype=torch.long, device=mask.device)))
+            rles.append(RLE(h, w, torch.tensor([hw], dtype=torch.long, device=mask.device)))
         else:
             values = groups[i]
             diff = torch.diff(values, prepend=zero, dim=0)

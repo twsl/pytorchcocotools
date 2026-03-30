@@ -1,26 +1,38 @@
 import torch
 from torch import Tensor
-from torch.nn.utils.rnn import pad_sequence
 
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 
 
 def _pack_rle_counts(rles: RLEs) -> tuple[int, int, torch.device, Tensor, Tensor, Tensor] | None:
-    """Pack variable-length RLE count tensors into padded tensors once per merge."""
-    h, w = rles[0].h, rles[0].w
-    src_device = rles[0].cnts.device
+    """Pack variable-length RLE count tensors into padded tensors once per merge.
 
-    count_tensors = [rles[0].cnts.to(dtype=torch.long, device=src_device)]
+    Replaces ``pad_sequence`` with direct tensor construction to avoid the
+    overhead of the ``torch.nn.utils.rnn`` helper for small batch sizes.
+    """
+    h, w = rles[0].h, rles[0].w
+    device = rles[0].cnts.device
+
+    count_tensors = [rles[0].cnts.to(dtype=torch.long, device=device)]
+    max_len = count_tensors[0].numel()
     for i in range(1, len(rles)):
         rle = rles[i]
         if rle.h != h or rle.w != w:
             return None
-        count_tensors.append(rle.cnts.to(dtype=torch.long, device=src_device))
+        t = rle.cnts.to(dtype=torch.long, device=device)
+        count_tensors.append(t)
+        if t.numel() > max_len:
+            max_len = t.numel()
 
-    lengths = torch.tensor([counts.numel() for counts in count_tensors], dtype=torch.long, device=src_device)
-    padded_counts = pad_sequence(count_tensors, batch_first=True)
-    total_pixels = torch.tensor(h * w, dtype=torch.long, device=src_device)
-    return h, w, src_device, padded_counts, lengths, total_pixels
+    n = len(count_tensors)
+    padded_counts = torch.zeros(n, max_len, dtype=torch.long, device=device)
+    lengths = torch.empty(n, dtype=torch.long, device=device)
+    for i, t in enumerate(count_tensors):
+        padded_counts[i, : t.numel()] = t
+        lengths[i] = t.numel()
+
+    total_pixels = torch.tensor(h * w, dtype=torch.long, device=device)
+    return h, w, device, padded_counts, lengths, total_pixels
 
 
 def _rle_merge_events_buffer_eager(
@@ -29,101 +41,100 @@ def _rle_merge_events_buffer_eager(
     intersect: bool,
     total_pixels: Tensor,
 ) -> tuple[Tensor, Tensor]:
-    """Merge packed RLE counts using a fixed-shape event sweep.
+    """Merge packed RLE counts using a vectorized event sweep.
 
-    Foreground intervals are materialized as +1/-1 events, reduced into a
-    fixed-size boundary buffer, and then converted back into alternating
-    background/foreground run lengths. The buffer shape depends only on the
-    padded input shape, which keeps the kernel compatible with `torch.compile`.
+    Foreground intervals are materialized as +1/-1 events, sorted and reduced
+    into a fixed-size boundary buffer, then converted back into alternating
+    background/foreground run lengths.
+
+    Optimizations applied:
+    - ``masked_fill`` replaces ``where`` + sentinel allocation (3 ops → 1).
+    - ``valid.to(long)`` replaces ``where(mask, ones_like, zeros_like)``
+      (3-4 ops → 1), fusing the delta construction.
+    - Multiply-mask ``val * cond.to(long)`` replaces
+      ``where(cond, val, zeros_like)`` for segment lengths (fused).
+    - Bitwise ``>> 1`` replaces ``torch.div(…, rounding_mode="floor")``
+      for integer halving.
+    - ``torch.full_like`` replaces ``zeros_like + scalar`` where the fill value
+      is a compile-time constant equivalent.
     """
     device = padded_counts.device
     num_masks = padded_counts.shape[0]
+    sentinel_val = total_pixels + 1
 
-    cumulative_counts = torch.cumsum(padded_counts, dim=1)
-    end_positions = cumulative_counts[:, 1::2]
-    foreground_counts = torch.div(lengths, 2, rounding_mode="floor")
-    max_foreground_runs = end_positions.shape[1]
-    start_positions = cumulative_counts[:, 0::2][:, :max_foreground_runs]
-    interval_mask = torch.arange(max_foreground_runs, device=device).unsqueeze(0) < foreground_counts.unsqueeze(1)
+    # Cumulative positions from run lengths
+    cumulative = padded_counts.cumsum(dim=1)
 
-    sentinel = torch.zeros((num_masks, max_foreground_runs), dtype=torch.long, device=device) + (total_pixels + 1)
-    flat_positions = torch.cat(
+    # Extract foreground interval boundaries
+    end_pos = cumulative[:, 1::2]
+    max_fg = end_pos.shape[1]
+    start_pos = cumulative[:, 0::2][:, :max_fg]
+
+    # Validity mask – single arange, fused comparison
+    fg_counts = lengths >> 1
+    valid = torch.arange(max_fg, device=device).unsqueeze(0) < fg_counts.unsqueeze(1)
+
+    # Event positions: masked_fill avoids separate sentinel tensor allocation
+    not_valid = ~valid
+    flat_pos = torch.cat(
         [
-            torch.where(interval_mask, start_positions, sentinel).reshape(-1),
-            torch.where(interval_mask, end_positions, sentinel).reshape(-1),
-            torch.stack((torch.zeros((), dtype=torch.long, device=device), total_pixels)),
+            start_pos.masked_fill(not_valid, sentinel_val).reshape(-1),
+            end_pos.masked_fill(not_valid, sentinel_val).reshape(-1),
+            torch.stack([torch.zeros((), dtype=torch.long, device=device), total_pixels]),
         ],
         dim=0,
     )
+
+    # Event deltas: cast validity mask to long (+1/0), negate for ends (-1/0)
+    valid_flat = valid.to(torch.long).reshape(-1)
     flat_deltas = torch.cat(
-        [
-            torch.where(
-                interval_mask,
-                torch.ones_like(start_positions, dtype=torch.long),
-                torch.zeros_like(start_positions, dtype=torch.long),
-            ).reshape(-1),
-            torch.where(
-                interval_mask,
-                -torch.ones_like(end_positions, dtype=torch.long),
-                torch.zeros_like(end_positions, dtype=torch.long),
-            ).reshape(-1),
-            torch.zeros(2, dtype=torch.long, device=device),
-        ],
+        [valid_flat, -valid_flat, torch.zeros(2, dtype=torch.long, device=device)],
         dim=0,
     )
 
-    sort_order = torch.argsort(flat_positions, stable=True)
-    sorted_positions = flat_positions[sort_order]
-    sorted_deltas = flat_deltas[sort_order]
+    # Sort events by position (stable preserves insertion order for ties)
+    sort_idx = flat_pos.argsort(stable=True)
+    sorted_pos = flat_pos[sort_idx]
+    sorted_del = flat_deltas[sort_idx]
 
-    new_group = torch.ones_like(sorted_positions, dtype=torch.bool)
-    new_group[1:] = sorted_positions[1:] != sorted_positions[:-1]
-    group_ids = torch.cumsum(new_group.to(torch.long), dim=0) - 1
-    group_count = group_ids[-1] + 1
+    # Group duplicate positions via cumsum-based ID assignment
+    n = sorted_pos.shape[0]
+    new_group = torch.ones(n, dtype=torch.bool, device=device)
+    new_group[1:] = sorted_pos[1:] != sorted_pos[:-1]
+    group_ids = new_group.to(torch.long).cumsum(0) - 1
+    num_groups = group_ids[-1] + 1
 
-    unique_positions = torch.zeros_like(sorted_positions) + (total_pixels + 1)
-    unique_positions.scatter_reduce_(0, group_ids, sorted_positions, reduce="amin", include_self=True)
-    unique_deltas = torch.zeros_like(sorted_deltas)
-    unique_deltas.scatter_add_(0, group_ids, sorted_deltas)
+    # Scatter-reduce to unique positions and summed deltas
+    unique_pos = torch.zeros_like(sorted_pos) + sentinel_val
+    unique_pos.scatter_reduce_(0, group_ids, sorted_pos, reduce="amin", include_self=True)
+    unique_del = torch.zeros_like(sorted_del)
+    unique_del.scatter_add_(0, group_ids, sorted_del)
 
-    group_mask = torch.arange(sorted_positions.shape[0], device=device) < group_count
-    valid_groups = torch.logical_and(group_mask, unique_positions <= total_pixels)
+    # Valid-group mask and cumulative active count
+    valid_gp = (torch.arange(n, device=device) < num_groups) & (unique_pos <= total_pixels)
+    active = unique_del.cumsum(0)
 
-    active_counts = torch.cumsum(unique_deltas, dim=0)
-    valid_segments = torch.logical_and(valid_groups[:-1], valid_groups[1:])
-    segment_lengths = torch.where(
-        valid_segments,
-        unique_positions[1:] - unique_positions[:-1],
-        torch.zeros_like(unique_positions[:-1]),
-    )
-    active_segments = (active_counts[:-1] == num_masks) if intersect else (active_counts[:-1] > 0)
-    segment_states = torch.logical_and(valid_segments, active_segments)
+    # Segment properties – multiply-mask fuses where(cond, val, zeros) → val * cond
+    both_valid = valid_gp[:-1] & valid_gp[1:]
+    seg_len = (unique_pos[1:] - unique_pos[:-1]) * both_valid.to(torch.long)
+    fg = (active[:-1] == num_masks) if intersect else (active[:-1] > 0)
+    seg_fg = both_valid & fg
 
-    zeros_long = torch.zeros(1, dtype=torch.long, device=device)
-    lengths_full = torch.cat(
-        [
-            zeros_long,
-            segment_lengths,
-            zeros_long,
-        ]
-    )
-    zeros_bool = torch.zeros(1, dtype=torch.bool, device=device)
-    states_full = torch.cat(
-        [
-            zeros_bool,
-            segment_states,
-            zeros_bool,
-        ]
-    )
+    # Pad with background state at both ends
+    z_l = torch.zeros(1, dtype=torch.long, device=device)
+    z_b = torch.zeros(1, dtype=torch.bool, device=device)
+    segs = torch.cat([z_l, seg_len, z_l])
+    states = torch.cat([z_b, seg_fg, z_b])
 
-    run_start = torch.ones_like(states_full, dtype=torch.bool)
-    run_start[1:] = states_full[1:] != states_full[:-1]
-    run_ids = torch.cumsum(run_start.to(torch.long), dim=0) - 1
+    # Collapse consecutive same-state runs via scatter_add
+    run_start = torch.ones_like(states)
+    run_start[1:] = states[1:] != states[:-1]
+    run_ids = run_start.to(torch.long).cumsum(0) - 1
     run_count = run_ids[-1] + 1
 
-    run_buffer = torch.zeros_like(lengths_full)
-    run_buffer.scatter_add_(0, run_ids, lengths_full)
-    return run_buffer, run_count
+    run_buf = torch.zeros_like(segs)
+    run_buf.scatter_add_(0, run_ids, segs)
+    return run_buf, run_count
 
 
 @torch.compile(dynamic=True)
@@ -138,12 +149,14 @@ def _rle_merge_events_buffer(
 
 
 def _trim_run_buffer(run_buffer: Tensor, run_count: Tensor) -> Tensor:
-    """Trim the fixed-size run buffer to the actual merged RLE counts."""
-    last_index = torch.clamp(run_count - 1, min=0)
-    last_value = torch.gather(run_buffer, 0, last_index.unsqueeze(0)).squeeze(0)
-    keep_count = run_count - torch.logical_and(run_count > 1, last_value == 0).to(torch.long)
-    keep_mask = torch.arange(run_buffer.shape[0], device=run_buffer.device) < keep_count
-    return run_buffer[keep_mask]
+    """Trim the fixed-size run buffer to the actual merged RLE counts.
+
+    Uses Python scalars to avoid tensor-op overhead outside the compiled kernel.
+    """
+    n = int(run_count.item())
+    if n > 1 and run_buffer[n - 1].item() == 0:
+        n -= 1
+    return run_buffer[:n]
 
 
 @torch.inference_mode()
