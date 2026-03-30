@@ -1,5 +1,6 @@
 """Test rleNms (RLE NMS) with profiling."""
 
+from _pytest.terminal import TerminalReporter
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
@@ -10,6 +11,7 @@ from torchvision import tv_tensors as tv
 from pytorchcocotools.internal.entities import RLEs
 from pytorchcocotools.internal.mask_api.rle_encode import rleEncode
 from pytorchcocotools.internal.mask_api.rle_nms import rleNms
+from pytorchcocotools.utils.callable import resolve_actual_function
 
 
 class RleNmsCases:
@@ -95,6 +97,7 @@ def test_rle_nms_pt(
 @pytest.mark.profiling
 @parametrize_with_cases("rles, n, thr, expected", cases=RleNmsCases)
 def test_rle_nms_pt_profiling(
+    terminal_writer: TerminalReporter,
     device: str,
     rles: RLEs,
     n: int,
@@ -112,10 +115,42 @@ def test_rle_nms_pt_profiling(
         record_shapes=True,
         profile_memory=True,
         with_stack=True,
+        with_flops=True,
     ) as prof:
         for _ in range(10):
             _ = rleNms(rles, n, thr)
 
     # Print profiling results
-    print(f"\n\n=== rleNms Profiling Results (device={device}) ===")
-    print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
+    sort_by = "cuda_time_total" if device == "cuda" else "cpu_time_total"
+    terminal_writer.write_line(f"\n\n=== rleNms Profiling Results (device={device}) ===")
+    terminal_writer.write_line(prof.key_averages().table(sort_by=sort_by, row_limit=10))
+
+
+@pytest.mark.line_profiling
+@parametrize_with_cases("rles, n, thr, expected", cases=RleNmsCases)
+def test_rle_nms_pt_line_profiling(
+    terminal_writer: TerminalReporter,
+    device: str,
+    rles: RLEs,
+    n: int,
+    thr: float,
+    expected: list[bool],
+) -> None:
+    """Profile PyTorch implementation of rleNms using line_profiler."""
+    from line_profiler import LineProfiler
+
+    # Warmup
+    for _ in range(5):
+        _ = rleNms(rles, n, thr)
+
+    # Line profile
+    lp = LineProfiler()
+    target = resolve_actual_function(rleNms)
+    lp.add_function(target)
+
+    for _ in range(10):
+        _ = lp.runcall(rleNms, rles, n, thr)
+
+    # Print line profiling results
+    terminal_writer.write_line(f"\n\n=== rleNms Line Profiling Results (device={device}) ===")
+    lp.print_stats(output_unit=1e-6)

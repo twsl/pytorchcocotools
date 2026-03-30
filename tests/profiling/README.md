@@ -32,6 +32,12 @@ pytest tests/profiling/ --benchmark-only
 pytest tests/profiling/ -m profiling -v -s
 ```
 
+### Run Line Profiler Tests Only
+
+```bash
+pytest tests/profiling/ -m line_profiling -v -s
+```
+
 Note: Use `-s` to see the profiler output tables printed to stdout.
 
 ### Run Specific Test Group
@@ -42,6 +48,9 @@ pytest tests/profiling/test_bb_iou.py --benchmark-only -v
 
 # Profiler tests
 pytest tests/profiling/test_bb_iou.py -m profiling -v -s
+
+# Line profiler tests
+pytest tests/profiling/test_bb_iou.py -m line_profiling -v -s
 ```
 
 ### Run on Specific Device
@@ -50,8 +59,11 @@ pytest tests/profiling/test_bb_iou.py -m profiling -v -s
 # CPU benchmarks
 pytest tests/profiling/ -k "cpu" --benchmark-only
 
-# CPU profiling
+# CPU profiling (torch.profiler)
 pytest tests/profiling/ -k "cpu" -m profiling -v -s
+
+# CPU profiling (line_profiler)
+pytest tests/profiling/ -k "cpu" -m line_profiling -v -s
 
 # CUDA (if available)
 pytest tests/profiling/ -k "cuda" --benchmark-only
@@ -71,7 +83,8 @@ Each test file contains:
 1. **Test Cases** - Parametrized test cases using `pytest-cases`
 2. **PyTorch Benchmarks** (`test_*_pt`) - Benchmark PyTorch implementation with pytest-benchmark
 3. **PyTorch Profiler** (`test_*_pt_profiling`) - Detailed profiling with `torch.profiler` including CPU/GPU metrics, memory usage, and stack traces
-4. **Correctness Tests** (`test_*_correctness`) - Non-benchmark tests for correctness verification
+4. **Line Profiler** (`test_*_pt_line_profiling`) - Line-by-line profiling with `line_profiler` showing per-line timing and hit counts
+5. **Correctness Tests** (`test_*_correctness`) - Non-benchmark tests for correctness verification
 
 All tests are parametrized by the `device` fixture, which tests on both CPU and CUDA (if available).
 
@@ -104,6 +117,36 @@ Name                                                     Self CPU %      Self CP
 aten::box_iou                                            45.23%        12.345ms    ...
 aten::mul                                                15.67%        4.234ms     ...
 ...
+```
+
+## Profiling with Line Profiler
+
+The line profiling tests (`test_*_pt_line_profiling`) use `line_profiler` to provide line-by-line execution timing for each function. This is useful for identifying exactly which lines within a function are the most expensive.
+
+Each line profiling test runs the function 10 times after a 5-iteration warmup and prints a table showing:
+
+- **Line #**: Source line number
+- **Hits**: Number of times the line was executed
+- **Time**: Total time spent on the line (in microseconds)
+- **Per Hit**: Average time per execution
+- **% Time**: Percentage of total function time
+- **Line Contents**: The source code
+
+Example output:
+
+```
+=== bbIou Line Profiling Results (device=cpu) ===
+Timer unit: 1e-06 s
+
+Total time: 0.001234 s
+File: .../bb_iou.py
+Function: bbIou at line 10
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    10                                           def bbIou(dt, gt, iscrowd):
+    11        10         50.0      5.0      4.1      ...
+    12        10        800.0     80.0     64.8      ...
 ```
 
 ### Advanced Profiling

@@ -1,5 +1,6 @@
 """Test bbIou (bounding box IoU) with profiling."""
 
+from _pytest.terminal import TerminalReporter
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
@@ -8,6 +9,7 @@ from torch import Tensor, profiler
 from torchvision import tv_tensors as tv
 
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
+from pytorchcocotools.utils.callable import resolve_actual_function
 
 
 class BbIouCases:
@@ -82,6 +84,7 @@ def test_bb_iou_pt(
 @pytest.mark.profiling
 @parametrize_with_cases("dt, gt, iscrowd, expected", cases=BbIouCases)
 def test_bb_iou_pt_profiling(
+    terminal_writer: TerminalReporter,
     device: str,
     dt: Tensor,
     gt: Tensor,
@@ -107,6 +110,7 @@ def test_bb_iou_pt_profiling(
         record_shapes=True,
         profile_memory=True,
         with_stack=True,
+        with_flops=True,
     ) as prof:
         for _ in range(10):
             result = bbIou(dt_boxes, gt_boxes, iscrowd)
@@ -115,5 +119,42 @@ def test_bb_iou_pt_profiling(
     torch.testing.assert_close(result, expected.to(device), rtol=1e-5, atol=1e-5)
 
     # Print profiling results
-    print(f"\n\n=== bbIou Profiling Results (device={device}) ===")
-    print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
+    sort_by = "cuda_time_total" if device == "cuda" else "cpu_time_total"
+    terminal_writer.write_line(f"\n\n=== bbIou Profiling Results (device={device}) ===")
+    terminal_writer.write_line(prof.key_averages().table(sort_by=sort_by, row_limit=10))
+
+
+@pytest.mark.line_profiling
+@parametrize_with_cases("dt, gt, iscrowd, expected", cases=BbIouCases)
+def test_bb_iou_pt_line_profiling(
+    terminal_writer: TerminalReporter,
+    device: str,
+    dt: Tensor,
+    gt: Tensor,
+    iscrowd: list[bool],
+    expected: Tensor,
+) -> None:
+    """Profile PyTorch implementation of bbIou using line_profiler."""
+    from line_profiler import LineProfiler
+
+    dt_boxes = tv.BoundingBoxes(dt, format="XYXY", canvas_size=(100, 100), device=device)  # ty:ignore[no-matching-overload]
+    gt_boxes = tv.BoundingBoxes(gt, format="XYXY", canvas_size=(100, 100), device=device)  # ty:ignore[no-matching-overload]
+
+    # Warmup
+    for _ in range(5):
+        _ = bbIou(dt_boxes, gt_boxes, iscrowd)
+
+    # Line profile
+    lp = LineProfiler()
+    target = resolve_actual_function(bbIou)
+    lp.add_function(target)
+
+    for _ in range(10):
+        result = lp.runcall(bbIou, dt_boxes, gt_boxes, iscrowd)
+
+    # Verify correctness
+    torch.testing.assert_close(result, expected.to(device), rtol=1e-5, atol=1e-5)
+
+    # Print line profiling results
+    terminal_writer.write_line(f"\n\n=== bbIou Line Profiling Results (device={device}) ===")
+    lp.print_stats(output_unit=1e-6)

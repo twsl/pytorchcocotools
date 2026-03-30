@@ -9,17 +9,17 @@ import torch
 from torch.autograd import ProfilerActivity  # pyright: ignore[reportPrivateImportUsage]
 from torch.profiler import profile as TorchProfiler  # noqa: N812
 
+from pytorchcocotools.utils.callable import resolve_actual_function
+
 ExperimentalConfigType = object | None
 
 
 def is_decorated(func: Callable) -> bool:
-    return hasattr(func, "__wrapped__")
+    return resolve_actual_function(func) is not func
 
 
 def unwrap_function(func: Callable) -> Callable:
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__  # pyright: ignore[reportFunctionMemberAccess]
-    return func
+    return resolve_actual_function(func)
 
 
 class CombinedProfiler:
@@ -95,13 +95,10 @@ class CombinedProfiler:
         """Initialize the line profiler with the provided functions."""
         lp = LineProfiler()
         for func in self.functions_to_profile:
-            if is_decorated(func) and self.unwrap_decorated:
-                unwrapped_func = unwrap_function(func)
-                if unwrapped_func is not func:
-                    lp.add_function(unwrapped_func)
-                    self.logger.debug(f"Unwrapped function: {unwrapped_func.__name__}")
-            else:
-                lp.add_function(func)
+            target = unwrap_function(func) if self.unwrap_decorated else func
+            lp.add_function(target)
+            if target is not func:
+                self.logger.debug(f"Unwrapped function: {target.__name__}")
         return lp
 
     def _initialize_activities(self, activities) -> list[ProfilerActivity]:

@@ -1,5 +1,6 @@
 """Test rleToString (convert RLE to compressed string) with profiling."""
 
+from _pytest.terminal import TerminalReporter
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 from pytest_cases import parametrize_with_cases
@@ -11,6 +12,7 @@ from pytorchcocotools.internal.entities import RLE, RleObj
 from pytorchcocotools.internal.mask_api.rle_encode import rleEncode
 from pytorchcocotools.internal.mask_api.rle_fr_string import rleFrString
 from pytorchcocotools.internal.mask_api.rle_to_string import rleToString
+from pytorchcocotools.utils.callable import resolve_actual_function
 
 
 class RleToStringCases:
@@ -77,6 +79,7 @@ def test_rle_to_string_pt(
 @pytest.mark.profiling
 @parametrize_with_cases("rle, expected", cases=RleToStringCases)
 def test_rle_to_string_pt_profiling(
+    terminal_writer: TerminalReporter,
     device: str,
     rle: RLE,
     expected: bytes,
@@ -92,10 +95,40 @@ def test_rle_to_string_pt_profiling(
         record_shapes=True,
         profile_memory=True,
         with_stack=True,
+        with_flops=True,
     ) as prof:
         for _ in range(10):
             _ = rleToString(rle)
 
     # Print profiling results
-    print(f"\n\n=== rleToString Profiling Results (device={device}) ===")
-    print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
+    sort_by = "cuda_time_total" if device == "cuda" else "cpu_time_total"
+    terminal_writer.write_line(f"\n\n=== rleToString Profiling Results (device={device}) ===")
+    terminal_writer.write_line(prof.key_averages().table(sort_by=sort_by, row_limit=10))
+
+
+@pytest.mark.line_profiling
+@parametrize_with_cases("rle, expected", cases=RleToStringCases)
+def test_rle_to_string_pt_line_profiling(
+    terminal_writer: TerminalReporter,
+    device: str,
+    rle: RLE,
+    expected: bytes,
+) -> None:
+    """Profile PyTorch implementation of rleToString using line_profiler."""
+    from line_profiler import LineProfiler
+
+    # Warmup
+    for _ in range(5):
+        _ = rleToString(rle)
+
+    # Line profile
+    lp = LineProfiler()
+    target = resolve_actual_function(rleToString)
+    lp.add_function(target)
+
+    for _ in range(10):
+        _ = lp.runcall(rleToString, rle)
+
+    # Print line profiling results
+    terminal_writer.write_line(f"\n\n=== rleToString Line Profiling Results (device={device}) ===")
+    lp.print_stats(output_unit=1e-6)
