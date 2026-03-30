@@ -4,7 +4,7 @@ name: Benchmark
 on:
   workflow_dispatch:
   pull_request:
-    types: [labeled]
+    types: [labeled, synchronize]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   benchmark:
     name: Benchmark
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'benchmark'
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'benchmark')
     permissions:
       contents: read
       actions: read
