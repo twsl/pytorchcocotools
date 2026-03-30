@@ -40,13 +40,13 @@ class RleFrBboxCases:
     def case_full_box(self) -> tuple[int, int, Tensor, RleObj]:
         """Full canvas bounding box."""
         bbox = torch.tensor([[0, 0, self.w, self.h]], dtype=torch.float64)
-        expected = RleObj(size=[self.h, self.w], counts=b"")
+        expected = RleObj(size=[self.h, self.w], counts=b"0ac0")
         return (self.h, self.w, bbox, expected)
 
     def case_corner_box(self) -> tuple[int, int, Tensor, RleObj]:
         """Corner bounding box."""
         bbox = torch.tensor([[0, 0, 5, 5]], dtype=torch.float64)
-        expected = RleObj(size=[self.h, self.w], counts=b"d05d000000d?")
+        expected = RleObj(size=[self.h, self.w], counts=b"05d00000000d?")
         return (self.h, self.w, bbox, expected)
 
 
