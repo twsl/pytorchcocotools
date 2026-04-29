@@ -45,5 +45,5 @@
     "autoDocstring.startOnNewLine": true,
     "http.proxyStrictSSL": false,
     "telemetry.telemetryLevel": "off",
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "git.addAICoAuthor": "off"
 }
