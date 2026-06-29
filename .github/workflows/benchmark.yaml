@@ -51,7 +51,7 @@ jobs:
         run: uv sync --all-groups --all-extras --frozen
 
       - name: Cache benchmark results
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .benchmarks
           key: benchmark-${{ runner.os }}-${{ matrix.python-version }}-${{ github.sha }}
