@@ -26,13 +26,13 @@ dynamic = [
 ]
 dependencies = [
     "matplotlib>=3.10.8",
-    "torch>=2.11.0",
-    "torchvision>=0.25.0",
+    "torch>=2.12.1",
+    "torchvision>=0.27.1",
 ]
 
 [project.optional-dependencies]
 data = [
-    "lightning>=2.6.0",
+    "lightning>=2.6.5",
 ]
 metrics = [
     "torchmetrics>=1.9.0",
