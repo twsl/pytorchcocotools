@@ -469,28 +469,53 @@ class MeanAveragePrecision(Metric):
 
                     # if class mode is enabled, evaluate metrics per class
                     if self.class_metrics:
-                        class_coco_preds, class_coco_target = self._get_coco_datasets(average="macro")
-                        if len(self.iou_type) > 1:
-                            for anno in class_coco_preds.dataset["annotations"]:
-                                anno["area"] = anno[f"area_{i_type}"]
+                        if self.average == "macro":
+                            # Reuse the already-computed evaluation (same dataset)
+                            class_eval = coco_eval
+                        else:
+                            # Need a separate macro-averaged evaluation
+                            class_coco_preds, class_coco_target = self._get_coco_datasets(average="macro")
+                            if len(self.iou_type) > 1:
+                                for anno in class_coco_preds.dataset["annotations"]:
+                                    anno["area"] = anno[f"area_{i_type}"]
 
-                        coco_eval = COCOeval(class_coco_target, class_coco_preds, iouType=i_type)
-                        coco_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
-                        coco_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
-                        coco_eval.params.maxDets = self.max_detection_thresholds
+                            class_eval = COCOeval(class_coco_target, class_coco_preds, iouType=i_type)
+                            class_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
+                            class_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
+                            class_eval.params.maxDets = self.max_detection_thresholds
 
+                            with contextlib.redirect_stdout(io.StringIO()):
+                                class_eval.evaluate()
+                                class_eval.accumulate()
+
+                        # Extract per-class stats directly from accumulated precision/recall tensors
+                        # precision: [T, R, K, A, M], recall: [T, K, A, M]
+                        classes = self._get_classes()
+                        cat_ids = class_eval._paramsEval.catIds
                         map_per_class_list = []
                         mar_per_class_list = []
-                        for class_id in self._get_classes():
-                            coco_eval.params.catIds = [class_id]
-                            with contextlib.redirect_stdout(io.StringIO()):
-                                coco_eval.evaluate()
-                                coco_eval.accumulate()
-                                coco_eval.summarize()
-                                class_stats = coco_eval.stats
-
-                            map_per_class_list.append(torch.tensor([class_stats[0]]))
-                            mar_per_class_list.append(torch.tensor([class_stats[8]]))
+                        for class_id in classes:
+                            k_idx = cat_ids.index(class_id) if class_id in cat_ids else -1
+                            if k_idx < 0:
+                                map_per_class_list.append(torch.tensor([-1.0]))
+                                mar_per_class_list.append(torch.tensor([-1.0]))
+                                continue
+                            # AP: mean of precision[:, :, k, area=all, maxDet=last]
+                            prec_k = class_eval.eval.precision[:, :, k_idx, 0, -1]
+                            ap = (
+                                torch.tensor([-1.0])
+                                if (prec_k > -1).sum() == 0
+                                else torch.mean(prec_k[prec_k > -1]).unsqueeze(0)
+                            )
+                            map_per_class_list.append(ap)
+                            # AR: mean of recall[:, k, area=all, maxDet=last]
+                            rec_k = class_eval.eval.recall[:, k_idx, 0, -1]
+                            ar = (
+                                torch.tensor([-1.0])
+                                if (rec_k > -1).sum() == 0
+                                else torch.mean(rec_k[rec_k > -1]).unsqueeze(0)
+                            )
+                            mar_per_class_list.append(ar)
 
                         map_per_class_values = torch.tensor(map_per_class_list, dtype=torch.float32)
                         mar_per_class_values = torch.tensor(mar_per_class_list, dtype=torch.float32)
