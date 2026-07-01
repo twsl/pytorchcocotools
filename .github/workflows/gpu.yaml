@@ -72,7 +72,7 @@ jobs:
           MODAL_GPU: ${{ inputs.gpu }}
           PYTHON_VERSION: ${{ env.python-version }}
         run: |
-          modal run ./scripts/modal_runner.py --test-path "${{ inputs.test_path }}" --pytest-args "${{ inputs.pytest_args }}"
+          uv run modal run ./scripts/modal_runner.py --test-path "${{ inputs.test_path }}" --pytest-args "${{ inputs.pytest_args }}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
