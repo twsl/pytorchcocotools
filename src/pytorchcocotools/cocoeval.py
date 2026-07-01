@@ -175,9 +175,7 @@ class COCOeval:
         batch_results: dict[tuple[int, int], list[EvalImgResult | None]] = {}
         for catId in cat_ids:
             for imgId in p.imgIds:
-                batch_results[catId, imgId] = self._evaluateImgs_batch(
-                    imgId, catId, p.areaRng, max_det, iou_thrs_t
-                )
+                batch_results[catId, imgId] = self._evaluateImgs_batch(imgId, catId, p.areaRng, max_det, iou_thrs_t)
 
         # Store in correct order: catId → aRng → imgId
         self.eval_imgs = []
@@ -589,9 +587,7 @@ class COCOeval:
                 gt_ids = torch.tensor([g.id for g in gt_list], dtype=torch.float64, device=dev)
                 gt_areas = torch.tensor([g.area for g in gt_list], dtype=torch.float64, device=dev)
                 gt_iscrowd = torch.tensor([int(g.iscrowd) for g in gt_list], dtype=torch.bool, device=dev)
-                gt_ignore_base = torch.tensor(
-                    [1 if g.ignore else 0 for g in gt_list], dtype=torch.bool, device=dev
-                )
+                gt_ignore_base = torch.tensor([1 if g.ignore else 0 for g in gt_list], dtype=torch.bool, device=dev)
 
         # --- DT tensors (pre-sorted in _prepare) ---
         num_dt = min(len(dt_list), maxDet)
@@ -690,9 +686,7 @@ class COCOeval:
 
         # DT area-based ignore: unmatched DTs outside area range
         if num_dt > 0:
-            dt_area_out = (dt_areas.unsqueeze(0) < aRng_t[:, 0:1]) | (
-                dt_areas.unsqueeze(0) > aRng_t[:, 1:2]
-            )  # [A, D]
+            dt_area_out = (dt_areas.unsqueeze(0) < aRng_t[:, 0:1]) | (dt_areas.unsqueeze(0) > aRng_t[:, 1:2])  # [A, D]
             dt_ig_out = torch.logical_or(
                 dt_ig_out,
                 torch.logical_and(dtm == 0, dt_area_out.unsqueeze(1).expand(-1, num_T, -1)),
@@ -813,17 +807,17 @@ class COCOeval:
 
                 # Pre-concatenate for the largest max_det
                 max_max_det = max_dets_indices[-1]
-                dt_scores_full = torch.cat(
-                    [el.dtScores[0:max_max_det] for el in eval_img_results_ka]
-                ).to(dtype=torch.float64)
+                dt_scores_full = torch.cat([el.dtScores[0:max_max_det] for el in eval_img_results_ka]).to(
+                    dtype=torch.float64
+                )
                 inds_full = torch.argsort(dt_scores_full, descending=True, stable=True)
                 dt_scores_sorted_full = dt_scores_full[inds_full]
-                dt_matches_full = torch.cat(
-                    [el.dtMatches[:, 0:max_max_det] for el in eval_img_results_ka], dim=1
-                )[:, inds_full]
-                dt_ig_full = torch.cat(
-                    [el.dtIgnore[:, 0:max_max_det] for el in eval_img_results_ka], dim=1
-                )[:, inds_full]
+                dt_matches_full = torch.cat([el.dtMatches[:, 0:max_max_det] for el in eval_img_results_ka], dim=1)[
+                    :, inds_full
+                ]
+                dt_ig_full = torch.cat([el.dtIgnore[:, 0:max_max_det] for el in eval_img_results_ka], dim=1)[
+                    :, inds_full
+                ]
 
                 for m, max_det in enumerate(max_dets_indices):
                     if max_det >= max_max_det:
@@ -832,17 +826,15 @@ class COCOeval:
                         dt_ig = dt_ig_full
                     else:
                         # For smaller max_dets, re-concatenate with the limit
-                        dt_scores_m = torch.cat(
-                            [el.dtScores[0:max_det] for el in eval_img_results_ka]
-                        ).to(dtype=torch.float64)
+                        dt_scores_m = torch.cat([el.dtScores[0:max_det] for el in eval_img_results_ka]).to(
+                            dtype=torch.float64
+                        )
                         inds_m = torch.argsort(dt_scores_m, descending=True, stable=True)
                         dt_scores_sorted = dt_scores_m[inds_m]
-                        dt_matches = torch.cat(
-                            [el.dtMatches[:, 0:max_det] for el in eval_img_results_ka], dim=1
-                        )[:, inds_m]
-                        dt_ig = torch.cat(
-                            [el.dtIgnore[:, 0:max_det] for el in eval_img_results_ka], dim=1
-                        )[:, inds_m]
+                        dt_matches = torch.cat([el.dtMatches[:, 0:max_det] for el in eval_img_results_ka], dim=1)[
+                            :, inds_m
+                        ]
+                        dt_ig = torch.cat([el.dtIgnore[:, 0:max_det] for el in eval_img_results_ka], dim=1)[:, inds_m]
 
                     tps = torch.logical_and(dt_matches, torch.logical_not(dt_ig))
                     fps = torch.logical_and(torch.logical_not(dt_matches), torch.logical_not(dt_ig))
