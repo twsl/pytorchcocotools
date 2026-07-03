@@ -472,7 +472,7 @@ class COCOeval:
 
             # Greedy matching per detection (sequential over D), vectorized over T:
             for dind in range(num_dt):
-                iou_d = ious_f[dind]  # [G] – IoU of this detection against all GTs
+                iou_d = ious_f[dind]  # [G] - IoU of this detection against all GTs
 
                 # Expand across thresholds: [T, G]
                 iou_dt = iou_d.unsqueeze(0).expand(num_iou_thrs, -1)  # [T, G]

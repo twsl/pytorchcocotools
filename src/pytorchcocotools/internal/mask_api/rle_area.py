@@ -1,5 +1,4 @@
 import torch
-from torch import Tensor
 
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
 

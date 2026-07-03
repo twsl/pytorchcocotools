@@ -78,7 +78,7 @@ class Params:
 class EvalImgResult(dict):
     image_id: int = -1
     category_id: int = -1
-    aRng: Range = field(default_factory=Range)  # noqa: N815
+    aRng: Range = field(default=(0, 0))  # noqa: N815
     maxDet: int = 0  # noqa: N815
     dtIds: torch.Tensor = field(default=torch.zeros(0))  # noqa: N815
     gtIds: torch.Tensor = field(default=torch.zeros(0))  # noqa: N815
