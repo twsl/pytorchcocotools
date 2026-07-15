@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  python-version: "3.11"
+  python-version: "3.12"
   UV_DYNAMIC_VERSIONING_BYPASS: "1.0.0"
 
 jobs:

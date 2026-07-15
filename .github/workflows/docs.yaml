@@ -20,7 +20,7 @@ concurrency:
 
 env:
   artifacts-name: docs
-  python-version: "3.11"
+  python-version: "3.12"
 
 jobs:
   build-docs:

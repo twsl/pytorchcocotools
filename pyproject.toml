@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytorchcocotools"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 description = "Unofficial APIs for the MS-COCO dataset using PyTorch"
 readme = "README.md"
 license = { text = "MIT" }
@@ -55,14 +55,14 @@ default-groups = "all"
 [dependency-groups]
 dev = [
     "ruff>=0.15.20",
-    "ty>=0.0.55",
+    "ty>=0.0.56",
     "bandit>=1.9.4",
-    "prek>=0.4.6",
+    "prek>=0.4.8",
     "vulture>=2.16",
     "copier>=9.16.0",
     "ipykernel>=7.3.0",
     "ipywidgets>=8.1.8",
-    "ipython>=9.13.0",
+    "ipython>=9.15.0",
     "jupytext>=1.19.3",
     "nbconvert>=7.17.1",
 ]
@@ -278,7 +278,7 @@ quote-style = "double"
 skips = ['*_test.py', '*/test_*.py']
 
 [tool.ty.environment]
-python-version = "3.11"
+python-version = "3.12"
 python-platform = "linux"
 root = ["./src"]
 
