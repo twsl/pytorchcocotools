@@ -6,12 +6,12 @@ pytorchcocotools - Unofficial APIs for the MS-COCO dataset using PyTorch
 
 Before writing anything, climb these rungs in order:
 
-1. Is it needed at all? → **YAGNI**
-2. Already in the codebase? → **Reuse it**
-3. Standard library covers it? → **Use it**
-4. Native platform feature? → **Use it**
-5. Installed dependency works? → **Use it**
-6. Can it be one line? → **Do it**
+1. Already in the codebase? → **Reuse it**
+2. Standard library covers it? → **Use it**
+3. Native platform feature? → **Use it**
+4. Installed dependency works? → **Use it**
+5. Can it be one line? → **Do it**
+6. Is it really needed at all? → **YAGNI but carefully**
 7. Only then write the minimum that works
 
 ## Key Principles
