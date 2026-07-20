@@ -26,7 +26,7 @@ dynamic = [
 ]
 dependencies = [
     "matplotlib>=3.10.8",
-    "torch>=2.12.1",
+    "torch>=2.13.0",
     "torchvision>=0.27.1",
 ]
 
