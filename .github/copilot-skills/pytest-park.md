@@ -41,11 +41,14 @@ uv add --group test pytest-park pytest-benchmark
 def process_data_original(data):
     return sum(data)
 
+
 def process_data_optimized(data):
     return sum(data)  # faster implementation
 
+
 def test_process_data_original(benchmark):
     benchmark(process_data_original, list(range(1000)))
+
 
 def test_process_data_optimized(benchmark):
     benchmark(process_data_optimized, list(range(1000)))
@@ -96,15 +99,16 @@ If test names encode variant postfixes (e.g. `test_func_orig`, `test_func_ref`, 
 # tests/conftest.py
 from pytest_park.pytest_benchmark import default_pytest_benchmark_group_stats
 
+
 def pytest_benchmark_group_stats(config, benchmarks, group_by):
     return default_pytest_benchmark_group_stats(
         config,
         benchmarks,
         group_by,
-        original_postfix="_orig",      # or a list: ["_np", "_numpy"]
-        reference_postfix="_ref",       # or a list: ["_pt", "_torch"]
+        original_postfix="_orig",  # or a list: ["_np", "_numpy"]
+        reference_postfix="_ref",  # or a list: ["_pt", "_torch"]
         group_values_by_postfix={
-            "orig": "original",         # leading underscores are stripped for matching
+            "orig": "original",  # leading underscores are stripped for matching
             "ref": "reference",
         },
     )
