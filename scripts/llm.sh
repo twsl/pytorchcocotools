@@ -9,3 +9,4 @@ curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/instal
 
 curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | bash
 codegraph init
+codegraph sync
