@@ -6,17 +6,17 @@ from torchvision import tv_tensors as tv
 
 from pytorchcocotools.utils.dataclass import dataclass_dict
 
-RangeLabel: TypeAlias = Literal["all", "small", "medium", "large"]
+type RangeLabel = Literal["all", "small", "medium", "large"]
 
-RangeLabels: TypeAlias = list[RangeLabel]
+type RangeLabels = list[RangeLabel]
 
-Range: TypeAlias = tuple[int, int]
+type Range = tuple[int, int]
 
-Ranges: TypeAlias = list[Range]
+type Ranges = list[Range]
 
-IoUType: TypeAlias = Literal["segm", "bbox", "keypoints"]
+type IoUType = Literal["segm", "bbox", "keypoints"]
 
-Poly: TypeAlias = list[float]  # list of alternating coordinates
+type Poly = list[float]  # list of alternating coordinates
 
 
 class RLE:
@@ -27,7 +27,8 @@ class RLE:
         self.cnts = cnts  # rle tensor [N, 2] consecutive (start, length) pairs
 
 
-RLEs: TypeAlias = list[RLE]
+# Called at runtime as a list constructor, e.g. `RLEs([r])`; a `type` alias would not be callable.
+RLEs: TypeAlias = list[RLE]  # noqa: UP040
 
 
 @dataclass_dict
@@ -36,17 +37,16 @@ class RleObj(dict):
     counts: bytes | str
 
 
-RleObjs: TypeAlias = list[RleObj]
+# Called at runtime as a list constructor, e.g. `RleObjs(objs)`; a `type` alias would not be callable.
+RleObjs: TypeAlias = list[RleObj]  # noqa: UP040
 
-IoUObject: TypeAlias = RleObjs | list[float] | tv.BoundingBoxes
+type IoUObject = RleObjs | list[float] | tv.BoundingBoxes
 
 
-PyObj: TypeAlias = (
-    tv.BoundingBoxes | Tensor | list[list[int]] | list[list[float]] | Poly | list[Poly] | RleObjs | RleObj
-)
+type PyObj = tv.BoundingBoxes | Tensor | list[list[int]] | list[list[float]] | Poly | list[Poly] | RleObjs | RleObj
 
-TorchDevice: TypeAlias = torch.device | str | int
+type TorchDevice = torch.device | str | int
 
-Bool: TypeAlias = bool | Literal[0, 1]
+type Bool = bool | Literal[0, 1]
 
-Bools: TypeAlias = list[Bool] | list[bool]
+type Bools = list[Bool] | list[bool]

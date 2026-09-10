@@ -171,16 +171,18 @@ class COCOeval:
 
         # Batch evaluateImg across all area ranges per (catId, imgId)
         batch_results: dict[tuple[int, int], list[EvalImgResult | None]] = {}
-        for catId in cat_ids:
-            for imgId in p.imgIds:
-                batch_results[catId, imgId] = self._evaluateImgs_batch(imgId, catId, p.areaRng, max_det, iou_thrs_t)
+        for cat_id in cat_ids:
+            for img_id in p.imgIds:
+                batch_results[cat_id, img_id] = self._evaluate_imgs_batch(
+                    img_id, cat_id, p.areaRng, max_det, iou_thrs_t
+                )
 
         # Store in correct order: catId → aRng → imgId
         self.eval_imgs = []
-        for catId in cat_ids:
+        for cat_id in cat_ids:
             for a_idx in range(len(p.areaRng)):
-                for imgId in p.imgIds:
-                    self.eval_imgs.append(batch_results[catId, imgId][a_idx])
+                for img_id in p.imgIds:
+                    self.eval_imgs.append(batch_results[cat_id, img_id][a_idx])
 
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
@@ -544,11 +546,11 @@ class COCOeval:
             dtIgnore=dt_ig,
         )
 
-    def _evaluateImgs_batch(
+    def _evaluate_imgs_batch(
         self,
         imgId: int,  # noqa: N803
         catId: int,  # noqa: N803
-        aRngs: list[Range],
+        a_rngs: list[Range],
         maxDet: int,  # noqa: N803
         iou_thrs_t: Tensor,
     ) -> list[EvalImgResult | None]:
@@ -566,12 +568,12 @@ class COCOeval:
                 gt_list.extend(self._gts[imgId, c_id])
                 dt_list.extend(self._dts[imgId, c_id])
 
-        num_A = len(aRngs)
+        num_a = len(a_rngs)
         if len(gt_list) == 0 and len(dt_list) == 0:
-            return [None] * num_A
+            return [None] * num_a
 
         dev = self.device
-        num_T = iou_thrs_t.shape[0]
+        num_t = iou_thrs_t.shape[0]
         num_gt = len(gt_list)
         key = (imgId, catId)
 
@@ -606,36 +608,36 @@ class COCOeval:
                 num_dt = len(sorted_dt)
 
         # --- GT ignore per area range: [A, G] ---
-        aRng_t = torch.tensor(aRngs, dtype=torch.float64, device=dev)  # [A, 2]
+        a_rng_t = torch.tensor(a_rngs, dtype=torch.float64, device=dev)  # [A, 2]
         if num_gt > 0:
-            area_out = (gt_areas.unsqueeze(0) < aRng_t[:, 0:1]) | (gt_areas.unsqueeze(0) > aRng_t[:, 1:2])
+            area_out = (gt_areas.unsqueeze(0) < a_rng_t[:, 0:1]) | (gt_areas.unsqueeze(0) > a_rng_t[:, 1:2])
             gt_ig = gt_ignore_base.unsqueeze(0) | area_out  # [A, G] bool
         else:
-            gt_ig = torch.zeros((num_A, 0), dtype=torch.bool, device=dev)
+            gt_ig = torch.zeros((num_a, 0), dtype=torch.bool, device=dev)
 
         # --- Match tensors: [A, T, D/G] ---
-        gtm = torch.zeros((num_A, num_T, num_gt), dtype=torch.float64, device=dev)
-        dtm = torch.zeros((num_A, num_T, num_dt), dtype=torch.float64, device=dev)
-        dt_ig_out = torch.zeros((num_A, num_T, num_dt), dtype=torch.float64, device=dev)
+        gtm = torch.zeros((num_a, num_t, num_gt), dtype=torch.float64, device=dev)
+        dtm = torch.zeros((num_a, num_t, num_dt), dtype=torch.float64, device=dev)
+        dt_ig_out = torch.zeros((num_a, num_t, num_dt), dtype=torch.float64, device=dev)
 
         ious_raw = self.ious.get(key, torch.tensor([]))
 
         if ious_raw.numel() > 0 and num_gt > 0 and num_dt > 0:
             ious_f = ious_raw[:num_dt].to(dtype=torch.float64, device=dev)  # [D, G]
             non_ignored = ~gt_ig  # [A, G]
-            matched_gt = torch.zeros((num_A, num_T, num_gt), dtype=torch.bool, device=dev)
+            matched_gt = torch.zeros((num_a, num_t, num_gt), dtype=torch.bool, device=dev)
 
             # Pre-expand constant masks for the matching loop
             iscrowd_exp = gt_iscrowd.unsqueeze(0).unsqueeze(0)  # [1, 1, G]
             t_thrs = iou_thrs_t.unsqueeze(0).unsqueeze(-1)  # [1, T, 1]
             non_ignored_exp = non_ignored.unsqueeze(1)  # [A, 1, G]
             gt_ig_exp = gt_ig.unsqueeze(1)  # [A, 1, G]
-            a_range_idx = torch.arange(num_A, device=dev)
+            a_range_idx = torch.arange(num_a, device=dev)
 
             # Greedy matching per detection, vectorized over [A, T]
             for dind in range(num_dt):
                 iou_d = ious_f[dind]  # [G]
-                iou_atg = iou_d.unsqueeze(0).unsqueeze(0).expand(num_A, num_T, num_gt)
+                iou_atg = iou_d.unsqueeze(0).unsqueeze(0).expand(num_a, num_t, num_gt)
                 above_thr = iou_atg >= t_thrs  # [A, T, G]
                 avail = ~matched_gt | iscrowd_exp  # [A, T, G]
 
@@ -682,10 +684,12 @@ class COCOeval:
 
         # DT area-based ignore: unmatched DTs outside area range
         if num_dt > 0:
-            dt_area_out = (dt_areas.unsqueeze(0) < aRng_t[:, 0:1]) | (dt_areas.unsqueeze(0) > aRng_t[:, 1:2])  # [A, D]
+            dt_area_out = (dt_areas.unsqueeze(0) < a_rng_t[:, 0:1]) | (
+                dt_areas.unsqueeze(0) > a_rng_t[:, 1:2]
+            )  # [A, D]
             dt_ig_out = torch.logical_or(
                 dt_ig_out,
-                torch.logical_and(dtm == 0, dt_area_out.unsqueeze(1).expand(-1, num_T, -1)),
+                torch.logical_and(dtm == 0, dt_area_out.unsqueeze(1).expand(-1, num_t, -1)),
             )
 
         # Build results per area range
@@ -695,12 +699,12 @@ class COCOeval:
         dt_scores_out = dt_scores if num_dt > 0 else empty_t
 
         results: list[EvalImgResult | None] = []
-        for a_idx in range(num_A):
+        for a_idx in range(num_a):
             results.append(
                 EvalImgResult(
                     image_id=imgId,
                     category_id=catId,
-                    aRng=aRngs[a_idx],
+                    aRng=a_rngs[a_idx],
                     maxDet=maxDet,
                     dtIds=dt_ids_out,
                     gtIds=gt_ids_out,

@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import Self, TypeAlias
+from typing import Self
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.utils.dataclass import dataclass_dict
@@ -34,4 +34,4 @@ class CocoCategoriesKeypointDetection(CocoCategoriesObjectDetection):
         return instance
 
 
-CocoCategoriesDetection: TypeAlias = CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection
+type CocoCategoriesDetection = CocoCategoriesObjectDetection | CocoCategoriesKeypointDetection

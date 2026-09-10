@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from pytorchcocotools.utils.stage import StageStore
 
-CocoYear: TypeAlias = Literal[2014, 2015, 2017]
+type CocoYear = Literal[2014, 2015, 2017]
 
 
 @dataclass

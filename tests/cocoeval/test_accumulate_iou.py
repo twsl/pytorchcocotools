@@ -12,7 +12,7 @@ from torch import Tensor
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 from pytorchcocotools.internal.cocoeval_types import Params as Paramspt
 
-TEST_DATA: TypeAlias = tuple[Any, Tensor, Tensor, Tensor]
+type TEST_DATA = tuple[Any, Tensor, Tensor, Tensor]
 
 
 class BBoxCases:

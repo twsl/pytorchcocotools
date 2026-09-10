@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import Self, TypeAlias, cast
+from typing import Self, cast
 
 from pytorchcocotools.internal.entities import Poly
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
@@ -20,4 +20,4 @@ class CocoRLE(BaseCocoEntity):
         return instance
 
 
-Segmentation: TypeAlias = list[Poly] | CocoRLE
+type Segmentation = list[Poly] | CocoRLE

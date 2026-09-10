@@ -10,7 +10,7 @@ from torch import Tensor
 
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
 
-TEST_DATA: TypeAlias = dict[tuple[int, int], list[list[float]]]
+type TEST_DATA = dict[tuple[int, int], list[list[float]]]
 
 
 # TODO: find better results from evaluate to compare against

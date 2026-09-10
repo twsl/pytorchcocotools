@@ -10,7 +10,7 @@ import torch
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt
 from pytorchcocotools.internal.cocoeval_types import EvalImgResult  # noqa: N811
 
-TEST_DATA: TypeAlias = tuple[int, int, tuple[int, int], int, EvalImgResult]
+type TEST_DATA = tuple[int, int, tuple[int, int], int, EvalImgResult]
 
 RANGE1 = (0, int(1e5**2))
 

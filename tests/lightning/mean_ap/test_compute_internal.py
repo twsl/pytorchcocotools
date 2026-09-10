@@ -59,7 +59,7 @@ class TestComputeInternal:
         result_single = m_single.compute()
 
         m_incremental = MeanAveragePrecision(iou_type="bbox")
-        for p, t in zip(multi_image_preds, multi_image_target):
+        for p, t in zip(multi_image_preds, multi_image_target, strict=False):
             m_incremental.update([p], [t])
         result_incremental = m_incremental.compute()
 

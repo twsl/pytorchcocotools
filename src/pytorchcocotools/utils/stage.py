@@ -1,11 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
-
-StorageType = TypeVar("StorageType")
 
 
 @dataclass
-class StageStore(Generic[StorageType]):
+class StageStore[StorageType]:
     train: StorageType | None = field(default=None)
     val: StorageType | None = field(default=None)
     test: StorageType | None = field(default=None)

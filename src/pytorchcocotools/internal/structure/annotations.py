@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import Self, TypeAlias, cast
+from typing import Self, cast
 
 from pytorchcocotools.internal.entities import Poly
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
@@ -62,4 +62,4 @@ class CocoAnnotationKeypointDetection(CocoAnnotationObjectDetection):
         return instance
 
 
-CocoAnnotationDetection: TypeAlias = CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection
+type CocoAnnotationDetection = CocoAnnotationObjectDetection | CocoAnnotationKeypointDetection

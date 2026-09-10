@@ -9,7 +9,8 @@ def _bb_iou_core(dt_xyxy: Tensor, gt_xyxy: Tensor, iscrowd_t: Tensor | None) -> 
     """Compiled kernel for all-pairs bounding-box IoU.
 
     Note:
-        implementation equal to `torchvision.ops.boxes.box_iou` but with optional crowd handling and fused arithmetic for speed.
+        Implementation equal to `torchvision.ops.boxes.box_iou` but with optional crowd handling and
+        fused arithmetic for speed.
 
     Args:
          dt_xyxy: Detection boxes in XYXY format (shape: [m, 4]).

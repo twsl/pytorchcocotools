@@ -1,13 +1,11 @@
 from collections.abc import Callable
 import inspect
-from typing import Any, TypeVar, cast
-
-F = TypeVar("F", bound=Callable[..., Any])
+from typing import Any, cast
 
 _TORCH_WRAPPED_CALLABLE_ATTRIBUTES = ("_torchdynamo_orig_callable",)
 
 
-def resolve_actual_function(func: F) -> F:
+def resolve_actual_function[F: Callable[..., Any]](func: F) -> F:
     """Resolve the innermost Python function for a decorated callable."""
     resolved: object = inspect.unwrap(func)
     seen = {id(resolved)}

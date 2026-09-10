@@ -56,11 +56,11 @@ class TestStressUpdate:
         m_batch.update(preds, target)
 
         m_incremental = MeanAveragePrecision(iou_type="bbox")
-        for p, t in zip(preds, target):
+        for p, t in zip(preds, target, strict=False):
             m_incremental.update([p], [t])
 
         assert len(m_batch.detection_box) == len(m_incremental.detection_box)
-        for b, inc in zip(m_batch.detection_box, m_incremental.detection_box):
+        for b, inc in zip(m_batch.detection_box, m_incremental.detection_box, strict=False):
             torch.testing.assert_close(b, inc)
 
     def test_reset_after_large_update_pt(self, make_stress_batch: MakeStressBatch) -> None:
