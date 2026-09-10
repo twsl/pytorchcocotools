@@ -26,10 +26,10 @@ on:
         type: string
         default: "-v"
       # python_version:
-      #   description: "Python version to test against (e.g. 3.10, 3.11)"
+      #   description: "Python version to test against (e.g. 3.12)"
       #   required: false
       #   type: string
-      #   default: "3.11"
+      #   default: "3.12"
 
 permissions:
   contents: read
@@ -38,7 +38,7 @@ permissions:
 
 env:
   artifacts-name: pytest-output-gpu
-  python-version: "3.11"
+  python-version: "3.12"
 
 jobs:
   gpu-tests:
