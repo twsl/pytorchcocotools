@@ -175,4 +175,6 @@ junit/
 logs/
 
 # claude
-.claude
+.claude/
+
+.codegraph/
