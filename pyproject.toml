@@ -55,7 +55,7 @@ default-groups = "all"
 [dependency-groups]
 dev = [
     "ruff>=0.16.6",
-    "ty>=0.0.78",
+    "ty>=0.0.79",
     "bandit>=1.9.4",
     "prek>=0.5.1",
     "vulture>=2.16",
@@ -78,7 +78,7 @@ test = [
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.7",
-    "mkdocs-git-revision-date-localized-plugin>=1.5.3",
+    "mkdocs-git-revision-date-localized-plugin>=1.5.4",
     "mkdocs-awesome-nav>=3.3.0",
     "mkdocs-git-authors-plugin>=0.10.0",
     "mkapi>=4.5.0",
