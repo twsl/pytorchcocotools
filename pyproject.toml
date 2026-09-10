@@ -281,7 +281,7 @@ skips = ['*_test.py', '*/test_*.py']
 [tool.ty.environment]
 python-version = "3.12"
 python-platform = "linux"
-root = ["./src"]
+root = ["./src", "./tests"]
 
 [tool.ty.analysis]
 # `fiftyone` is an optional, notebook-only dependency that is not installed.
