@@ -1,4 +1,5 @@
 from dataclasses import field
+from typing import cast
 
 from pytorchcocotools.internal.structure.base import BaseCocoEntity
 from pytorchcocotools.internal.structure.rle import CocoRLE
@@ -59,5 +60,5 @@ class CocoImageCaptioningResult(BaseCocoEntity):
 
 @dataclass_dict
 class CocoDensePoseResult(CocoObjectDetectionResult):
-    uv_shape: tuple[int, int, int] = field(default_factory=tuple[int, int, int])
+    uv_shape: tuple[int, int, int] = field(default_factory=lambda: cast(tuple[int, int, int], ()))
     uv_data: str = ""

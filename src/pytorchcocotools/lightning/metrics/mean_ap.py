@@ -290,11 +290,11 @@ class MeanAveragePrecision(Metric):
     plot_upper_bound: float = 1.0
 
     detection_box: list[Tensor]
-    detection_mask: list[Tensor]
+    detection_mask: list[tuple[Any, ...]]
     detection_scores: list[Tensor]
     detection_labels: list[Tensor]
     groundtruth_box: list[Tensor]
-    groundtruth_mask: list[Tensor]
+    groundtruth_mask: list[tuple[Any, ...]]
     groundtruth_labels: list[Tensor]
     groundtruth_crowds: list[Tensor]
     groundtruth_area: list[Tensor]
@@ -411,7 +411,7 @@ class MeanAveragePrecision(Metric):
             if bbox_detection is not None:
                 self.detection_box.append(bbox_detection)
             if mask_detection is not None:
-                self.detection_mask.append(mask_detection)  # type: ignore[arg-type]
+                self.detection_mask.append(mask_detection)
             self.detection_labels.append(item["labels"])
             self.detection_scores.append(item["scores"])
 
@@ -420,7 +420,7 @@ class MeanAveragePrecision(Metric):
             if bbox_groundtruth is not None:
                 self.groundtruth_box.append(bbox_groundtruth)
             if mask_groundtruth is not None:
-                self.groundtruth_mask.append(mask_groundtruth)  # type: ignore[arg-type]
+                self.groundtruth_mask.append(mask_groundtruth)
             self.groundtruth_labels.append(item["labels"])
             self.groundtruth_crowds.append(item.get("iscrowd", torch.zeros_like(item["labels"])))
             self.groundtruth_area.append(item.get("area", torch.zeros_like(item["labels"])))
@@ -593,7 +593,7 @@ class MeanAveragePrecision(Metric):
     def coco_to_tm(
         coco_preds: str,
         coco_target: str,
-        iou_type: Literal["bbox", "segm"] | list[str] = "bbox",
+        iou_type: Literal["bbox", "segm"] | tuple[Literal["bbox", "segm"], ...] = "bbox",
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         """Utility function for converting .json coco format files to the input format of this metric.
 
@@ -621,7 +621,7 @@ class MeanAveragePrecision(Metric):
             ... )  # doctest: +SKIP
 
         """
-        iou_type = _validate_iou_type_arg(iou_type)  # type: ignore[arg-type]
+        iou_type = _validate_iou_type_arg(iou_type)
 
         with contextlib.redirect_stdout(io.StringIO()):
             gt = COCO(coco_target)
@@ -768,7 +768,9 @@ class MeanAveragePrecision(Metric):
         with Path.open(Path(f"{name}_target.json"), "w") as f:
             f.write(target_json)
 
-    def _get_safe_item_values(self, item: dict[str, Any], warn: bool = False) -> tuple[Tensor | None, tuple | None]:
+    def _get_safe_item_values(
+        self, item: dict[str, Any], warn: bool = False
+    ) -> tuple[Tensor | None, tuple[Any, ...] | None]:
         """Convert and return the boxes or masks from the item depending on the iou_type.
 
         Args:
@@ -781,25 +783,26 @@ class MeanAveragePrecision(Metric):
         """
         from torchvision.ops import box_convert
 
-        output = [None, None]
+        boxes_out: Tensor | None = None
+        masks_out: tuple[Any, ...] | None = None
         if "bbox" in self.iou_type:
             boxes = _fix_empty_tensors(item["boxes"])
             if boxes.numel() > 0:
                 boxes = box_convert(boxes, in_fmt=self.box_format, out_fmt="xywh")
-            output[0] = boxes  # type: ignore[call-overload]
+            boxes_out = boxes
         if "segm" in self.iou_type:
             masks = []
             for i in item["masks"]:
                 encoded = mask_utils.encode(i)
                 rle = encoded[0]
                 masks.append((tuple(rle.size), rle.counts))
-            output[1] = tuple(masks)  # type: ignore[call-overload]
+            masks_out = tuple(masks)
         if warn and (
-            (output[0] is not None and len(output[0]) > self.max_detection_thresholds[-1])
-            or (output[1] is not None and len(output[1]) > self.max_detection_thresholds[-1])
+            (boxes_out is not None and len(boxes_out) > self.max_detection_thresholds[-1])
+            or (masks_out is not None and len(masks_out) > self.max_detection_thresholds[-1])
         ):
             _warning_on_too_many_detections(self.max_detection_thresholds[-1])
-        return output  # type: ignore[return-value]
+        return boxes_out, masks_out
 
     def _get_classes(self) -> list:
         """Return a list of unique classes found in ground truth and detection data."""
@@ -813,7 +816,7 @@ class MeanAveragePrecision(Metric):
         all_labels: list[int],
         average: Literal["macro", "micro"],
         boxes: list[torch.Tensor] | None = None,
-        masks: list[torch.Tensor] | None = None,
+        masks: list[Any] | None = None,
         scores: list[torch.Tensor] | None = None,
         crowds: list[torch.Tensor] | None = None,
         area: list[torch.Tensor] | None = None,
@@ -837,7 +840,7 @@ class MeanAveragePrecision(Metric):
 
             image = CocoImage(id=image_id)
             if "segm" in self.iou_type and len(image_masks) > 0:
-                image.height, image.width = image_masks[0][0][0], image_masks[0][0][1]  # type: ignore[assignment]
+                image.height, image.width = int(image_masks[0][0][0]), int(image_masks[0][0][1])
             dataset.images.append(image)
 
             for k, image_label in enumerate(image_labels):
@@ -977,7 +980,7 @@ class MeanAveragePrecision(Metric):
     # specialized synchronization and apply functions for this metric
     # --------------------
 
-    def _apply(self, fn: Callable) -> torch.nn.Module:  # type: ignore[override]
+    def _apply(self, fn: Callable, exclude_state: Sequence[str] = "") -> torch.nn.Module:
         """Custom apply function.
 
         Excludes the detections and groundtruths from the casting when the iou_type is set to `segm` as the state is
@@ -993,11 +996,14 @@ class MeanAveragePrecision(Metric):
         to gather the list of tuples and then convert it back to a list of tuples.
 
         """
-        super()._sync_dist(dist_sync_fn=dist_sync_fn, process_group=process_group)  # type: ignore[arg-type]
+        if dist_sync_fn is None:
+            super()._sync_dist(process_group=process_group)
+        else:
+            super()._sync_dist(dist_sync_fn=dist_sync_fn, process_group=process_group)
 
         if "segm" in self.iou_type:
-            self.detection_mask = self._gather_tuple_list(self.detection_mask, process_group)  # type: ignore[arg-type]
-            self.groundtruth_mask = self._gather_tuple_list(self.groundtruth_mask, process_group)  # type: ignore[arg-type]
+            self.detection_mask = self._gather_tuple_list(self.detection_mask, process_group)
+            self.groundtruth_mask = self._gather_tuple_list(self.groundtruth_mask, process_group)
 
     @staticmethod
     def _gather_tuple_list(list_to_gather: list[tuple], process_group: Any | None = None) -> list[Any]:
@@ -1014,14 +1020,14 @@ class MeanAveragePrecision(Metric):
         world_size = dist.get_world_size(group=process_group)  # type: ignore[attr-defined]
         dist.barrier(group=process_group)  # type: ignore[attr-defined]
 
-        list_gathered = [None for _ in range(world_size)]
+        list_gathered: list[Any] = [None for _ in range(world_size)]
         dist.all_gather_object(  # type: ignore[attr-defined]
             list_gathered,
             list_to_gather,
             group=process_group,
         )
 
-        return [list_gathered[rank][idx] for idx in range(len(list_gathered[0])) for rank in range(world_size)]  # type: ignore[arg-type,index]
+        return [list_gathered[rank][idx] for idx in range(len(list_gathered[0])) for rank in range(world_size)]
 
 
 def _warning_on_too_many_detections(limit: int) -> None:

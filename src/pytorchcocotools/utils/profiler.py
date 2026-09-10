@@ -98,7 +98,7 @@ class CombinedProfiler:
             target = unwrap_function(func) if self.unwrap_decorated else func
             lp.add_function(target)
             if target is not func:
-                self.logger.debug(f"Unwrapped function: {target.__name__}")
+                self.logger.debug(f"Unwrapped function: {getattr(target, '__name__', target)}")
         return lp
 
     def _initialize_activities(self, activities) -> list[ProfilerActivity]:

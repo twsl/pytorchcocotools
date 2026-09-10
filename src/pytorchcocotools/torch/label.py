@@ -43,10 +43,11 @@ class _LabelBase(TVTensor):
 
 class Label(_LabelBase):
     def to_categories(self) -> Any:
-        if self.categories is None:
+        categories = self.categories
+        if categories is None:
             raise RuntimeError("Label does not have categories")
 
-        return tree_map(lambda idx: self.categories[idx], self.tolist())  # type: ignore[index]
+        return tree_map(lambda idx: categories[idx], self.tolist())
 
 
 class OneHotLabel(_LabelBase):

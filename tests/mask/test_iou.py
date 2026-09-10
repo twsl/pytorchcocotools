@@ -143,11 +143,13 @@ def test_iou(
         obj_np2 = [rle_np2]
         obj_pt1 = [rle_pt1]
         obj_pt2 = [rle_pt2]
-    else:
+    elif isinstance(mask_pt1, tv.BoundingBoxes) and isinstance(mask_pt2, tv.BoundingBoxes):
         obj_np1 = mask_np1
         obj_np2 = mask_np2
         obj_pt1 = mask_pt1
         obj_pt2 = mask_pt2
+    else:
+        raise TypeError("obj1 and obj2 must both be masks or both be bounding boxes")
 
     # compute the iou
     iscrowd = [bool(c) for c in iscrowd]

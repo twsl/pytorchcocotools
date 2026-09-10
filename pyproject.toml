@@ -283,6 +283,13 @@ python-version = "3.12"
 python-platform = "linux"
 root = ["./src"]
 
+[tool.ty.analysis]
+# `fiftyone` is an optional, notebook-only dependency that is not installed.
+allowed-unresolved-imports = ["fiftyone.**"]
+# `torchmetrics.metric.Metric` reassigns `update`/`compute` as instance attributes in `__init__`,
+# which makes ty widen every subclass call to a union with the unbound base methods.
+replace-imports-with-any = ["torchmetrics.metric"]
+
 [tool.pre-commit-update.yaml]
 mapping = 2
 sequence = 4

@@ -62,7 +62,7 @@ class CocoCaptionDataset(CocoDetectionDataset):
     categories: list[CocoCategoriesObjectDetection] = field(default_factory=list[CocoCategoriesObjectDetection])
 
     @classmethod
-    def _get_annotation(cls, annotation: dict) -> CocoAnnotationImageCaptioning:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _get_annotation(cls, annotation: dict) -> CocoAnnotationImageCaptioning:  # ty: ignore[invalid-method-override]
         return CocoAnnotationImageCaptioning.from_dict(annotation)
 
     @classmethod
@@ -80,7 +80,7 @@ class CocoPanopticDataset(CocoDetectionDataset):
     )
 
     @classmethod
-    def _get_annotation(cls, annotation: dict) -> CocoAnnotationPanopticSegmentation:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _get_annotation(cls, annotation: dict) -> CocoAnnotationPanopticSegmentation:  # ty: ignore[invalid-method-override]
         return CocoAnnotationPanopticSegmentation.from_dict(annotation)
 
     @classmethod

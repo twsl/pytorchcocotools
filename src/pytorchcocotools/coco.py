@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 import time
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
@@ -265,7 +265,6 @@ class COCO:
             for ann in annotations:
                 c = (torch.rand((1, 3)) * 0.6 + 0.4).tolist()[0]
                 if "segmentation" in ann:  # isinstance(ann, CocoAnnotationObjectDetection)
-                    ann = cast(CocoAnnotationObjectDetection, ann)
                     if isinstance(ann.segmentation, list):
                         # polygon
                         for seg in ann.segmentation:
@@ -393,7 +392,7 @@ class COCO:
         new_anns = []
         for id, ann in enumerate(anns):
             if "keypoints" in ann:
-                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
+                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(cast(Any, ann)))
                 s = ann["keypoints"]
                 x = s[::3]
                 y = s[1::3]
@@ -403,7 +402,7 @@ class COCO:
                 new_ann.bbox = [x0, y0, x1 - x0, y1 - y0]
                 new_anns.append(new_ann)
             elif "bbox" in ann and ann["bbox"] != []:
-                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
+                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(cast(Any, ann)))
                 bb = ann.bbox
                 x1, x2, y1, y2 = [bb[0], bb[0] + bb[2], bb[1], bb[1] + bb[3]]
                 new_ann.segmentation = ann.get("segmentation", [[x1, y1, x1, y2, x2, y2, x2, y1]])
@@ -412,11 +411,12 @@ class COCO:
                 new_ann.iscrowd = False
                 new_anns.append(new_ann)
             elif "segmentation" in ann:
-                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
+                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(cast(Any, ann)))
                 # now only support compressed RLE format as segmentation results
-                new_ann.area = float(mask.area(cast(RleObjs, ann.segmentation))[0])  # pyright: ignore[reportAttributeAccessIssue]
+                segmentation = cast(CocoAnnotationObjectDetection, ann).segmentation
+                new_ann.area = float(mask.area(cast(RleObjs, segmentation))[0])
                 if "bbox" not in ann:
-                    new_ann.bbox = mask.toBbox(cast(RleObjs, ann.segmentation))  # pyright: ignore[reportAttributeAccessIssue]
+                    new_ann.bbox = cast(list[float], mask.toBbox(cast(RleObjs, segmentation)))
                 else:
                     new_ann.bbox = ann.bbox
                 new_ann.id = id + 1
@@ -470,7 +470,7 @@ class COCO:
         if isinstance(segm, list):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
-            rles = cast(RleObjs, mask.frPyObjects(cast(list[list[float]], segm), h, w))
+            rles = mask.frPyObjects(segm, h, w)
             merged = mask.merge(rles)
             return merged
         elif isinstance(segm, dict) and isinstance(segm["counts"], list):

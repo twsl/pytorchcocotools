@@ -83,7 +83,7 @@ def convert_params(params: Paramspt | None) -> Paramsnp | None:
     p = Paramsnp(params.iouType)
     p.imgIds = params.imgIds
     p.catIds = params.catIds
-    p.areaRng = cast(list[list[float]], params.areaRng)
+    p.areaRng = [list(r) for r in params.areaRng]
     p.maxDets = params.maxDets
     p.useCats = params.useCats
     p.iouThrs = params.iouThrs.numpy()
@@ -106,9 +106,10 @@ def test_accumulate_np(
     # coco_eval_np.accumulate()
     benchmark(coco_eval_np.accumulate, params_np)
     scores, precision, recall = result
-    assert np.allclose(coco_eval_np.eval["scores"].mean(), scores.numpy())
-    assert np.allclose(coco_eval_np.eval["precision"].mean(), precision.numpy())
-    assert np.allclose(coco_eval_np.eval["recall"].mean(), recall.numpy())
+    eval_np = cast(dict[str, Any], coco_eval_np.eval)
+    assert np.allclose(eval_np["scores"].mean(), scores.numpy())
+    assert np.allclose(eval_np["precision"].mean(), precision.numpy())
+    assert np.allclose(eval_np["recall"].mean(), recall.numpy())
 
 
 @pytest.mark.benchmark(group="accumulateIoU", warmup=True)
@@ -141,6 +142,7 @@ def test_accumulate(
     assert torch.allclose(coco_eval_pt.eval.scores.mean(), scores)
     assert torch.allclose(coco_eval_pt.eval.precision.mean(), precision)
     assert torch.allclose(coco_eval_pt.eval.recall.mean(), recall)
-    assert np.allclose(coco_eval_np.eval["scores"].mean(), scores.numpy())
-    assert np.allclose(coco_eval_np.eval["precision"].mean(), precision.numpy())
-    assert np.allclose(coco_eval_np.eval["recall"].mean(), recall.numpy())
+    eval_np = cast(dict[str, Any], coco_eval_np.eval)
+    assert np.allclose(eval_np["scores"].mean(), scores.numpy())
+    assert np.allclose(eval_np["precision"].mean(), precision.numpy())
+    assert np.allclose(eval_np["recall"].mean(), recall.numpy())

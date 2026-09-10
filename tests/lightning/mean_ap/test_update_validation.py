@@ -18,7 +18,7 @@ class TestMeanAveragePrecisionUpdateValidation:
     ) -> None:
         m = MeanAveragePrecision(iou_type="bbox")
         with pytest.raises((ValueError, TypeError, AttributeError)):
-            m.update(bbox_preds, Tensor([[1.0, 2.0, 3.0, 4.0]]))  # type: ignore[arg-type]
+            m.update(bbox_preds, Tensor([[1.0, 2.0, 3.0, 4.0]]))  # ty: ignore[invalid-argument-type]
 
     def test_missing_pred_boxes_key_raises_pt(
         self,
@@ -54,7 +54,7 @@ class TestMeanAveragePrecisionUpdateValidation:
         m = MeanAveragePrecision(iou_type="bbox")
         bad_target = [{"labels": IntTensor([0])}]
         with pytest.raises((ValueError, KeyError), match="boxes"):
-            m.update(bbox_preds, bad_target)
+            m.update(bbox_preds, bad_target)  # ty: ignore[invalid-argument-type]
 
     def test_missing_target_labels_key_raises_pt(
         self,
@@ -72,7 +72,7 @@ class TestMeanAveragePrecisionUpdateValidation:
         m = MeanAveragePrecision(iou_type="bbox")
         bad_preds = [{"boxes": [[258.0, 41.0, 606.0, 285.0]], "scores": Tensor([0.9]), "labels": IntTensor([0])}]
         with pytest.raises((ValueError, TypeError, AttributeError)):
-            m.update(bad_preds, bbox_target)  # type: ignore[arg-type]
+            m.update(bad_preds, bbox_target)  # ty: ignore[invalid-argument-type]
 
     def test_non_tensor_scores_raises_pt(
         self,
@@ -81,7 +81,7 @@ class TestMeanAveragePrecisionUpdateValidation:
         m = MeanAveragePrecision(iou_type="bbox")
         bad_preds = [{"boxes": Tensor([[258.0, 41.0, 606.0, 285.0]]), "scores": [0.9], "labels": IntTensor([0])}]
         with pytest.raises((ValueError, TypeError, AttributeError)):
-            m.update(bad_preds, bbox_target)  # type: ignore[arg-type]
+            m.update(bad_preds, bbox_target)  # ty: ignore[invalid-argument-type]
 
     def test_non_tensor_labels_raises_pt(
         self,
@@ -90,7 +90,7 @@ class TestMeanAveragePrecisionUpdateValidation:
         m = MeanAveragePrecision(iou_type="bbox")
         bad_preds = [{"boxes": Tensor([[258.0, 41.0, 606.0, 285.0]]), "scores": Tensor([0.9]), "labels": [0]}]
         with pytest.raises((ValueError, TypeError, AttributeError)):
-            m.update(bad_preds, bbox_target)  # type: ignore[arg-type]
+            m.update(bad_preds, bbox_target)  # ty: ignore[invalid-argument-type]
 
     def test_warning_on_many_detections_pt(self) -> None:
         """Should warn when a single image has >100 detections."""
@@ -122,7 +122,7 @@ class TestMeanAveragePrecisionUpdateValidation:
     ) -> None:
         m = MeanAveragePrecision(iou_type="bbox")
         with pytest.raises((ValueError, TypeError)):
-            m.update("not a list", bbox_target)  # type: ignore[arg-type]
+            m.update("not a list", bbox_target)  # ty: ignore[invalid-argument-type]
 
     def test_mismatched_lengths_raises_pt(
         self,

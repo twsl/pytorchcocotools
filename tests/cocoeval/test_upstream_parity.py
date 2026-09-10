@@ -12,14 +12,16 @@ from pycocotools.coco import COCO as COCOnp  # noqa: N811
 from pycocotools.cocoeval import COCOeval as COCOevalnp  # noqa: N811
 import pytest
 import torch
+from torchvision import tv_tensors as tv
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO as COCOpt  # noqa: N811
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
+from pytorchcocotools.internal.entities import IoUType
 
 
 def _dataset(
-    iou_type: str, annotations: list[dict[str, Any]], images: list[dict[str, Any]] | None = None
+    iou_type: IoUType, annotations: list[dict[str, Any]], images: list[dict[str, Any]] | None = None
 ) -> dict[str, Any]:
     if images is None:
         images = [{"id": 1, "width": 640, "height": 480, "file_name": "test.jpg"}]
@@ -47,7 +49,9 @@ def _det(bbox: list[float], *, image_id: int = 1, score: float = 0.9, **extra: A
     return {"image_id": image_id, "category_id": 1, "bbox": bbox, "score": score, **extra}
 
 
-def _stats(dataset: dict[str, Any], detections: list[dict[str, Any]], iou_type: str) -> tuple[np.ndarray, np.ndarray]:
+def _stats(
+    dataset: dict[str, Any], detections: list[dict[str, Any]], iou_type: IoUType
+) -> tuple[np.ndarray, np.ndarray]:
     with tempfile.TemporaryDirectory() as directory:
         gt_path = Path(directory) / "gt.json"
         dt_path = Path(directory) / "dt.json"
@@ -64,7 +68,7 @@ def _stats(dataset: dict[str, Any], detections: list[dict[str, Any]], iou_type: 
         eval_pt.evaluate()
         eval_pt.accumulate()
 
-        return eval_np.stats, eval_pt.stats.detach().cpu().numpy()
+        return np.asarray(eval_np.stats), eval_pt.stats.detach().cpu().numpy()
 
 
 def test_upstream_empty_gt_and_all_crowd_cases_match_reference() -> None:
@@ -117,7 +121,7 @@ def test_upstream_segmentation_and_keypoint_cases_match_reference() -> None:
 
 
 def test_upstream_rle_counts_forms_round_trip() -> None:
-    array = torch.zeros((10, 10), dtype=torch.uint8)
+    array = tv.Mask(torch.zeros((10, 10), dtype=torch.uint8))
     array[2:5, 2:5] = 1
     encoded = mask.encode(array)
     assert mask.decode(encoded).sum().item() == 9

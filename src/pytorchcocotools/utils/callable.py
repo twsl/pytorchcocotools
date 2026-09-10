@@ -1,6 +1,6 @@
 from collections.abc import Callable
 import inspect
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -21,7 +21,7 @@ def resolve_actual_function(func: F) -> F:
                 break
 
         if next_resolved is None or id(next_resolved) in seen:
-            return resolved  # pyright: ignore[reportReturnType]
+            return cast(F, resolved)
 
         seen.add(id(next_resolved))
         resolved = next_resolved

@@ -50,8 +50,6 @@ class COCOeval:
             requires_grad: Whether the bounding boxes require gradients.
         """
         self.logger = get_logger(__name__) if enable_logging else logging.getLogger(__name__)
-        if not iouType:
-            self.logger.info("iouType not specified. use default iouType segm")
         self.cocoGt = cocoGt or COCO()  # ground truth COCO API
         self.cocoDt = cocoDt or COCO()  # detections COCO API
         self.eval_imgs: list[EvalImgResult | None] = []  # per-image per-category evaluation results [KxAxI] elements
@@ -212,8 +210,6 @@ class COCOeval:
                 gt.extend(self._gts[imgId, c_id])
                 dt.extend(self._dts[imgId, c_id])
 
-        gt = cast(list[CocoAnnotationObjectDetection], gt)
-        dt = cast(list[CocoAnnotationObjectDetection], dt)
         if len(gt) == 0 or len(dt) == 0:
             return Tensor([])
         if not self.params.useCats:
