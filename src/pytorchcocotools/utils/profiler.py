@@ -6,7 +6,7 @@ from typing import Any
 
 from line_profiler import LineProfiler
 import torch
-from torch.autograd import ProfilerActivity  # pyright: ignore[reportPrivateImportUsage]
+from torch.autograd import ProfilerActivity
 from torch.profiler import profile as TorchProfiler  # noqa: N812
 
 from pytorchcocotools.utils.callable import resolve_actual_function
@@ -110,7 +110,9 @@ class CombinedProfiler:
             return activities
         return activities
 
-    def _initialize_trace(self, on_trace_ready: Callable | None) -> Callable[..., None]:
+    def _initialize_trace(
+        self, on_trace_ready: Callable[[torch.profiler.profile], None] | None
+    ) -> Callable[[torch.profiler.profile], None]:
         """Initialize the output directory and trace handler."""
         if on_trace_ready is None:
             self.output_dir.mkdir(parents=True, exist_ok=True)

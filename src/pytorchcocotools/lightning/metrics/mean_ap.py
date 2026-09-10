@@ -331,7 +331,7 @@ class MeanAveragePrecision(Metric):
             raise ValueError(f"Expected argument `box_format` to be one of {allowed_box_formats} but got {box_format}")
         self.box_format = box_format
 
-        self.iou_type = _validate_iou_type_arg(iou_type)  # pyright: ignore[reportArgumentType]
+        self.iou_type = _validate_iou_type_arg(iou_type)
 
         if iou_thresholds is not None and not isinstance(iou_thresholds, list):
             raise ValueError(
@@ -910,8 +910,8 @@ class MeanAveragePrecision(Metric):
     def plot(
         self,
         val: dict[str, Tensor] | Sequence[dict[str, Tensor]] | None = None,
-        ax: _AX_TYPE | None = None,  # pyright: ignore[reportInvalidTypeForm]
-    ) -> _PLOT_OUT_TYPE:  # pyright: ignore[reportInvalidTypeForm]
+        ax: _AX_TYPE | None = None,
+    ) -> _PLOT_OUT_TYPE:
         """Plot a single or multiple values from the metric.
 
         Args:

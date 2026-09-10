@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Any, Self, TypeVar
 
 import torch
-from torch.utils._pytree import tree_map  # pyright: ignore[reportPrivateImportUsage]
+from torch.utils._pytree import tree_map
 from torchvision.tv_tensors._tv_tensor import TVTensor
 
 L = TypeVar("L", bound="_LabelBase")

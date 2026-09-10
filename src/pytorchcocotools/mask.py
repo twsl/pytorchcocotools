@@ -114,12 +114,12 @@ def encode(
     """
     if len(bimask.shape) == 3:
         if channel_last:
-            bimask = tv.wrap(bimask.permute(2, 0, 1), like=bimask, device=device, requires_grad=requires_grad)  # pyright: ignore[reportAssignmentType]
+            bimask = tv.wrap(bimask.permute(2, 0, 1), like=bimask, device=device, requires_grad=requires_grad)
         return _mask.encode(bimask, device=device, requires_grad=requires_grad)
     elif len(bimask.shape) == 2:
         bimask_unsq = tv.wrap(bimask.unsqueeze(dim=0), like=bimask, device=device, requires_grad=requires_grad)
         # return _mask.encode(bimask)[0]  # original implementation
-        return _mask.encode(bimask_unsq, device=device, requires_grad=requires_grad)  # pyright: ignore[reportArgumentType]
+        return _mask.encode(bimask_unsq, device=device, requires_grad=requires_grad)
     else:
         raise ValueError("encode expects a binary mask or batch of binary masks")
 

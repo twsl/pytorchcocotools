@@ -19,7 +19,7 @@ class AnnToMaskCases:
             "size": [427, 640],
             "counts": b"RT_32X<9SD3f;3ZDNb;5_DKU;DeDd05HU;b0kD_OS;b0nD]OQ;e0nD[OR;e0nD[OR;f0nDZOQ;f0oDZOQ;f0oDZOQ;g0oDXOQ;h0oDXOQ;h0oDXOQ;i0oDVOQ;j0oDVOQ;k0nDTOS;l0mDTOS;l0nDSOR;l0oDmNX;n0f0J5J6A^C0g<N=O001O0O2Omk^4",
         }
-        mask = decode(data)  # pyright: ignore[reportArgumentType]
+        mask = decode(data)
         return (2096753, mask)
 
 

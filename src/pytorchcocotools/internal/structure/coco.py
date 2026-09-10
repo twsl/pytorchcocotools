@@ -58,7 +58,7 @@ class CocoDetectionDataset(BaseCocoEntity):
 
 @dataclass_dict
 class CocoCaptionDataset(CocoDetectionDataset):
-    annotations: list[CocoAnnotationImageCaptioning] = field(default_factory=list[CocoAnnotationImageCaptioning])  # pyright: ignore[reportIncompatibleVariableOverride]
+    annotations: list[CocoAnnotationImageCaptioning] = field(default_factory=list[CocoAnnotationImageCaptioning])
     categories: list[CocoCategoriesObjectDetection] = field(default_factory=list[CocoCategoriesObjectDetection])
 
     @classmethod
@@ -72,10 +72,10 @@ class CocoCaptionDataset(CocoDetectionDataset):
 
 @dataclass_dict
 class CocoPanopticDataset(CocoDetectionDataset):
-    annotations: list[CocoAnnotationPanopticSegmentation] = field(  # pyright: ignore[reportIncompatibleVariableOverride]
+    annotations: list[CocoAnnotationPanopticSegmentation] = field(
         default_factory=list[CocoAnnotationPanopticSegmentation]
     )
-    categories: list[CocoCategoriesPanopticSegmentation] = field(  # pyright: ignore[reportIncompatibleVariableOverride]
+    categories: list[CocoCategoriesPanopticSegmentation] = field(
         default_factory=list[CocoCategoriesPanopticSegmentation]
     )
 

@@ -195,7 +195,7 @@ def test_frPyObjects(device: str, h: int, w: int, obj: PyObj, result) -> None:  
         obj_np = obj
 
     # convert the polygon to a mask
-    mask_np = mask.frPyObjects(obj_np, h, w)  # pyright: ignore[reportCallIssue,reportArgumentType]
+    mask_np = mask.frPyObjects(obj_np, h, w)
     mask_pt = tmask.frPyObjects(obj, h, w, device=device)
 
     # fix output

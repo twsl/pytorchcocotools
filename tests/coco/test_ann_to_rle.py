@@ -48,7 +48,7 @@ def test_annToRLE(coco_np: COCOnp, coco_pt: COCOpt, ann_id: int, result: RleObj)
     ann_np = coco_np.loadAnns(ann_id)
     ann_pt = coco_pt.loadAnns(ann_id)
     # get the RLE for the annotation
-    rle_np: dict = coco_np.annToRLE(ann_np[0])  # pyright:ignore[reportCallIssue, reportArgumentType]
+    rle_np: dict = coco_np.annToRLE(ann_np[0])
     rle_pt = cast(RleObj, coco_pt.annToRLE(ann_pt[0]))
     # compare the results
     assert rle_np == rle_pt.__dict__
