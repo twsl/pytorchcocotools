@@ -57,6 +57,7 @@ class COCO:
         self.imgs: dict[int, CocoImage] = {}
         self.imgToAnns: defaultdict[int, list[CocoAnnotationDetection]] = defaultdict(list[CocoAnnotationDetection])
         self.catToImgs: defaultdict[int, list[int]] = defaultdict(list[int])
+        self.dataset = CocoDetectionDataset()
         self.logger = get_logger(self.__class__.__name__) if enable_logging else logging.getLogger(__name__)
         self.device = device
         self.requires_grad = requires_grad if requires_grad is not None else False
@@ -391,7 +392,17 @@ class COCO:
 
         new_anns = []
         for id, ann in enumerate(anns):
-            if "bbox" in ann and ann["bbox"] != []:
+            if "keypoints" in ann:
+                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
+                s = ann["keypoints"]
+                x = s[::3]
+                y = s[1::3]
+                x0, x1, y0, y1 = min(x), max(x), min(y), max(y)
+                new_ann.area = float((x1 - x0) * (y1 - y0))
+                new_ann.id = id + 1
+                new_ann.bbox = [x0, y0, x1 - x0, y1 - y0]
+                new_anns.append(new_ann)
+            elif "bbox" in ann and ann["bbox"] != []:
                 new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
                 bb = ann.bbox
                 x1, x2, y1, y2 = [bb[0], bb[0] + bb[2], bb[1], bb[1] + bb[3]]
@@ -410,17 +421,6 @@ class COCO:
                     new_ann.bbox = ann.bbox
                 new_ann.id = id + 1
                 new_ann.iscrowd = False
-                new_anns.append(new_ann)
-            elif "keypoints" in ann:
-                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(ann))  # pyright: ignore [reportArgumentType]
-                # keypoints
-                s = ann["keypoints"]
-                x = s[::3]
-                y = s[1::3]
-                x0, x1, y0, y1 = min(x), max(x), min(y), max(y)
-                new_ann.area = float((x1 - x0) * (y1 - y0))
-                new_ann.id = id + 1
-                new_ann.bbox = [x0, y0, x1 - x0, y1 - y0]
                 new_anns.append(new_ann)
         self.logger.info(f"DONE (t={time.time() - tic:0.2f}s)")
 
