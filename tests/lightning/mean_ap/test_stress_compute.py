@@ -6,7 +6,6 @@ Covers compute correctness and benchmarks at scale (25–50 boxes per image,
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from copy import deepcopy
 
 import pytest
@@ -16,12 +15,14 @@ from torch import Tensor
 
 from pytorchcocotools.lightning.metrics.mean_ap import MeanAveragePrecision
 
+from .protocols import AssertMapClose, ComputeFn, MakeStressBatch
+
 
 class TestStressCompute:
     def test_compute_incremental_vs_batch_large_pt(
         self,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        make_stress_batch: MakeStressBatch,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """Incremental vs batch update must produce identical compute() results."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=30)
@@ -31,7 +32,7 @@ class TestStressCompute:
         result_batch = m_batch.compute()
 
         m_inc = MeanAveragePrecision(iou_type="bbox")
-        for p, t in zip(preds, target):
+        for p, t in zip(preds, target, strict=False):
             m_inc.update([p], [t])
         result_inc = m_inc.compute()
 
@@ -45,10 +46,10 @@ class TestStressCompute:
     def test_compute_25_50_boxes(
         self,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """compute() output on large batches must match torchmetrics reference."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=n_boxes)
@@ -62,8 +63,8 @@ class TestStressCompute:
         self,
         benchmark: BenchmarkFixture,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        tm_compute: ComputeFn,
     ) -> None:
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=n_boxes)
         benchmark(tm_compute, deepcopy(preds), deepcopy(target), iou_type="bbox")
@@ -74,8 +75,8 @@ class TestStressCompute:
         self,
         benchmark: BenchmarkFixture,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
     ) -> None:
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=n_boxes)
         benchmark(pt_compute, deepcopy(preds), deepcopy(target), iou_type="bbox")
@@ -86,10 +87,10 @@ class TestStressCompute:
 
     def test_compute_many_images(
         self,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """compute() on 8 images x 30 boxes across 10 classes matches torchmetrics."""
         preds, target = make_stress_batch(n_images=8, n_boxes_per_image=30, n_classes=10)
@@ -101,8 +102,8 @@ class TestStressCompute:
     def test_compute_many_images_tm(
         self,
         benchmark: BenchmarkFixture,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        tm_compute: ComputeFn,
     ) -> None:
         preds, target = make_stress_batch(n_images=8, n_boxes_per_image=30, n_classes=10)
         benchmark(tm_compute, deepcopy(preds), deepcopy(target), iou_type="bbox")
@@ -111,8 +112,8 @@ class TestStressCompute:
     def test_compute_many_images_pt(
         self,
         benchmark: BenchmarkFixture,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
     ) -> None:
         preds, target = make_stress_batch(n_images=8, n_boxes_per_image=30, n_classes=10)
         benchmark(pt_compute, deepcopy(preds), deepcopy(target), iou_type="bbox")
@@ -123,10 +124,10 @@ class TestStressCompute:
 
     def test_compute_class_metrics_large(
         self,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """class_metrics=True with many classes and 40 boxes per image."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=40, n_classes=5)
@@ -145,8 +146,8 @@ class TestStressCompute:
     def test_compute_class_metrics_large_tm(
         self,
         benchmark: BenchmarkFixture,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        tm_compute: ComputeFn,
     ) -> None:
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=40, n_classes=5)
         benchmark(tm_compute, deepcopy(preds), deepcopy(target), iou_type="bbox", class_metrics=True)
@@ -155,8 +156,8 @@ class TestStressCompute:
     def test_compute_class_metrics_large_pt(
         self,
         benchmark: BenchmarkFixture,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
     ) -> None:
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=40, n_classes=5)
         benchmark(pt_compute, deepcopy(preds), deepcopy(target), iou_type="bbox", class_metrics=True)

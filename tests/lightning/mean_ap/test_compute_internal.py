@@ -7,12 +7,12 @@ test_compute_bbox.py, and test_compute_fixtures.py.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
 import torch
 from torch import Tensor
 
 from pytorchcocotools.lightning.metrics.mean_ap import MeanAveragePrecision
+
+from .protocols import AssertMapClose, ComputeFn
 
 
 class TestComputeInternal:
@@ -26,7 +26,7 @@ class TestComputeInternal:
         self,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         """With extended_summary=True the result should include precision/recall/scores."""
         result = pt_compute(bbox_preds, bbox_target, iou_type="bbox", extended_summary=True)
@@ -40,7 +40,7 @@ class TestComputeInternal:
         self,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         """With class_metrics=True the result dict should contain 'classes' as int32."""
         result = pt_compute(multi_image_preds, multi_image_target, iou_type="bbox", class_metrics=True)
@@ -51,7 +51,7 @@ class TestComputeInternal:
         self,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        assert_map_close: AssertMapClose,
     ) -> None:
         """Calling update() twice with one image each should equal one call with two images."""
         m_single = MeanAveragePrecision(iou_type="bbox")

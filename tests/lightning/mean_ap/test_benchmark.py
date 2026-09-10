@@ -9,13 +9,14 @@ side-by-side comparison in the benchmark report.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from copy import deepcopy
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 import torch
 from torch import Tensor
+
+from .protocols import AssertMapClose, ComputeFn, MakeStressBatch
 
 
 class TestMeanAveragePrecisionBenchmark:
@@ -28,9 +29,9 @@ class TestMeanAveragePrecisionBenchmark:
     def test_realistic_inputs_match(
         self,
         inputs: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds = inputs["preds"][0] + inputs["preds"][1]
         target = inputs["target"][0] + inputs["target"][1]
@@ -41,9 +42,9 @@ class TestMeanAveragePrecisionBenchmark:
     def test_inputs2_empty_target_match(
         self,
         inputs2: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds = inputs2["preds"][0] + inputs2["preds"][1]
         target = inputs2["target"][0] + inputs2["target"][1]
@@ -54,9 +55,9 @@ class TestMeanAveragePrecisionBenchmark:
     def test_inputs3_empty_preds_match(
         self,
         inputs3: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds = inputs3["preds"][0] + inputs3["preds"][1]
         target = inputs3["target"][0] + inputs3["target"][1]
@@ -68,10 +69,10 @@ class TestMeanAveragePrecisionBenchmark:
     def test_stress_batch_match(
         self,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=n_boxes)
         result = pt_compute(deepcopy(preds), deepcopy(target), iou_type="bbox")
@@ -80,10 +81,10 @@ class TestMeanAveragePrecisionBenchmark:
 
     def test_class_metrics_match(
         self,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=25, n_classes=5)
         result = pt_compute(deepcopy(preds), deepcopy(target), iou_type="bbox", class_metrics=True)
@@ -105,7 +106,7 @@ class TestMeanAveragePrecisionBenchmark:
         self,
         benchmark: BenchmarkFixture,
         inputs: dict[str, list[list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         """Torchmetrics: update + compute on realistic multi-image inputs."""
         preds = inputs["preds"][0] + inputs["preds"][1]
@@ -117,7 +118,7 @@ class TestMeanAveragePrecisionBenchmark:
         self,
         benchmark: BenchmarkFixture,
         inputs: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         """Own implementation: update + compute on realistic multi-image inputs."""
         preds = inputs["preds"][0] + inputs["preds"][1]
@@ -135,8 +136,8 @@ class TestMeanAveragePrecisionBenchmark:
         benchmark: BenchmarkFixture,
         n_images: int,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        tm_compute: ComputeFn,
     ) -> None:
         """Torchmetrics: update + compute on stress-test batch."""
         preds, target = make_stress_batch(n_images=n_images, n_boxes_per_image=n_boxes)
@@ -149,8 +150,8 @@ class TestMeanAveragePrecisionBenchmark:
         benchmark: BenchmarkFixture,
         n_images: int,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
     ) -> None:
         """Own implementation: update + compute on stress-test batch."""
         preds, target = make_stress_batch(n_images=n_images, n_boxes_per_image=n_boxes)
@@ -164,8 +165,8 @@ class TestMeanAveragePrecisionBenchmark:
     def test_mean_ap_class_metrics_tm(
         self,
         benchmark: BenchmarkFixture,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        tm_compute: ComputeFn,
     ) -> None:
         """Torchmetrics: update + compute with class_metrics=True."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=25, n_classes=5)
@@ -175,8 +176,8 @@ class TestMeanAveragePrecisionBenchmark:
     def test_mean_ap_class_metrics_pt(
         self,
         benchmark: BenchmarkFixture,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        make_stress_batch: MakeStressBatch,
+        pt_compute: ComputeFn,
     ) -> None:
         """Own implementation: update + compute with class_metrics=True."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=25, n_classes=5)

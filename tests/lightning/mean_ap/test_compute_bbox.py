@@ -6,13 +6,14 @@ class metrics, micro averaging, and realistic inputs.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from copy import deepcopy
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 import torch
 from torch import IntTensor, Tensor
+
+from .protocols import AssertMapClose, ComputeFn
 
 
 class TestComputeBbox:
@@ -28,9 +29,9 @@ class TestComputeBbox:
         self,
         box_format: str,
         expected_map: float,
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """Xyxy perfect match → map=1; same coords treated as xywh/cxcywh → map=0."""
         boxes = Tensor([[258.0, 41.0, 606.0, 285.0]])
@@ -47,7 +48,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         box_format: str,
         expected_map: float,
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         boxes = Tensor([[258.0, 41.0, 606.0, 285.0]])
         preds = [{"boxes": boxes.clone(), "scores": Tensor([1.0]), "labels": IntTensor([0])}]
@@ -61,7 +62,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         box_format: str,
         expected_map: float,
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         boxes = Tensor([[258.0, 41.0, 606.0, 285.0]])
         preds = [{"boxes": boxes.clone(), "scores": Tensor([1.0]), "labels": IntTensor([0])}]
@@ -76,9 +77,9 @@ class TestComputeBbox:
         self,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """When iou_thresholds=[0.6, 0.7], map_50 and map_75 should be -1."""
         kwargs = {"iou_type": "bbox", "iou_thresholds": [0.6, 0.7]}
@@ -94,7 +95,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, bbox_preds, bbox_target, iou_type="bbox", iou_thresholds=[0.6, 0.7])
 
@@ -104,7 +105,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, bbox_preds, bbox_target, iou_type="bbox", iou_thresholds=[0.6, 0.7])
 
@@ -116,9 +117,9 @@ class TestComputeBbox:
         self,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """map, map_50, map_75, mar_* values must match torchmetrics reference."""
         result = pt_compute(bbox_preds, bbox_target, iou_type="bbox")
@@ -131,7 +132,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, bbox_preds, bbox_target, iou_type="bbox")
 
@@ -141,7 +142,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, bbox_preds, bbox_target, iou_type="bbox")
 
@@ -153,9 +154,9 @@ class TestComputeBbox:
         self,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         result = pt_compute(multi_image_preds, multi_image_target, iou_type="bbox")
         reference = tm_compute(multi_image_preds, multi_image_target, iou_type="bbox")
@@ -167,7 +168,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, multi_image_preds, multi_image_target, iou_type="bbox")
 
@@ -177,7 +178,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, multi_image_preds, multi_image_target, iou_type="bbox")
 
@@ -189,9 +190,9 @@ class TestComputeBbox:
         self,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         result = pt_compute(multi_image_preds, multi_image_target, iou_type="bbox", class_metrics=True)
         reference = tm_compute(multi_image_preds, multi_image_target, iou_type="bbox", class_metrics=True)
@@ -209,7 +210,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, multi_image_preds, multi_image_target, iou_type="bbox", class_metrics=True)
 
@@ -219,7 +220,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, multi_image_preds, multi_image_target, iou_type="bbox", class_metrics=True)
 
@@ -231,9 +232,9 @@ class TestComputeBbox:
         self,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         result = pt_compute(multi_image_preds, multi_image_target, iou_type="bbox", average="micro")
         reference = tm_compute(multi_image_preds, multi_image_target, iou_type="bbox", average="micro")
@@ -245,7 +246,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, multi_image_preds, multi_image_target, iou_type="bbox", average="micro")
 
@@ -255,7 +256,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, multi_image_preds, multi_image_target, iou_type="bbox", average="micro")
 
@@ -267,9 +268,9 @@ class TestComputeBbox:
         self,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         kwargs = {"iou_type": "bbox", "iou_thresholds": [0.5, 0.75]}
         result = pt_compute(bbox_preds, bbox_target, **kwargs)
@@ -282,7 +283,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, bbox_preds, bbox_target, iou_type="bbox", iou_thresholds=[0.5, 0.75])
 
@@ -292,7 +293,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, bbox_preds, bbox_target, iou_type="bbox", iou_thresholds=[0.5, 0.75])
 
@@ -304,9 +305,9 @@ class TestComputeBbox:
         self,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         kwargs = {"iou_type": "bbox", "rec_thresholds": [0.0, 0.1, 0.5, 1.0]}
         result = pt_compute(bbox_preds, bbox_target, **kwargs)
@@ -319,7 +320,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, bbox_preds, bbox_target, iou_type="bbox", rec_thresholds=[0.0, 0.1, 0.5, 1.0])
 
@@ -329,7 +330,7 @@ class TestComputeBbox:
         benchmark: BenchmarkFixture,
         bbox_preds: list[dict[str, Tensor]],
         bbox_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, bbox_preds, bbox_target, iou_type="bbox", rec_thresholds=[0.0, 0.1, 0.5, 1.0])
 
@@ -340,9 +341,9 @@ class TestComputeBbox:
     def test_bbox_realistic_inputs(
         self,
         inputs: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         """Multi-class, multi-image realistic data from inputs."""
         result = pt_compute(inputs["preds"][-1], inputs["target"][-1], iou_type="bbox")
@@ -354,7 +355,7 @@ class TestComputeBbox:
         self,
         benchmark: BenchmarkFixture,
         inputs: dict[str, list[list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, inputs["preds"][-1], inputs["target"][-1], iou_type="bbox")
 
@@ -363,6 +364,6 @@ class TestComputeBbox:
         self,
         benchmark: BenchmarkFixture,
         inputs: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, inputs["preds"][-1], inputs["target"][-1], iou_type="bbox")

@@ -6,12 +6,13 @@ and the segmentation iou_type="segm" parity check.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from copy import deepcopy
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 from torch import Tensor
+
+from .protocols import AssertMapClose, ComputeFn
 
 _SEGM_UPDATE_XFAIL = pytest.mark.xfail(
     strict=True,
@@ -28,9 +29,9 @@ class TestComputeFixtures:
     def test_inputs2_empty_target(
         self,
         inputs2: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds = inputs2["preds"][0] + inputs2["preds"][1]
         target = inputs2["target"][0] + inputs2["target"][1]
@@ -43,7 +44,7 @@ class TestComputeFixtures:
         self,
         benchmark: BenchmarkFixture,
         inputs2: dict[str, list[list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         preds = inputs2["preds"][0] + inputs2["preds"][1]
         target = inputs2["target"][0] + inputs2["target"][1]
@@ -54,7 +55,7 @@ class TestComputeFixtures:
         self,
         benchmark: BenchmarkFixture,
         inputs2: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         preds = inputs2["preds"][0] + inputs2["preds"][1]
         target = inputs2["target"][0] + inputs2["target"][1]
@@ -67,9 +68,9 @@ class TestComputeFixtures:
     def test_inputs3_empty_preds(
         self,
         inputs3: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         preds = inputs3["preds"][0] + inputs3["preds"][1]
         target = inputs3["target"][0] + inputs3["target"][1]
@@ -82,7 +83,7 @@ class TestComputeFixtures:
         self,
         benchmark: BenchmarkFixture,
         inputs3: dict[str, list[list[dict[str, Tensor]]]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         preds = inputs3["preds"][0] + inputs3["preds"][1]
         target = inputs3["target"][0] + inputs3["target"][1]
@@ -93,7 +94,7 @@ class TestComputeFixtures:
         self,
         benchmark: BenchmarkFixture,
         inputs3: dict[str, list[list[dict[str, Tensor]]]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         preds = inputs3["preds"][0] + inputs3["preds"][1]
         target = inputs3["target"][0] + inputs3["target"][1]
@@ -108,9 +109,9 @@ class TestComputeFixtures:
         self,
         segm_preds: list[dict[str, Tensor]],
         segm_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
-        assert_map_close: Callable[[dict[str, Tensor], dict[str, Tensor], float], None],
+        pt_compute: ComputeFn,
+        tm_compute: ComputeFn,
+        assert_map_close: AssertMapClose,
     ) -> None:
         result = pt_compute(segm_preds, segm_target, iou_type="segm")
         reference = tm_compute(segm_preds, segm_target, iou_type="segm")
@@ -122,7 +123,7 @@ class TestComputeFixtures:
         benchmark: BenchmarkFixture,
         segm_preds: list[dict[str, Tensor]],
         segm_target: list[dict[str, Tensor]],
-        tm_compute: Callable[..., dict[str, Tensor]],
+        tm_compute: ComputeFn,
     ) -> None:
         benchmark(tm_compute, segm_preds, segm_target, iou_type="segm")
 
@@ -132,6 +133,6 @@ class TestComputeFixtures:
         benchmark: BenchmarkFixture,
         segm_preds: list[dict[str, Tensor]],
         segm_target: list[dict[str, Tensor]],
-        pt_compute: Callable[..., dict[str, Tensor]],
+        pt_compute: ComputeFn,
     ) -> None:
         benchmark(pt_compute, segm_preds, segm_target, iou_type="segm")

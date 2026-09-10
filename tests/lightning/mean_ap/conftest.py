@@ -10,6 +10,8 @@ from torchmetrics.detection import MeanAveragePrecision as TorchmetricsMeanAvera
 
 from pytorchcocotools.lightning.metrics.mean_ap import MeanAveragePrecision
 
+from .protocols import AssertMapClose, ComputeFn, MakeRandomBoxes, MakeStressBatch
+
 
 @pytest.fixture()
 def inputs():
@@ -139,7 +141,7 @@ def inputs3():
 
 
 @pytest.fixture()
-def tm_compute() -> Callable[..., dict[str, Tensor]]:
+def tm_compute() -> ComputeFn:
     def _compute(preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]], **kwargs: Any) -> dict[str, Tensor]:
         m = TorchmetricsMeanAveragePrecision(**kwargs)
         m.update(preds, target)
@@ -149,7 +151,7 @@ def tm_compute() -> Callable[..., dict[str, Tensor]]:
 
 
 @pytest.fixture()
-def pt_compute() -> Callable[..., dict[str, Tensor]]:
+def pt_compute() -> ComputeFn:
     def _compute(preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]], **kwargs: Any) -> dict[str, Tensor]:
         m = MeanAveragePrecision(**kwargs)
         m.update(preds, target)
@@ -159,7 +161,7 @@ def pt_compute() -> Callable[..., dict[str, Tensor]]:
 
 
 @pytest.fixture()
-def assert_map_close() -> Callable[[dict[str, Tensor], dict[str, Tensor], float], None]:
+def assert_map_close() -> AssertMapClose:
     def _assert(result: dict[str, Tensor], reference: dict[str, Tensor], atol: float = 1e-4) -> None:
         scalar_keys = [k for k in reference if k != "classes" and reference[k].ndim == 0]
         for key in scalar_keys:
@@ -176,7 +178,7 @@ def assert_map_close() -> Callable[[dict[str, Tensor], dict[str, Tensor], float]
 
 
 @pytest.fixture()
-def make_random_boxes() -> Callable[[int, float, float, int], Tensor]:
+def make_random_boxes() -> MakeRandomBoxes:
     def _make(n: int, img_w: float = 640.0, img_h: float = 480.0, seed: int = 0) -> Tensor:
         """Return *n* random non-degenerate xyxy boxes inside (img_w x img_h)."""
         gen = torch.Generator().manual_seed(seed)
@@ -193,8 +195,8 @@ def make_random_boxes() -> Callable[[int, float, float, int], Tensor]:
 
 @pytest.fixture()
 def make_stress_batch(
-    make_random_boxes: Callable[[int, float, float, int], Tensor],
-) -> Callable[[int, int, int, int], tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]]:
+    make_random_boxes: MakeRandomBoxes,
+) -> MakeStressBatch:
     def _make(
         n_images: int,
         n_boxes_per_image: int,

@@ -7,7 +7,6 @@ Compute stress tests live in test_stress_compute.py.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import warnings
 
 import pytest
@@ -16,12 +15,12 @@ from torch import Tensor
 
 from pytorchcocotools.lightning.metrics.mean_ap import MeanAveragePrecision
 
+from .protocols import MakeStressBatch
+
 
 class TestStressUpdate:
     @pytest.mark.parametrize("n_boxes", [25, 50])
-    def test_update_single_image_large_boxes_pt(
-        self, n_boxes: int, make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]]
-    ) -> None:
+    def test_update_single_image_large_boxes_pt(self, n_boxes: int, make_stress_batch: MakeStressBatch) -> None:
         """update() must not raise and must store all boxes for a single image."""
         preds, target = make_stress_batch(n_images=1, n_boxes_per_image=n_boxes)
         m = MeanAveragePrecision(iou_type="bbox")
@@ -38,7 +37,7 @@ class TestStressUpdate:
         self,
         n_images: int,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
+        make_stress_batch: MakeStressBatch,
     ) -> None:
         """update() accumulates the correct number of per-image entries."""
         preds, target = make_stress_batch(n_images=n_images, n_boxes_per_image=n_boxes)
@@ -50,9 +49,7 @@ class TestStressUpdate:
             assert m.detection_box[i].shape[0] == n_boxes
 
     @pytest.mark.parametrize("n_boxes", [25, 50])
-    def test_incremental_update_equals_batch_update_pt(
-        self, n_boxes: int, make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]]
-    ) -> None:
+    def test_incremental_update_equals_batch_update_pt(self, n_boxes: int, make_stress_batch: MakeStressBatch) -> None:
         """Feeding images one-by-one must produce the same stored state as one batch."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=n_boxes)
         m_batch = MeanAveragePrecision(iou_type="bbox")
@@ -66,9 +63,7 @@ class TestStressUpdate:
         for b, inc in zip(m_batch.detection_box, m_incremental.detection_box):
             torch.testing.assert_close(b, inc)
 
-    def test_reset_after_large_update_pt(
-        self, make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]]
-    ) -> None:
+    def test_reset_after_large_update_pt(self, make_stress_batch: MakeStressBatch) -> None:
         """State must be fully cleared after reset() even after heavy update."""
         preds, target = make_stress_batch(n_images=8, n_boxes_per_image=50)
         m = MeanAveragePrecision(iou_type="bbox")
@@ -78,9 +73,7 @@ class TestStressUpdate:
         assert len(m.detection_scores) == 0
         assert len(m.groundtruth_box) == 0
 
-    def test_many_classes_are_tracked_pt(
-        self, make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]]
-    ) -> None:
+    def test_many_classes_are_tracked_pt(self, make_stress_batch: MakeStressBatch) -> None:
         """_get_classes() must return all unique class ids across images."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=25, n_classes=10)
         m = MeanAveragePrecision(iou_type="bbox")
@@ -91,9 +84,7 @@ class TestStressUpdate:
         assert classes == sorted(classes)
 
     @pytest.mark.parametrize("n_boxes", [25, 50])
-    def test_warning_fires_above_100_boxes_pt(
-        self, n_boxes: int, make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]]
-    ) -> None:
+    def test_warning_fires_above_100_boxes_pt(self, n_boxes: int, make_stress_batch: MakeStressBatch) -> None:
         """100 boxes: no warning. 101 boxes: UserWarning. Validates threshold boundary."""
         exactly_100_preds, target = make_stress_batch(n_images=1, n_boxes_per_image=100)
         m = MeanAveragePrecision(iou_type="bbox")
@@ -106,7 +97,7 @@ class TestStressUpdate:
         self,
         n_images: int,
         n_boxes: int,
-        make_stress_batch: Callable[..., tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]],
+        make_stress_batch: MakeStressBatch,
     ) -> None:
         """Boxes in xywh format are stored unchanged (no double conversion)."""
         preds, target = make_stress_batch(n_images=n_images, n_boxes_per_image=n_boxes)
