@@ -50,8 +50,9 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     u = torch.where(cond2, t + xs2, (xs2 + s_t + 0.5).int())
     v = torch.where(cond2, (ys2 + s_t + 0.5).int(), t + ys2)
 
-    u = u[d_mask]
-    v = v[d_mask]
+    point_indices = d_mask.flatten().nonzero().squeeze(1)
+    u = u.flatten().index_select(0, point_indices)
+    v = v.flatten().index_select(0, point_indices)
 
     # 4. Boundary crossing detection + pixel grid filtering (single fused mask)
     u_next = u[1:]
@@ -60,9 +61,10 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     full_mask = (u_next != u_prev) & (xd_int % 5 == 2) & (xd_int >= 2) & (xd_int <= 5 * (w - 1) + 2)
 
     # 5. Extract surviving boundary points → pixel coordinates (integer only)
-    xd_int_f = xd_int[full_mask]
+    boundary_indices = full_mask.nonzero().squeeze(1)
+    xd_int_f = xd_int.index_select(0, boundary_indices)
     # Compute min(v_next, v_prev) first, then mask once
-    yd_int_f = torch.minimum(v[1:], v[:-1])[full_mask]
+    yd_int_f = torch.minimum(v[1:], v[:-1]).index_select(0, boundary_indices)
     xd_coord = (xd_int_f - 2).div(5, rounding_mode="floor")
     yd_coord = ((yd_int_f + 2).div(5, rounding_mode="floor")).clamp(0, h)
 
