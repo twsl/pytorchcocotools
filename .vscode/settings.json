@@ -28,6 +28,7 @@
         //"--benchmark-group-by=group,param",
         "--no-cov"
     ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
     "[python]": {
         "editor.formatOnType": true,
         "editor.defaultFormatter": "charliermarsh.ruff",
