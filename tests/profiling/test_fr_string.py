@@ -8,7 +8,12 @@ import torch
 from torch import profiler
 
 from pytorchcocotools.internal.entities import RleObj
-from pytorchcocotools.internal.mask_api.rle_fr_string import rleFrString
+from pytorchcocotools.internal.mask_api.rle_fr_string import (
+    _MAX_CACHEABLE_BYTES,
+    _decode_counts,
+    _decode_counts_cached,
+    rleFrString,
+)
 from pytorchcocotools.internal.mask_api.rle_to_string import rleToString
 from pytorchcocotools.utils.callable import resolve_actual_function
 
@@ -63,10 +68,30 @@ def test_rle_fr_string_pt(
     expected: RleObj,
 ) -> None:
     """Test PyTorch implementation of rleFrString."""
-    result = benchmark(rleFrString, s, h, w)
+    result = benchmark(rleFrString, s, h, w, device=device)
 
     assert [result.h, result.w] == expected["size"]
     assert rleToString(result) == expected["counts"]
+
+
+def test_repeated_rle_fr_string_decodes_return_independent_tensors(device: str) -> None:
+    encoded = b"T8:?00000000000000000c3"
+    first = rleFrString(encoded, 25, 25, device=device)
+    expected = first.cnts.clone()
+
+    with torch.inference_mode():
+        first.cnts.zero_()
+
+    second = rleFrString(encoded, 25, 25, device=device)
+    torch.testing.assert_close(second.cnts, expected)
+
+
+def test_large_count_strings_bypass_decode_cache() -> None:
+    before = _decode_counts_cached.cache_info().currsize
+    decoded = _decode_counts(b"0" * (_MAX_CACHEABLE_BYTES + 1))
+
+    assert len(decoded) == _MAX_CACHEABLE_BYTES + 1
+    assert _decode_counts_cached.cache_info().currsize == before
 
 
 @pytest.mark.profiling
@@ -82,7 +107,7 @@ def test_rle_fr_string_pt_profiling(
     """Profile PyTorch implementation of rleFrString using torch.profiler."""
     # Warmup
     for _ in range(5):
-        _ = rleFrString(s, h, w)
+        _ = rleFrString(s, h, w, device=device)
 
     # Profile
     with profiler.profile(
@@ -93,7 +118,7 @@ def test_rle_fr_string_pt_profiling(
         with_flops=True,
     ) as prof:
         for _ in range(10):
-            _ = rleFrString(s, h, w)
+            _ = rleFrString(s, h, w, device=device)
 
     # Print profiling results
     sort_by = "cuda_time_total" if device == "cuda" else "cpu_time_total"
@@ -124,7 +149,7 @@ def test_rle_fr_string_pt_line_profiling(
     lp.add_function(target)
 
     for _ in range(10):
-        _ = lp.runcall(rleFrString, s, h, w)
+        _ = lp.runcall(rleFrString, s, h, w, device=device)
 
     # Print line profiling results
     terminal_writer.write_line(f"\n\n=== rleFrString Line Profiling Results (device={device}) ===")
