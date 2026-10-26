@@ -344,6 +344,7 @@ class TestComputeBbox:
         pt_compute: ComputeFn,
         tm_compute: ComputeFn,
         assert_map_close: AssertMapClose,
+        mps_iou_threshold_parity_xfail: None,
     ) -> None:
         """Multi-class, multi-image realistic data from inputs."""
         result = pt_compute(inputs["preds"][-1], inputs["target"][-1], iou_type="bbox")

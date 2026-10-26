@@ -164,7 +164,7 @@ def _assert_outputs_match(
         f"{prefix}mar_large",
     ]
     for k in scalar_keys:
-        torch.testing.assert_close(out_pt[k].cpu(), out_tm[k].cpu(), rtol=0, atol=1e-4)
+        torch.testing.assert_close(out_pt[k].cpu().float(), out_tm[k].cpu().float(), rtol=0, atol=1e-4)
 
     if check_classes:
         cls_tm = out_tm["classes"].cpu().to(dtype=torch.int64)

@@ -392,7 +392,7 @@ class COCO:
         new_anns = []
         for id, ann in enumerate(anns):
             if "keypoints" in ann:
-                new_ann = CocoAnnotationKeypointDetection(**dataclasses.asdict(cast(Any, ann)))
+                new_ann = CocoAnnotationKeypointDetection(**vars(ann))
                 s = ann["keypoints"]
                 x = s[::3]
                 y = s[1::3]
@@ -402,7 +402,7 @@ class COCO:
                 new_ann.bbox = [x0, y0, x1 - x0, y1 - y0]
                 new_anns.append(new_ann)
             elif "bbox" in ann and ann["bbox"] != []:
-                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(cast(Any, ann)))
+                new_ann = CocoAnnotationObjectDetection(**vars(ann))
                 bb = ann.bbox
                 x1, x2, y1, y2 = [bb[0], bb[0] + bb[2], bb[1], bb[1] + bb[3]]
                 new_ann.segmentation = ann.get("segmentation", [[x1, y1, x1, y2, x2, y2, x2, y1]])
@@ -411,7 +411,7 @@ class COCO:
                 new_ann.iscrowd = False
                 new_anns.append(new_ann)
             elif "segmentation" in ann:
-                new_ann = CocoAnnotationObjectDetection(**dataclasses.asdict(cast(Any, ann)))
+                new_ann = CocoAnnotationObjectDetection(**vars(ann))
                 # now only support compressed RLE format as segmentation results
                 segmentation = cast(CocoAnnotationObjectDetection, ann).segmentation
                 new_ann.area = float(mask.area(cast(RleObjs, segmentation))[0])
@@ -475,9 +475,7 @@ class COCO:
             return merged
         elif isinstance(segm, dict) and isinstance(segm["counts"], list):
             # uncompressed RLE
-            objs = mask.frPyObjects(
-                cast(RleObj, segm), h, w, device=self.device, requires_grad=self.requires_grad
-            )
+            objs = mask.frPyObjects(cast(RleObj, segm), h, w, device=self.device, requires_grad=self.requires_grad)
             return objs
         else:
             return segm  # type: ignore  # noqa: PGH003 # TODO: fix this, shouldn't happen???

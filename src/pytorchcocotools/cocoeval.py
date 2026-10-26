@@ -4,6 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable
 import copy
 import datetime
+from itertools import accumulate as running_sum
 import logging
 from logging import Logger
 import time
@@ -15,8 +16,19 @@ from torchvision import tv_tensors as tv
 
 from pytorchcocotools import mask
 from pytorchcocotools.coco import COCO
-from pytorchcocotools.internal.cocoeval_types import EvalImgResult, EvalResult, Params
-from pytorchcocotools.internal.entities import IoUObject, IoUType, Range, RangeLabel, RleObj, TorchDevice
+from pytorchcocotools.internal.cocoeval_types import EvalImgResult, EvalResult, EvalState, Params
+from pytorchcocotools.internal.entities import IoUObject, IoUType, RaggedRle, Range, RangeLabel, RleObj, TorchDevice
+from pytorchcocotools.internal.mask_api._batch import (
+    counts_to_strings,
+    polygons_to_counts,
+    ragged_take,
+    rle_bboxes,
+    run_bounds,
+    segment_ids,
+    segment_offsets,
+    strings_to_counts,
+    union_counts,
+)
 from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationDetection,
     CocoAnnotationKeypointDetection,
@@ -26,9 +38,322 @@ from pytorchcocotools.internal.structure.annotations import (
 from pytorchcocotools.utils.device import get_float_dtype
 from pytorchcocotools.utils.logging import get_logger
 
+_MAX_RLE_QUERIES = 1 << 24
+
 
 class COCOeval:
     logger: Logger
+
+    @staticmethod
+    def _pair_entries(gt_pair: Tensor, pair_num_dt: Tensor, pair_dt_offset: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        """Enumerate every (detection rank, ground truth) combination inside the same pair.
+
+        Args:
+            gt_pair: The pair index of every ground truth.
+            pair_num_dt: The number of detections per pair.
+            pair_dt_offset: The flat index of the first detection of every pair.
+
+        Returns:
+            The detection rank, flat ground-truth index and flat detection index of every entry.
+        """
+        reps = pair_num_dt[gt_pair]
+        entry_gt = segment_ids(reps)
+        entry_d = torch.arange(entry_gt.numel(), device=gt_pair.device) - segment_offsets(reps)[entry_gt]
+        entry_dt = pair_dt_offset[gt_pair[entry_gt]] + entry_d
+        return entry_d, entry_gt, entry_dt
+
+    @staticmethod
+    def _bbox_iou(dt: Tensor, gt: Tensor, crowd: Tensor) -> Tensor:
+        """Element-wise IoU of XYWH boxes, matching ``bbIou`` of pycocotools.
+
+        Args:
+            dt: The detection boxes, shape ``[E, 4]``.
+            gt: The ground-truth boxes, shape ``[E, 4]``.
+            crowd: Whether the ground truth is a crowd region, shape ``[E]``.
+
+        Returns:
+            The IoU per entry.
+        """
+        w = torch.minimum(dt[:, 2] + dt[:, 0], gt[:, 2] + gt[:, 0]) - torch.maximum(dt[:, 0], gt[:, 0])
+        h = torch.minimum(dt[:, 3] + dt[:, 1], gt[:, 3] + gt[:, 1]) - torch.maximum(dt[:, 1], gt[:, 1])
+        inter = w * h
+        dt_area = dt[:, 2] * dt[:, 3]
+        union = torch.where(crowd, dt_area, dt_area + gt[:, 2] * gt[:, 3] - inter)
+        return torch.where((w > 0) & (h > 0), inter / union, torch.zeros_like(inter))
+
+    @staticmethod
+    def _oks(dt_kpts: Tensor, gt_kpts: Tensor, gt_box: Tensor, gt_area: Tensor, sigmas: Tensor) -> Tensor:
+        """Element-wise object keypoint similarity, matching ``COCOeval.computeOks`` of pycocotools.
+
+        Args:
+            dt_kpts: The detection keypoints ``[x, y, v, ...]``, shape ``[E, 3K]``.
+            gt_kpts: The ground-truth keypoints, shape ``[E, 3K]``.
+            gt_box: The ground-truth XYWH boxes, shape ``[E, 4]``.
+            gt_area: The ground-truth areas, shape ``[E]``.
+            sigmas: The per-keypoint sigmas, shape ``[K]``.
+
+        Returns:
+            The OKS per entry.
+        """
+        xd, yd = dt_kpts[:, 0::3], dt_kpts[:, 1::3]
+        xg, yg, vg = gt_kpts[:, 0::3], gt_kpts[:, 1::3], gt_kpts[:, 2::3]
+        visible = vg > 0
+        has_visible = visible.sum(1, keepdim=True) > 0
+        x0 = (gt_box[:, 0] - gt_box[:, 2])[:, None]
+        x1 = (gt_box[:, 0] + gt_box[:, 2] * 2)[:, None]
+        y0 = (gt_box[:, 1] - gt_box[:, 3])[:, None]
+        y1 = (gt_box[:, 1] + gt_box[:, 3] * 2)[:, None]
+        dx = torch.where(has_visible, xd - xg, (x0 - xd).clamp(min=0) + (xd - x1).clamp(min=0))
+        dy = torch.where(has_visible, yd - yg, (y0 - yd).clamp(min=0) + (yd - y1).clamp(min=0))
+        variances = (sigmas * 2) ** 2
+        e = (dx**2 + dy**2) / variances / (gt_area[:, None] + torch.finfo(gt_area.dtype).eps) / 2
+        used = visible | ~has_visible
+        return torch.where(used, torch.exp(-e), 0).sum(1) / used.sum(1)
+
+    @staticmethod
+    def _rle_iou(dt: RaggedRle, gt: RaggedRle, entry_dt: Tensor, entry_gt: Tensor, crowd: Tensor) -> Tensor:
+        """Element-wise IoU of RLE masks, matching ``rleIou`` of pycocotools.
+
+        The intersection is computed without decoding: for every foreground run ``[s, e)`` of the ground
+        truth, ``cov(e) - cov(s)`` is added, where ``cov(x)`` counts detection foreground pixels before
+        ``x``. ``cov`` is evaluated with one ``searchsorted`` over all detection runs.
+
+        Args:
+            dt: The detection masks.
+            gt: The ground-truth masks.
+            entry_dt: The detection mask of every entry.
+            entry_gt: The ground-truth mask of every entry.
+            crowd: Whether the ground truth is a crowd region, per entry.
+
+        Returns:
+            The IoU per entry, in the float dtype of the masks' device.
+        """
+        device = dt.counts.device
+        num_entries = entry_dt.numel()
+        dt_starts, dt_fg, dt_owner = run_bounds(dt.counts, dt.lengths)
+        dt_fg_pixels = torch.where(dt_fg, dt.counts, 0)
+        csum = torch.cumsum(dt_fg_pixels, 0) - dt_fg_pixels
+        dt_cov = csum - csum[segment_offsets(dt.lengths).clamp(max=max(csum.numel() - 1, 0))][dt_owner]
+        dt_area = dt.counts.new_zeros(dt.lengths.numel()).index_add_(0, dt_owner, dt_fg_pixels)
+
+        gt_starts, gt_fg, gt_owner = run_bounds(gt.counts, gt.lengths)
+        gt_fg &= gt.counts > 0
+        gt_run_s = gt_starts[gt_fg]
+        gt_run_e = gt_run_s + gt.counts[gt_fg]
+        gt_num_runs = torch.bincount(gt_owner[gt_fg], minlength=gt.lengths.numel())
+        gt_area = gt.counts.new_zeros(gt.lengths.numel()).index_add_(0, gt_owner[gt_fg], gt.counts[gt_fg])
+
+        db = rle_bboxes(dt.counts, dt.lengths, dt.h)[entry_dt]
+        gb = rle_bboxes(gt.counts, gt.lengths, gt.h)[entry_gt]
+        overlap = (torch.minimum(db[:, 2], gb[:, 2]) >= torch.maximum(db[:, 0], gb[:, 0])) & (
+            torch.minimum(db[:, 3], gb[:, 3]) >= torch.maximum(db[:, 1], gb[:, 1])
+        )
+        same_size = (dt.h[entry_dt] == gt.h[entry_gt]) & (dt.w[entry_dt] == gt.w[entry_gt])
+        todo = (overlap & same_size).nonzero().squeeze(1)
+
+        big = int((dt.h * dt.w).max()) + 2 if dt.h.numel() else 2
+        run_keys = dt_owner * big + dt_starts
+        inter = dt.counts.new_zeros(num_entries)
+        runs_per_todo = gt_num_runs[entry_gt[todo]]
+        query_end = torch.cumsum(runs_per_todo, 0)
+        start = 0
+        while start < todo.numel():
+            budget = (query_end[start] - runs_per_todo[start] + _MAX_RLE_QUERIES).view(1)
+            stop = max(int(torch.searchsorted(query_end, budget, right=True)), start + 1)
+            chunk = todo[start:stop]
+            reps = runs_per_todo[start:stop]
+            q_entry = torch.repeat_interleave(chunk, reps)
+            q_local = torch.arange(q_entry.numel(), device=device) - segment_offsets(reps).repeat_interleave(reps)
+            q_run = segment_offsets(gt_num_runs)[entry_gt[q_entry]] + q_local
+            owner_key = entry_dt[q_entry] * big
+            covered = torch.zeros_like(q_entry)
+            for q, sign in ((gt_run_e[q_run], 1), (gt_run_s[q_run], -1)):
+                k = torch.searchsorted(run_keys, owner_key + q, right=True) - 1
+                partial = torch.minimum(q - dt_starts[k], dt.counts[k])
+                covered += sign * (dt_cov[k] + torch.where(dt_fg[k], partial, 0))
+            inter.index_add_(0, q_entry, covered)
+            start = stop
+
+        fdtype = get_float_dtype(device)
+        inter_f = inter.to(fdtype)
+        area_d = dt_area[entry_dt].to(fdtype)
+        union = torch.where(crowd, area_d, area_d + gt_area[entry_gt].to(fdtype) - inter_f)
+        iou = torch.where(union > 0, inter_f / union.clamp(min=1), torch.zeros_like(inter_f))
+        return torch.where(overlap & ~same_size, -1.0, iou)
+
+    @staticmethod
+    def _greedy_match(
+        iou: Tensor,
+        gt_pair: Tensor,
+        gt_ignore: Tensor,
+        gt_crowd: Tensor,
+        pair_num_dt: list[int],
+        pair_gt_end: list[int],
+        pair_dt_offset: Tensor,
+        num_dt: int,
+        thresholds: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        """Greedy COCO matching for all pairs, area ranges and IoU thresholds at once.
+
+        Args:
+            iou: IoU of detection rank ``d`` with every ground truth, shape ``[D, N]`` (``-1`` if absent).
+            gt_pair: The pair index of every ground truth (non-decreasing).
+            gt_ignore: The ignore flag per area range and ground truth, shape ``[A, N]``.
+            gt_crowd: The crowd flag per ground truth.
+            pair_num_dt: The number of detections per pair (non-increasing).
+            pair_gt_end: The flat end offset of the ground truths of every pair.
+            pair_dt_offset: The flat index of the first detection of every pair.
+            num_dt: The total number of detections.
+            thresholds: The IoU thresholds, shape ``[T]``.
+
+        Returns:
+            ``dt_gt[A, T, num_dt]``: the matched flat ground-truth index per detection (``-1`` if none) and
+            ``gt_dt[A, T, N]``: the last matched flat detection index per ground truth (``-1`` if none).
+        """
+        device = iou.device
+        num_a, num_gt = gt_ignore.shape
+        num_t = thresholds.numel()
+        dt_gt = torch.full((num_a, num_t, num_dt), -1, dtype=torch.long, device=device)
+        # one extra column absorbs the scatters of unmatched pairs
+        gt_dt = torch.full((num_a, num_t, num_gt + 1), -1, dtype=torch.long, device=device)
+        matched = torch.zeros((num_a, num_t, num_gt + 1), dtype=torch.bool, device=device)
+        non_ignored = ~gt_ignore[:, None, :]
+        thr = thresholds[None, :, None]
+        position = torch.arange(num_gt, device=device)
+        crowd_or_trash = torch.cat([gt_crowd, gt_crowd.new_ones(1)])
+
+        active_pairs = len(pair_num_dt)
+        for d in range(max(pair_num_dt, default=0)):
+            while active_pairs > 0 and pair_num_dt[active_pairs - 1] <= d:
+                active_pairs -= 1
+            p, n = active_pairs, pair_gt_end[active_pairs - 1]
+            if n == 0:
+                continue
+            index = gt_pair[:n].expand(num_a, num_t, n)
+            cand = (iou[d, :n] >= thr) & ~matched[:, :, :n]
+            ni = non_ignored[:, :, :n]
+            has_ni = torch.zeros((num_a, num_t, p), dtype=torch.int8, device=device)
+            has_ni.scatter_reduce_(2, index, (cand & ni).to(torch.int8), reduce="amax")
+            sel = cand & (ni == (has_ni.gather(2, index) > 0))
+            score = torch.where(sel, iou[d, :n], -torch.inf)
+            best = torch.full((num_a, num_t, p), -torch.inf, dtype=iou.dtype, device=device)
+            best.scatter_reduce_(2, index, score, reduce="amax")
+            # ties go to the last ground truth, as in the reference loop
+            last = torch.where(sel & (score == best.gather(2, index)), position[:n], -1)
+            choice = torch.full((num_a, num_t, p), -1, dtype=torch.long, device=device)
+            choice.scatter_reduce_(2, index, last, reduce="amax")
+
+            dt_index = pair_dt_offset[:p] + d
+            dt_gt[:, :, dt_index] = choice
+            target = torch.where(choice >= 0, choice, num_gt)
+            gt_dt.scatter_(2, target, dt_index.expand(num_a, num_t, p))
+            matched.scatter_(2, torch.where(crowd_or_trash[target], num_gt, target), True)
+        return dt_gt, gt_dt[:, :, :num_gt]
+
+    @staticmethod
+    def _first_reaching(rec_thrs: Tensor, npig: Tensor) -> Tensor:
+        """Smallest integer ``t`` with ``t / npig >= r`` in floating point, per ``npig`` and threshold ``r``."""
+        npig_f = npig.to(rec_thrs.dtype)[..., None]
+        t0 = torch.ceil(rec_thrs * npig_f)
+        tau = torch.where((t0 - 1) / npig_f >= rec_thrs, t0 - 1, torch.where(t0 / npig_f >= rec_thrs, t0, t0 + 1))
+        return tau.clamp(min=0).long()
+
+    @staticmethod
+    def _accumulate(
+        dt_cat: Tensor,
+        dt_order_key: Tensor,
+        dt_rank: Tensor,
+        dt_score: Tensor,
+        dt_tp: Tensor,
+        dt_ignore: Tensor,
+        npig: Tensor,
+        max_dets: list[int],
+        rec_thrs: Tensor,
+        num_cats: int,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        """Compute precision, recall and score tables for all categories, area ranges and max detections.
+
+        Args:
+            dt_cat: The output category of every detection (``-1`` to exclude it).
+            dt_order_key: Tie-break key reproducing the reference concatenation order (image, rank).
+            dt_rank: The rank of every detection inside its pair.
+            dt_score: The detection scores.
+            dt_tp: Whether the detection matched a ground truth, shape ``[A, T, N]``.
+            dt_ignore: Whether the detection is ignored, shape ``[A, T, N]``.
+            npig: The number of non-ignored ground truths, shape ``[A, K]``.
+            max_dets: The max-detection limits.
+            rec_thrs: The recall thresholds, shape ``[R]``.
+            num_cats: The number of output categories ``K``.
+
+        Returns:
+            ``precision[T, R, K, A, M]``, ``recall[T, K, A, M]`` and ``scores[T, R, K, A, M]``.
+        """
+        device = dt_score.device
+        dtype = rec_thrs.dtype
+        num_a, num_t = dt_tp.shape[:2]
+        num_r, num_m = rec_thrs.numel(), len(max_dets)
+        precision = torch.full((num_t, num_r, num_cats, num_a, num_m), -1.0, dtype=dtype, device=device)
+        recall = torch.full((num_t, num_cats, num_a, num_m), -1.0, dtype=dtype, device=device)
+        scores = torch.full_like(precision, -1.0)
+
+        order = torch.argsort(dt_order_key, stable=True)
+        order = order[torch.argsort(dt_score[order], descending=True, stable=True)]
+        order = order[torch.argsort(dt_cat[order], stable=True)]
+        order = order[dt_cat[order] >= 0]
+        has_gt = npig > 0  # [A, K]
+        tau = COCOeval._first_reaching(rec_thrs, npig)  # [A, K, R]
+        eps = torch.finfo(dtype).eps
+        cat_range = torch.arange(num_cats, device=device)
+
+        for m, max_det in enumerate(max_dets):
+            sel = order[dt_rank[order] < max_det]
+            n = sel.numel()
+            cat = dt_cat[sel]
+            nd = torch.bincount(cat, minlength=num_cats)
+            seg_end = torch.cumsum(nd, 0)
+            seg_start = seg_end - nd
+            if n == 0:
+                fill = torch.where(has_gt, 0.0, -1.0).T
+                recall[:, :, :, m] = fill[None]
+                precision[:, :, :, :, m] = fill[None, None]
+                scores[:, :, :, :, m] = fill[None, None]
+                continue
+
+            tp_ok, ig = dt_tp[:, :, sel], dt_ignore[:, :, sel]
+            tps = tp_ok & ~ig
+            fps = ~tp_ok & ~ig
+            tp = torch.cumsum(tps, -1, dtype=dtype)
+            fp = torch.cumsum(fps, -1, dtype=dtype)
+            start_idx = seg_start.clamp(max=n - 1)
+            tp = tp - (tp - tps.to(dtype))[:, :, start_idx][:, :, cat]
+            fp = fp - (fp - fps.to(dtype))[:, :, start_idx][:, :, cat]
+
+            rc = tp / npig[:, None, cat].to(dtype)
+            pr = tp / (fp + tp + eps)
+
+            last = torch.where(nd > 0, seg_end - 1, 0)
+            rc_last = torch.where(nd > 0, rc[:, :, last], 0.0)  # [A, T, K]
+            recall[:, :, :, m] = torch.where(has_gt[:, None, :], rc_last, -1.0).permute(1, 2, 0)
+
+            # suffix maximum of precision inside every category segment
+            rank = torch.argsort(torch.argsort(pr, -1), -1)
+            key = (num_cats - 1 - cat) * n + rank
+            _, idx = torch.cummax(key.flip(-1), -1)
+            pr_mono = pr.gather(-1, (n - 1 - idx).flip(-1))
+
+            # recall thresholds reached: count of segment entries with tp < tau
+            big = n + 2
+            seq = cat * big + tp.long()
+            query = (cat_range[:, None] * big + tau.clamp(max=n + 1))[:, None].expand(num_a, num_t, num_cats, num_r)
+            pos = torch.searchsorted(seq, query.reshape(num_a, num_t, -1)).view(num_a, num_t, num_cats, num_r)
+            valid = pos < seg_end[:, None]
+            pos_c = pos.clamp(max=n - 1)
+            q = torch.where(valid, pr_mono.gather(-1, pos_c.view(num_a, num_t, -1)).view_as(pos), 0.0)
+            ss = torch.where(valid, dt_score[sel][pos_c], 0.0).to(dtype)
+            mask = has_gt[:, None, :, None]
+            precision[:, :, :, :, m] = torch.where(mask, q, -1.0).permute(1, 3, 2, 0)
+            scores[:, :, :, :, m] = torch.where(mask, ss, -1.0).permute(1, 3, 2, 0)
+        return precision, recall, scores
 
     def __init__(
         self,
@@ -51,6 +376,9 @@ class COCOeval:
             requires_grad: Whether the bounding boxes require gradients.
         """
         self.logger = get_logger(__name__) if enable_logging else logging.getLogger(__name__)
+        self._state: EvalState | None = None
+        self._gt_rle_row: dict[int, int] = {}
+        self._dt_rle_row: dict[int, int] = {}
         self.cocoGt = cocoGt or COCO()  # ground truth COCO API
         self.cocoDt = cocoDt or COCO()  # detections COCO API
         self.eval_imgs: list[EvalImgResult | None] = []  # per-image per-category evaluation results [KxAxI] elements
@@ -68,17 +396,118 @@ class COCOeval:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
 
+    @property
+    def eval_imgs(self) -> list[EvalImgResult | None]:
+        """Per-image per-category evaluation results ``[K x A x I]``, materialised on first access."""
+        if self._eval_imgs is None:
+            self._eval_imgs = self._build_eval_imgs() if self._state is not None else []
+        return self._eval_imgs
+
+    @eval_imgs.setter
+    def eval_imgs(self, value: list[EvalImgResult | None] | None) -> None:
+        self._eval_imgs = value
+
+    @property
+    def ious(self) -> dict[tuple[int, int], Tensor]:
+        """IoUs between detections and ground truths per ``(imgId, catId)``, materialised on first access."""
+        if self._ious is None:
+            self._ious = self._build_ious() if self._state is not None else {}
+        return self._ious
+
+    @ious.setter
+    def ious(self, value: dict[tuple[int, int], Tensor] | None) -> None:
+        self._ious = value
+
+    def _segm_to_rle(self, anns: list[CocoAnnotationDetection], coco: COCO) -> RaggedRle:
+        """Convert the segmentations of ``anns`` to RLE in one batch and store them on the annotations.
+
+        Mirrors ``ann['segmentation'] = coco.annToRLE(ann)`` of the reference implementation while keeping
+        the decoded counts for the IoU kernel, so masks never round-trip through strings.
+        """
+        num = len(anns)
+        hs, ws = [0] * num, [0] * num
+        poly_xy: list[float] = []
+        poly_vertices: list[int] = []
+        poly_owner: list[int] = []
+        raw_counts: list[int] = []
+        raw_lengths: list[int] = []
+        raw_owner: list[int] = []
+        strings: list[bytes] = []
+        string_owner: list[int] = []
+        for i, ann in enumerate(anns):
+            segm = ann.segmentation
+            if isinstance(segm, list) and segm and isinstance(segm[0], list) and len(segm[0]) > 4:
+                img = coco.imgs[ann.image_id]
+                hs[i], ws[i] = img.height, img.width
+                for poly in segm:
+                    num_vertices = len(poly) // 2
+                    poly_xy.extend(poly[: 2 * num_vertices])
+                    poly_vertices.append(num_vertices)
+                    poly_owner.append(i)
+            elif isinstance(segm, dict) and isinstance(segm["counts"], list):
+                hs[i], ws[i] = segm["size"]
+                raw_counts.extend(segm["counts"])
+                raw_lengths.append(len(segm["counts"]))
+                raw_owner.append(i)
+            else:
+                if not isinstance(segm, dict):
+                    # boxes and other rare inputs keep the scalar reference path
+                    rle = coco.annToRLE(ann)
+                    segm = rle[0] if isinstance(rle, list) else rle
+                    ann.segmentation = cast(list[Segmentation], segm)  # ty:ignore[invalid-assignment]
+                hs[i], ws[i] = segm["size"]
+                counts = segm["counts"]
+                strings.append(counts.encode() if isinstance(counts, str) else counts)
+                string_owner.append(i)
+
+        dev = self.device
+        h = torch.tensor(hs, dtype=torch.long, device=dev)
+        w = torch.tensor(ws, dtype=torch.long, device=dev)
+        parts: list[tuple[Tensor, Tensor, Tensor]] = []
+        if poly_vertices:
+            owner = torch.tensor(poly_owner, device=dev)
+            counts, lengths = polygons_to_counts(
+                torch.tensor(poly_xy, dtype=self.float_dtype, device=dev).view(-1, 2),
+                torch.tensor(poly_vertices, device=dev),
+                h[owner],
+                w[owner],
+            )
+            owners, group, polys_per_owner = torch.unique(owner, return_inverse=True, return_counts=True)
+            single = (polys_per_owner[group] == 1).nonzero().squeeze(1)
+            parts.append((*ragged_take(counts, lengths, single), owner[single]))
+            multi = (polys_per_owner[group] > 1).nonzero().squeeze(1)
+            if multi.numel():
+                multi_owners, multi_group = torch.unique(owner[multi], return_inverse=True)
+                merged = union_counts(*ragged_take(counts, lengths, multi), multi_group, (h * w)[multi_owners])
+                parts.append((*merged, multi_owners))
+        if raw_lengths:
+            parts.append(
+                (
+                    torch.tensor(raw_counts, dtype=torch.long, device=dev),
+                    torch.tensor(raw_lengths, device=dev),
+                    torch.tensor(raw_owner, device=dev),
+                )
+            )
+        if strings:
+            counts, lengths = strings_to_counts(strings, device=dev)
+            parts.append((counts, lengths, torch.tensor(string_owner, device=dev)))
+        if not parts:
+            empty = torch.zeros(0, dtype=torch.long, device=dev)
+            return RaggedRle(empty, empty, h, w)
+
+        all_counts = torch.cat([c for c, _, _ in parts])
+        all_lengths = torch.cat([n for _, n, _ in parts])
+        counts, lengths = ragged_take(all_counts, all_lengths, torch.argsort(torch.cat([o for _, _, o in parts])))
+
+        converted = sorted(set(poly_owner)) + raw_owner
+        if converted:
+            rows = torch.tensor(converted, device=dev)
+            for i, s in zip(converted, counts_to_strings(*ragged_take(counts, lengths, rows)), strict=True):
+                anns[i].segmentation = cast(list[Segmentation], RleObj(size=[hs[i], ws[i]], counts=s))  # ty:ignore[invalid-assignment]
+        return RaggedRle(counts, lengths, h, w)
+
     def _prepare(self) -> None:
         """Prepare ._gts and ._dts for evaluation based on params."""
-
-        def _toMask(anns: list[CocoAnnotationDetection], coco: COCO) -> list[CocoAnnotationDetection]:  # noqa: N802
-            # modify ann['segmentation'] by reference
-            for ann in anns:
-                rle = coco.annToRLE(ann)
-                # TODO: fix and validate
-                ann.segmentation = cast(list[Segmentation], rle)  # type: ignore  # noqa: PGH003
-            return anns
-
         p = self.params
         if p.useCats:
             gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
@@ -89,8 +518,10 @@ class COCOeval:
 
         # convert ground truth to mask if iouType == 'segm'
         if p.iouType == "segm":
-            gts = _toMask(gts, self.cocoGt)
-            dts = _toMask(dts, self.cocoDt)
+            self._gt_rle = self._segm_to_rle(gts, self.cocoGt)
+            self._dt_rle = self._segm_to_rle(dts, self.cocoDt)
+            self._gt_rle_row = {id(g): i for i, g in enumerate(gts)}
+            self._dt_rle_row = {id(d): i for i, d in enumerate(dts)}
         # set ignore flag
         for gt in gts:
             gt.ignore = gt.iscrowd
@@ -113,27 +544,9 @@ class COCOeval:
             if len(dt_list) > max_det:
                 self._dts[key] = dt_list[:max_det]
 
-        # Build tensor caches for GT and DT attributes (avoids repeated torch.tensor in evaluateImg)
-        dev = self.device
-        self._gt_tensor_cache: dict[tuple[int, int], tuple[Tensor, Tensor, Tensor, Tensor]] = {}
-        self._dt_tensor_cache: dict[tuple[int, int], tuple[Tensor, Tensor, Tensor]] = {}
-        for key, gt_list in self._gts.items():
-            if gt_list:
-                self._gt_tensor_cache[key] = (
-                    torch.tensor([g.id for g in gt_list], dtype=torch.long, device=dev),
-                    torch.tensor([g.area for g in gt_list], dtype=self.float_dtype, device=dev),
-                    torch.tensor([int(g.iscrowd) for g in gt_list], dtype=torch.bool, device=dev),
-                    torch.tensor([1 if g.ignore else 0 for g in gt_list], dtype=torch.bool, device=dev),
-                )
-        for key, dt_list in self._dts.items():
-            if dt_list:
-                self._dt_tensor_cache[key] = (
-                    torch.tensor([d.id for d in dt_list], dtype=torch.long, device=dev),
-                    torch.tensor([d.score for d in dt_list], dtype=self.float_dtype, device=dev),
-                    torch.tensor([d.area for d in dt_list], dtype=self.float_dtype, device=dev),
-                )
-
-        self.eval_imgs: list[EvalImgResult | None] = []  # per-image per-category evaluation results
+        self._state = None
+        self.eval_imgs = []
+        self.ious = {}
         self.eval = EvalResult()
 
     def evaluate(self) -> None:
@@ -146,53 +559,195 @@ class COCOeval:
         if p.iouType == "keypoints":
             p.kpt_oks_sigmas = p.kpt_oks_sigmas.to(dtype=self.float_dtype)
         self.logger.info(f"Evaluate annotation type *{p.iouType}*")
-        p.imgIds = torch.unique(torch.tensor(p.imgIds, device=self.device, requires_grad=self.requires_grad)).tolist()
+        p.imgIds = sorted(set(p.imgIds))
         if p.useCats:
-            p.catIds = torch.unique(
-                torch.tensor(p.catIds, device=self.device, requires_grad=self.requires_grad)
-            ).tolist()
+            p.catIds = sorted(set(p.catIds))
         p.maxDets = sorted(p.maxDets)
         self.params = p
 
         self._prepare()
-        # loop through images, area range, max detection number
-        cat_ids = p.catIds if p.useCats else [-1]
-
-        compute_iou: Callable[[int, int], Tensor] = lambda img_id, cat_id: torch.Tensor()  # noqa: E731
-        if p.iouType == "segm" or p.iouType == "bbox":
-            compute_iou = self.computeIoU
-        elif p.iouType == "keypoints":
-            compute_iou = self.computeOks
-        self.ious = {(img_id, cat_id): compute_iou(img_id, cat_id) for img_id in p.imgIds for cat_id in cat_ids}
-
-        max_det = p.maxDets[-1]
-
-        # Pre-compute clamped IoU thresholds once for all evaluateImg calls
-        _limit = float(1.0 - torch.finfo(self.float_dtype).eps)
-        iou_thrs_t = torch.tensor(
-            [min(float(t.item()), _limit) for t in p.iouThrs],
-            device=self.device,
-            dtype=self.float_dtype,
-        )  # [T]
-
-        # Batch evaluateImg across all area ranges per (catId, imgId)
-        batch_results: dict[tuple[int, int], list[EvalImgResult | None]] = {}
-        for cat_id in cat_ids:
-            for img_id in p.imgIds:
-                batch_results[cat_id, img_id] = self._evaluate_imgs_batch(
-                    img_id, cat_id, p.areaRng, max_det, iou_thrs_t
-                )
-
-        # Store in correct order: catId → aRng → imgId
-        self.eval_imgs = []
-        for cat_id in cat_ids:
-            for a_idx in range(len(p.areaRng)):
-                for img_id in p.imgIds:
-                    self.eval_imgs.append(batch_results[cat_id, img_id][a_idx])
+        self._state = self._evaluate_all()
+        self.eval_imgs = None
+        self.ious = None
 
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
         self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
+
+    def _collect_pairs(
+        self, cat_ids: list[int], max_det: int
+    ) -> list[tuple[int, int, list[CocoAnnotationDetection], list[CocoAnnotationDetection]]]:
+        """Return ``(cat index, img index, gts, dts)`` for every non-empty pair in reference order."""
+        p = self.params
+        img_index = {img_id: i for i, img_id in enumerate(p.imgIds)}
+        if p.useCats:
+            cat_index = {cat_id: k for k, cat_id in enumerate(cat_ids)}
+            keys = {key for key, v in self._gts.items() if v} | {key for key, v in self._dts.items() if v}
+            keys = sorted((cat_index[c], img_index[i]) for i, c in keys if c in cat_index and i in img_index)
+            return [
+                (k, i, self._gts.get((p.imgIds[i], cat_ids[k]), []), self._dts.get((p.imgIds[i], cat_ids[k]), []))
+                for k, i in keys
+            ]
+        pairs = []
+        for i, img_id in enumerate(p.imgIds):
+            gts = [g for c in p.catIds for g in self._gts.get((img_id, c), [])]
+            dts = [d for c in p.catIds for d in self._dts.get((img_id, c), [])]
+            dts = sorted(dts, key=lambda d: -(d.score if d.score is not None else 0))[:max_det]
+            if gts or dts:
+                pairs.append((0, i, gts, dts))
+        return pairs
+
+    def _pair_ious(
+        self,
+        gts: list[CocoAnnotationDetection],
+        dts: list[CocoAnnotationDetection],
+        entry_gt: Tensor,
+        entry_dt: Tensor,
+        crowd: Tensor,
+    ) -> Tensor:
+        """IoU / OKS of every (detection, ground truth) entry, on ``self.device`` in ``self.float_dtype``."""
+        p = self.params
+        dev, fdtype = self.device, self.float_dtype
+        if p.iouType == "bbox":
+            gt_box = torch.tensor([g.bbox for g in gts], dtype=fdtype, device=dev).view(-1, 4)
+            dt_box = torch.tensor([d.bbox for d in dts], dtype=fdtype, device=dev).view(-1, 4)
+            return self._bbox_iou(dt_box[entry_dt], gt_box[entry_gt], crowd)
+        if p.iouType == "segm":
+            gt_rows = torch.tensor([self._gt_rle_row[id(g)] for g in gts], dtype=torch.long, device=dev)
+            dt_rows = torch.tensor([self._dt_rle_row[id(d)] for d in dts], dtype=torch.long, device=dev)
+            return self._rle_iou(self._dt_rle, self._gt_rle, dt_rows[entry_dt], gt_rows[entry_gt], crowd)
+        if p.iouType == "keypoints" and p.useCats:
+            kp_gts = cast(list[CocoAnnotationKeypointDetection], gts)
+            kp_dts = cast(list[CocoAnnotationKeypointDetection], dts)
+            gt_kpts = torch.tensor([g.keypoints for g in kp_gts], dtype=fdtype, device=dev)
+            dt_kpts = torch.tensor([d.keypoints for d in kp_dts], dtype=fdtype, device=dev)
+            gt_box = torch.tensor([g.bbox for g in kp_gts], dtype=fdtype, device=dev).view(-1, 4)
+            gt_area = torch.tensor([g.area for g in kp_gts], dtype=fdtype, device=dev)
+            sigmas = p.kpt_oks_sigmas.to(dtype=fdtype, device=dev)
+            return self._oks(dt_kpts[entry_dt], gt_kpts[entry_gt], gt_box[entry_gt], gt_area[entry_gt], sigmas)
+        # the reference computes no keypoint similarities when categories are merged
+        return torch.full((entry_gt.numel(),), -1.0, dtype=fdtype, device=dev)
+
+    def _evaluate_all(self) -> EvalState:
+        """Compute IoUs and greedy matches for all (image, category) pairs in one batch."""
+        p = self.params
+        dev, fdtype = self.device, self.float_dtype
+        cat_ids = p.catIds if p.useCats else [-1]
+        max_det = p.maxDets[-1]
+        pairs = self._collect_pairs(cat_ids, max_det)
+        pairs.sort(key=lambda pair: -len(pair[3]))  # stable: keeps (cat, img) order within equal counts
+
+        gts = [g for _, _, gl, _ in pairs for g in gl]
+        dts = [d for _, _, _, dl in pairs for d in dl]
+        pair_num_gt = [len(gl) for _, _, gl, _ in pairs]
+        pair_num_dt = [len(dl) for _, _, _, dl in pairs]
+        pair_gt_end = list(running_sum(pair_num_gt))
+        pair_dt_end = list(running_sum(pair_num_dt))
+        pair_gt_offset = [e - n for e, n in zip(pair_gt_end, pair_num_gt, strict=True)]
+        pair_dt_offset = [e - n for e, n in zip(pair_dt_end, pair_num_dt, strict=True)]
+        num_pairs_t = torch.arange(len(pairs), device=dev)
+        pair_num_dt_t = torch.tensor(pair_num_dt, dtype=torch.long, device=dev)
+        gt_pair = torch.repeat_interleave(num_pairs_t, torch.tensor(pair_num_gt, dtype=torch.long, device=dev))
+        dt_pair = torch.repeat_interleave(num_pairs_t, pair_num_dt_t)
+        dt_offset_t = torch.tensor(pair_dt_offset, dtype=torch.long, device=dev)
+
+        gt_crowd = torch.tensor([bool(g.iscrowd) for g in gts], dtype=torch.bool, device=dev)
+        entry_d, entry_gt, entry_dt = self._pair_entries(gt_pair, pair_num_dt_t, dt_offset_t)
+        iou = torch.full((max(pair_num_dt, default=0), len(gts)), -1.0, dtype=fdtype, device=dev)
+        iou[entry_d, entry_gt] = self._pair_ious(gts, dts, entry_gt, entry_dt, gt_crowd[entry_gt])
+
+        gt_ids = torch.tensor([g.id for g in gts], dtype=torch.long, device=dev)
+        gt_area = torch.tensor([g.area for g in gts], dtype=fdtype, device=dev)
+        gt_ign = torch.tensor([bool(g.ignore) for g in gts], dtype=torch.bool, device=dev)
+        dt_ids = torch.tensor([d.id for d in dts], dtype=torch.long, device=dev)
+        dt_scores = torch.tensor(
+            [float(d.score) if d.score is not None else 0.0 for d in dts], dtype=fdtype, device=dev
+        )
+        dt_area = torch.tensor([d.area for d in dts], dtype=fdtype, device=dev)
+        a_rng = torch.tensor(p.areaRng, dtype=fdtype, device=dev).view(-1, 2)
+        gt_ignore = gt_ign[None] | (gt_area[None] < a_rng[:, :1]) | (gt_area[None] > a_rng[:, 1:])
+        thresholds = torch.tensor([min(t, 1 - 1e-10) for t in p.iouThrs.tolist()], dtype=fdtype, device=dev)
+
+        dt_gt, gt_dt = self._greedy_match(
+            iou, gt_pair, gt_ignore, gt_crowd, pair_num_dt, pair_gt_end, dt_offset_t, len(dts), thresholds
+        )
+        num_a, num_t = gt_ignore.shape[0], thresholds.numel()
+        matched = dt_gt >= 0
+        safe = dt_gt.clamp(min=0)
+        # a match to ground-truth id 0 counts as unmatched in the reference (``dtm == 0``)
+        dt_tp = matched & (gt_ids[safe] != 0) if len(gts) else matched
+        gt_ig_at = gt_ignore.gather(1, safe.view(num_a, -1)).view_as(safe) if len(gts) else matched
+        dt_area_out = (dt_area[None] < a_rng[:, :1]) | (dt_area[None] > a_rng[:, 1:])
+        dt_ignore = (matched & gt_ig_at) | (~dt_tp & dt_area_out[:, None, :].expand(num_a, num_t, -1))
+
+        return EvalState(
+            cat_ids=list(cat_ids),
+            img_ids=list(p.imgIds),
+            area_rngs=list(p.areaRng),
+            max_det=max_det,
+            pair_cat=[k for k, _, _, _ in pairs],
+            pair_img=[i for _, i, _, _ in pairs],
+            pair_num_dt=pair_num_dt,
+            pair_num_gt=pair_num_gt,
+            pair_dt_offset=pair_dt_offset,
+            pair_gt_offset=pair_gt_offset,
+            dt_pair=dt_pair,
+            dt_rank=torch.arange(len(dts), device=dev) - dt_offset_t[dt_pair],
+            dt_ids=dt_ids,
+            dt_scores=dt_scores,
+            gt_pair=gt_pair,
+            gt_ids=gt_ids,
+            gt_ignore=gt_ignore,
+            iou=iou,
+            dt_gt=dt_gt,
+            gt_dt=gt_dt,
+            dt_tp=dt_tp,
+            dt_ignore=dt_ignore,
+        )
+
+    def _build_ious(self) -> dict[tuple[int, int], Tensor]:
+        s = cast(EvalState, self._state)
+        empty = torch.empty(0, dtype=self.float_dtype, device=self.device)
+        ious = {(img_id, cat_id): empty for img_id in s.img_ids for cat_id in s.cat_ids}
+        for pi, (k, i) in enumerate(zip(s.pair_cat, s.pair_img, strict=True)):
+            num_dt, num_gt, g0 = s.pair_num_dt[pi], s.pair_num_gt[pi], s.pair_gt_offset[pi]
+            if num_dt and num_gt and (self.params.iouType != "keypoints" or self.params.useCats):
+                ious[s.img_ids[i], s.cat_ids[k]] = s.iou[:num_dt, g0 : g0 + num_gt]
+        return ious
+
+    def _build_eval_imgs(self) -> list[EvalImgResult | None]:
+        s = cast(EvalState, self._state)
+        dt_match_ids = torch.where(s.dt_gt >= 0, s.gt_ids[s.dt_gt.clamp(min=0)], 0) if s.gt_ids.numel() else s.dt_gt
+        gt_match_ids = torch.where(s.gt_dt >= 0, s.dt_ids[s.gt_dt.clamp(min=0)], 0) if s.dt_ids.numel() else s.gt_dt
+        # ground truths per pair sorted with ignored ones last, as the reference does per area range
+        gt_order = torch.argsort(s.gt_pair[None] * 2 + s.gt_ignore.long(), dim=1, stable=True)
+        lookup = {(k, i): pi for pi, (k, i) in enumerate(zip(s.pair_cat, s.pair_img, strict=True))}
+        results: list[EvalImgResult | None] = []
+        for k, cat_id in enumerate(s.cat_ids):
+            for a, a_rng in enumerate(s.area_rngs):
+                for i, img_id in enumerate(s.img_ids):
+                    pi = lookup.get((k, i))
+                    if pi is None:
+                        results.append(None)
+                        continue
+                    d0, d1 = s.pair_dt_offset[pi], s.pair_dt_offset[pi] + s.pair_num_dt[pi]
+                    order = gt_order[a, s.pair_gt_offset[pi] : s.pair_gt_offset[pi] + s.pair_num_gt[pi]]
+                    results.append(
+                        EvalImgResult(
+                            image_id=img_id,
+                            category_id=cat_id,
+                            aRng=a_rng,
+                            maxDet=s.max_det,
+                            dtIds=s.dt_ids[d0:d1],
+                            gtIds=s.gt_ids[order],
+                            dtMatches=dt_match_ids[a, :, d0:d1],
+                            gtMatches=gt_match_ids[a][:, order],
+                            dtScores=s.dt_scores[d0:d1],
+                            gtIgnore=s.gt_ignore[a, order],
+                            dtIgnore=s.dt_ignore[a, :, d0:d1],
+                        )
+                    )
+        return results
 
     def computeIoU(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         """Compute the IoU between detections and ground truth for the given :param:`imgId` and :param:`catId`.
@@ -294,7 +849,6 @@ class COCOeval:
         return ious.to(dtype=self.float_dtype)
 
     @torch.inference_mode()
-    @torch.compile(fullgraph=False, mode="reduce-overhead")
     def computeOks(self, imgId: int, catId: int) -> Tensor:  # noqa: N803, N802
         # dimention here should be Nxm
         gts = cast(list[CocoAnnotationKeypointDetection], self._gts[imgId, catId])
@@ -575,169 +1129,6 @@ class COCOeval:
             dtIgnore=dt_ig,
         )
 
-    def _evaluate_imgs_batch(
-        self,
-        imgId: int,  # noqa: N803
-        catId: int,  # noqa: N803
-        a_rngs: list[Range],
-        maxDet: int,  # noqa: N803
-        iou_thrs_t: Tensor,
-    ) -> list[EvalImgResult | None]:
-        """Evaluate all area ranges for a single (imgId, catId) pair simultaneously.
-
-        Batches across area ranges using [A, T, G] tensors to reduce per-call overhead.
-        """
-        if self.params.useCats:
-            gt_list = self._gts[imgId, catId]
-            dt_list = self._dts[imgId, catId]
-        else:
-            gt_list = []
-            dt_list = []
-            for c_id in self.params.catIds:
-                gt_list.extend(self._gts[imgId, c_id])
-                dt_list.extend(self._dts[imgId, c_id])
-
-        num_a = len(a_rngs)
-        if len(gt_list) == 0 and len(dt_list) == 0:
-            return [None] * num_a
-
-        dev = self.device
-        num_t = iou_thrs_t.shape[0]
-        num_gt = len(gt_list)
-        key = (imgId, catId)
-
-        # --- GT tensors ---
-        if num_gt > 0:
-            if key in self._gt_tensor_cache:
-                gt_ids, gt_areas, gt_iscrowd, gt_ignore_base = self._gt_tensor_cache[key]
-            else:
-                gt_ids = torch.tensor([g.id for g in gt_list], dtype=torch.long, device=dev)
-                gt_areas = torch.tensor([g.area for g in gt_list], dtype=self.float_dtype, device=dev)
-                gt_iscrowd = torch.tensor([int(g.iscrowd) for g in gt_list], dtype=torch.bool, device=dev)
-                gt_ignore_base = torch.tensor([1 if g.ignore else 0 for g in gt_list], dtype=torch.bool, device=dev)
-
-        # --- DT tensors (pre-sorted in _prepare) ---
-        num_dt = min(len(dt_list), maxDet)
-        if num_dt > 0:
-            if key in self._dt_tensor_cache:
-                dt_ids_full, dt_scores_full, dt_areas_full = self._dt_tensor_cache[key]
-                dt_ids = dt_ids_full[:num_dt]
-                dt_scores = dt_scores_full[:num_dt]
-                dt_areas = dt_areas_full[:num_dt]
-            else:
-                # useCats=False: combined list needs sorting
-                inds = torch.argsort(
-                    torch.tensor([-d.score if d.score is not None else 0 for d in dt_list], device=dev),
-                    stable=True,
-                )[:maxDet]
-                sorted_dt = [dt_list[i] for i in inds.tolist()]
-                dt_ids = torch.tensor([d.id for d in sorted_dt], dtype=torch.long, device=dev)
-                dt_scores = torch.tensor([d.score for d in sorted_dt], dtype=self.float_dtype, device=dev)
-                dt_areas = torch.tensor([d.area for d in sorted_dt], dtype=self.float_dtype, device=dev)
-                num_dt = len(sorted_dt)
-
-        # --- GT ignore per area range: [A, G] ---
-        a_rng_t = torch.tensor(a_rngs, dtype=self.float_dtype, device=dev)  # [A, 2]
-        if num_gt > 0:
-            area_out = (gt_areas.unsqueeze(0) < a_rng_t[:, 0:1]) | (gt_areas.unsqueeze(0) > a_rng_t[:, 1:2])
-            gt_ig = gt_ignore_base.unsqueeze(0) | area_out  # [A, G] bool
-        else:
-            gt_ig = torch.zeros((num_a, 0), dtype=torch.bool, device=dev)
-
-        # --- Match tensors: [A, T, D/G] ---
-        gtm = torch.zeros((num_a, num_t, num_gt), dtype=torch.long, device=dev)
-        dtm = torch.zeros((num_a, num_t, num_dt), dtype=torch.long, device=dev)
-        dt_ig_out = torch.zeros((num_a, num_t, num_dt), dtype=torch.bool, device=dev)
-
-        ious_raw = self.ious.get(key, torch.tensor([]))
-
-        if ious_raw.numel() > 0 and num_gt > 0 and num_dt > 0:
-            ious_f = ious_raw[:num_dt].to(dtype=self.float_dtype, device=dev)  # [D, G]
-            non_ignored = ~gt_ig  # [A, G]
-            matched_gt = torch.zeros((num_a, num_t, num_gt), dtype=torch.bool, device=dev)
-
-            # Pre-expand constant masks for the matching loop
-            iscrowd_exp = gt_iscrowd.unsqueeze(0).unsqueeze(0)  # [1, 1, G]
-            t_thrs = iou_thrs_t.unsqueeze(0).unsqueeze(-1)  # [1, T, 1]
-            non_ignored_exp = non_ignored.unsqueeze(1)  # [A, 1, G]
-            a_range_idx = torch.arange(num_a, device=dev)
-
-            # Greedy matching per detection, vectorized over [A, T]
-            for dind in range(num_dt):
-                iou_d = ious_f[dind]  # [G]
-                iou_atg = iou_d.unsqueeze(0).unsqueeze(0).expand(num_a, num_t, num_gt)
-                above_thr = iou_atg >= t_thrs  # [A, T, G]
-                avail = ~matched_gt | iscrowd_exp  # [A, T, G]
-
-                # IoU lies in [-1, 1]; this offset makes non-ignored GTs rank first.
-                candidate_valid = above_thr & avail
-                candidate_score = iou_atg + non_ignored_exp.to(iou_atg.dtype) * 3.0
-                candidate_score = candidate_score.masked_fill(~candidate_valid, -float("inf"))
-                best_score, best_idx = candidate_score.max(dim=2)  # [A, T]
-                has_match = best_score > -float("inf")
-
-                if not has_match.any():
-                    continue
-
-                safe_idx = best_idx.clamp(0, num_gt - 1)  # [A, T]
-
-                # dtm update: store matched GT id
-                dtm[:, :, dind] = torch.where(has_match, gt_ids[safe_idx], dtm[:, :, dind])
-
-                # dt_ig update: store whether matched GT is ignored
-                gt_ig_at_match = gt_ig[a_range_idx.unsqueeze(1).expand_as(safe_idx), safe_idx]
-                dt_ig_out[:, :, dind] = torch.where(
-                    has_match, gt_ig_at_match.to(dt_ig_out.dtype), dt_ig_out[:, :, dind]
-                )
-
-                # gtm update: scatter dt_id to matched GT position
-                at_match = torch.where(has_match)
-                g_match = safe_idx[at_match[0], at_match[1]]
-                gtm[at_match[0], at_match[1], g_match] = dt_ids[dind]
-
-                # matched_gt update (non-crowd only)
-                is_crowd_match = gt_iscrowd[safe_idx]
-                should_mark = has_match & ~is_crowd_match
-                mark_at = torch.where(should_mark)
-                g_mark = safe_idx[mark_at[0], mark_at[1]]
-                matched_gt[mark_at[0], mark_at[1], g_mark] = True
-
-        # DT area-based ignore: unmatched DTs outside area range
-        if num_dt > 0:
-            dt_area_out = (dt_areas.unsqueeze(0) < a_rng_t[:, 0:1]) | (
-                dt_areas.unsqueeze(0) > a_rng_t[:, 1:2]
-            )  # [A, D]
-            dt_ig_out = torch.logical_or(
-                dt_ig_out,
-                torch.logical_and(dtm == 0, dt_area_out.unsqueeze(1).expand(-1, num_t, -1)),
-            )
-
-        # Build results per area range
-        empty_ids = torch.empty(0, dtype=torch.long, device=dev)
-        empty_scores = torch.empty(0, dtype=self.float_dtype, device=dev)
-        dt_ids_out = dt_ids if num_dt > 0 else empty_ids
-        gt_ids_out = gt_ids if num_gt > 0 else empty_ids
-        dt_scores_out = dt_scores if num_dt > 0 else empty_scores
-
-        results: list[EvalImgResult | None] = []
-        for a_idx in range(num_a):
-            results.append(
-                EvalImgResult(
-                    image_id=imgId,
-                    category_id=catId,
-                    aRng=a_rngs[a_idx],
-                    maxDet=maxDet,
-                    dtIds=dt_ids_out,
-                    gtIds=gt_ids_out,
-                    dtMatches=dtm[a_idx],
-                    gtMatches=gtm[a_idx],
-                    dtScores=dt_scores_out,
-                    gtIgnore=gt_ig[a_idx] if num_gt > 0 else torch.empty(0, dtype=torch.bool, device=dev),
-                    dtIgnore=dt_ig_out[a_idx],
-                )
-            )
-        return results
-
     def accumulate(self, p: Params | None = None) -> None:
         """Accumulate per image evaluation results and store the result in self.eval.
 
@@ -746,21 +1137,13 @@ class COCOeval:
         """
         self.logger.info("Accumulating evaluation results...")
         tic = time.time()
-        if not self.eval_imgs or len(self.eval_imgs) == 0:
+        if self._state is None:
             self.logger.info("Please run evaluate() first")
+            return
+        s = self._state
         # allows input customized parameters
         p = p or self.params
-
-        ############
-        #
-        # K = category ids
-        # A = area range indices
-        # M = max dets
-        # I = image ids
-        # T = iou thresholds
-        # R = recall thresholds
-        #
-        ############
+        dev, fdtype = self.device, self.float_dtype
 
         p.catIds = p.catIds if p.useCats == 1 else [-1]
         num_iou_thrs = len(p.iouThrs)  # T
@@ -768,128 +1151,61 @@ class COCOeval:
         num_cat_ids = len(p.catIds) if p.useCats else 1  # K
         num_area_rng = len(p.areaRng)  # A
         num_max_dets = len(p.maxDets)  # M
-        precision = -torch.ones(
-            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
-            device=self.device,
-            dtype=self.float_dtype,
-            requires_grad=self.requires_grad,
+        precision = torch.full(
+            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets), -1.0, dtype=fdtype, device=dev
         )  # -1 for the precision of absent categories
-        recall = -torch.ones(
-            (num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets),
-            device=self.device,
-            dtype=self.float_dtype,
-            requires_grad=self.requires_grad,
-        )
-        scores = -torch.ones(
-            (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
-            device=self.device,
-            dtype=self.float_dtype,
-            requires_grad=self.requires_grad,
-        )
+        recall = torch.full((num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets), -1.0, dtype=fdtype, device=dev)
+        scores = torch.full_like(precision, -1.0)
 
-        # create dictionary for future indexing
-        cat_ids = self._paramsEval.catIds if self._paramsEval.useCats else [-1]
-        set_cat_ids = set(cat_ids)
+        # list positions are used as indices into the evaluated layout, exactly like the reference
+        set_cat_ids = set(s.cat_ids)
         set_area_rng = set(map(tuple, self._paramsEval.areaRng))
         set_max_dets = set(self._paramsEval.maxDets)
         set_img_ids = set(self._paramsEval.imgIds)
-        # get inds to evaluate
         cat_ids_indices = [n for n, k in enumerate(p.catIds) if k in set_cat_ids]
-        max_dets_indices = [m for n, m in enumerate(p.maxDets) if m in set_max_dets]
+        max_dets_indices = [m for m in p.maxDets if m in set_max_dets]
         area_rng_indices = [n for n, a in enumerate(tuple(x) for x in p.areaRng) if a in set_area_rng]
         img_ids_indices = [n for n, i in enumerate(p.imgIds) if i in set_img_ids]
-        len_img_ids = len(self._paramsEval.imgIds)  # I0
-        len_area_rng = len(self._paramsEval.areaRng)  # A0
 
-        # Pre-compute rec_thrs_2d once (invariant across all iterations)
-        eps = torch.finfo(self.float_dtype).eps
-        rec_thrs_2d = (
-            p.recThrs.to(device=self.device or "cpu", dtype=self.float_dtype)
-            .unsqueeze(0)
-            .expand(num_iou_thrs, -1)
-            .contiguous()
-        )  # [T, R]
-
-        # retrieve E at each category, area range, and max number of detections
+        cat_map = torch.full((len(s.cat_ids),), -1, dtype=torch.long)
         for k, k0 in enumerate(cat_ids_indices):
-            num_k = k0 * len_area_rng * len_img_ids
-            for a, a0 in enumerate(area_rng_indices):
-                num_a = a0 * len_img_ids
-                # Pre-collect and filter results once per (k, a)
-                eval_img_results_raw = [self.eval_imgs[num_k + num_a + i] for i in img_ids_indices]
-                eval_img_results_ka = [el for el in eval_img_results_raw if el is not None]
-                if len(eval_img_results_ka) == 0:
-                    continue
-                # Pre-compute gt_ig once (same for all max_dets)
-                gt_ig = torch.cat([el.gtIgnore for el in eval_img_results_ka])
-                npig = torch.count_nonzero(gt_ig == 0)
-                if npig == 0:
-                    continue
+            if k0 < len(s.cat_ids):
+                cat_map[k0] = k
+        img_sel = torch.zeros(len(s.img_ids), dtype=torch.bool)
+        img_sel[[i for i in img_ids_indices if i < len(s.img_ids)]] = True
+        pair_cat = cat_map[torch.tensor(s.pair_cat, dtype=torch.long)]
+        pair_cat = torch.where(img_sel[torch.tensor(s.pair_img, dtype=torch.long)], pair_cat, -1).to(dev)
+        pair_img = torch.tensor(s.pair_img, dtype=torch.long, device=dev)
 
-                # Pre-concatenate for the largest max_det
-                max_max_det = max_dets_indices[-1]
-                dt_scores_full = torch.cat([el.dtScores[0:max_max_det] for el in eval_img_results_ka]).to(
-                    dtype=self.float_dtype
-                )
-                inds_full = torch.argsort(dt_scores_full, descending=True, stable=True)
-                dt_scores_sorted_full = dt_scores_full[inds_full]
-                dt_matches_full = torch.cat([el.dtMatches[:, 0:max_max_det] for el in eval_img_results_ka], dim=1)[
-                    :, inds_full
-                ]
-                dt_ig_full = torch.cat([el.dtIgnore[:, 0:max_max_det] for el in eval_img_results_ka], dim=1)[
-                    :, inds_full
-                ]
+        a_idx = torch.tensor(area_rng_indices, dtype=torch.long, device=dev)
+        gt_cat = pair_cat[s.gt_pair]
+        counted = ~s.gt_ignore[a_idx] & (gt_cat >= 0)
+        npig = torch.zeros((a_idx.numel(), num_cat_ids), dtype=torch.long, device=dev)
+        npig.scatter_add_(1, gt_cat.clamp(min=0).expand_as(counted), counted.long())
 
-                for m, max_det in enumerate(max_dets_indices):
-                    if max_det >= max_max_det:
-                        dt_scores_sorted = dt_scores_sorted_full
-                        dt_matches = dt_matches_full
-                        dt_ig = dt_ig_full
-                    else:
-                        # For smaller max_dets, re-concatenate with the limit
-                        dt_scores_m = torch.cat([el.dtScores[0:max_det] for el in eval_img_results_ka]).to(
-                            dtype=self.float_dtype
-                        )
-                        inds_m = torch.argsort(dt_scores_m, descending=True, stable=True)
-                        dt_scores_sorted = dt_scores_m[inds_m]
-                        dt_matches = torch.cat([el.dtMatches[:, 0:max_det] for el in eval_img_results_ka], dim=1)[
-                            :, inds_m
-                        ]
-                        dt_ig = torch.cat([el.dtIgnore[:, 0:max_det] for el in eval_img_results_ka], dim=1)[:, inds_m]
-
-                    tps = torch.logical_and(dt_matches, torch.logical_not(dt_ig))
-                    fps = torch.logical_and(torch.logical_not(dt_matches), torch.logical_not(dt_ig))
-
-                    tp_sum = torch.cumsum(tps, dim=1, dtype=self.float_dtype)
-                    fp_sum = torch.cumsum(fps, dim=1, dtype=self.float_dtype)
-                    # Vectorized over all T IoU thresholds at once:
-                    nd = tp_sum.shape[1]
-                    if nd == 0:
-                        recall[:, k, a, m] = 0.0
-                        precision[:, :, k, a, m] = 0.0
-                        scores[:, :, k, a, m] = 0.0
-                        continue
-                    # rc_all, pr_all: [T, nd]
-                    rc_all = tp_sum / npig
-                    pr_all = tp_sum / (fp_sum + tp_sum + eps)
-                    pr_all = torch.flip(torch.cummax(torch.flip(pr_all, dims=[1]), dim=1).values, dims=[1])
-                    recall[:, k, a, m] = rc_all[:, -1]
-                    rec_inds = torch.searchsorted(rc_all, rec_thrs_2d, side="left")  # [T, R]
-                    valid = rec_inds < nd
-                    rec_inds_c = rec_inds.clamp(0, nd - 1)
-                    q_all = pr_all.gather(1, rec_inds_c)  # [T, R]
-                    q_all[~valid] = 0.0
-                    ss_all = dt_scores_sorted.unsqueeze(0).expand(num_iou_thrs, nd).gather(1, rec_inds_c)  # [T, R]
-                    ss_all[~valid] = 0.0
-                    precision[:, :, k, a, m] = q_all
-                    scores[:, :, k, a, m] = ss_all
+        prec, rec, sc = self._accumulate(
+            dt_cat=pair_cat[s.dt_pair],
+            dt_order_key=pair_img[s.dt_pair] * (s.max_det + 1) + s.dt_rank,
+            dt_rank=s.dt_rank,
+            dt_score=s.dt_scores,
+            dt_tp=s.dt_tp[a_idx],
+            dt_ignore=s.dt_ignore[a_idx],
+            npig=npig,
+            max_dets=max_dets_indices,
+            rec_thrs=p.recThrs.to(device=dev, dtype=fdtype),
+            num_cats=num_cat_ids,
+        )
+        num_a, num_m = a_idx.numel(), len(max_dets_indices)
+        precision[:, :, :, :num_a, :num_m] = prec
+        recall[:, :, :num_a, :num_m] = rec
+        scores[:, :, :, :num_a, :num_m] = sc
         self.eval = EvalResult(
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
             date=datetime.datetime.now(),  # .strftime("%Y-%m-%d %H:%M:%S"),
-            precision=precision.to(dtype=self.float_dtype),
-            recall=recall.to(dtype=self.float_dtype),
-            scores=scores.to(dtype=self.float_dtype),
+            precision=precision,
+            recall=recall,
+            scores=scores,
         )
         toc = time.time()
         self.logger.info(f"DONE (t={toc - tic:0.2f}s).")

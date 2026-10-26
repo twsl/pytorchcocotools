@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from pytest import FixtureRequest
 import torch
 from torch import IntTensor, Tensor
 from torchmetrics.detection import MeanAveragePrecision as TorchmetricsMeanAveragePrecision
@@ -11,6 +12,17 @@ from torchmetrics.detection import MeanAveragePrecision as TorchmetricsMeanAvera
 from pytorchcocotools.lightning.metrics.mean_ap import MeanAveragePrecision
 
 from .protocols import AssertMapClose, ComputeFn, MakeRandomBoxes, MakeStressBatch
+
+
+@pytest.fixture
+def mps_iou_threshold_parity_xfail(request: FixtureRequest, device: str) -> None:
+    if device == "mps":
+        request.applymarker(
+            pytest.mark.xfail(
+                strict=True,
+                reason="MPS float32 IoU can change matches near COCO IoU thresholds.",
+            )
+        )
 
 
 @pytest.fixture()

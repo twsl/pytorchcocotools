@@ -1,7 +1,45 @@
+from functools import lru_cache
+
 import torch
 from torch import Tensor
 
 from pytorchcocotools.internal.entities import RLE, RLEs, TorchDevice
+
+_MAX_CACHEABLE_BYTES = 128
+
+
+def _decode_counts_uncached(s: bytes) -> tuple[int, ...]:
+    m = 0
+    p = 0
+    cnts = []
+    while p < len(s):
+        x = 0
+        k = 0
+        more = True
+        while more:
+            c = s[p] - 48
+            x |= (c & 0x1F) << (5 * k)  # 0x1F = 31, mask for lower 5 bits
+            more = bool(c & 0x20)  # 0x20 = 32, continuation bit
+            p += 1
+            k += 1
+            if not more and bool(c & 0x10):  # 0x10 = 16, sign bit for negative numbers
+                x |= -1 << (5 * k)
+        if m > 2:
+            x += cnts[m - 2]
+        cnts.append(x)
+        m += 1
+    return tuple(cnts)
+
+
+@lru_cache(maxsize=128)
+def _decode_counts_cached(s: bytes) -> tuple[int, ...]:
+    return _decode_counts_uncached(s)
+
+
+def _decode_counts(s: bytes) -> tuple[int, ...]:
+    if len(s) > _MAX_CACHEABLE_BYTES:
+        return _decode_counts_uncached(s)
+    return _decode_counts_cached(s)
 
 
 @torch.inference_mode()
@@ -27,32 +65,10 @@ def rleFrString(  # noqa: N802
     Returns:
         The RLE encoded mask.
     """
-    m = 0
-    p = 0
-    cnts = []
-    while p < len(s):
-        x = 0
-        k = 0
-        more = True
-        while more:
-            c = s[p] - 48
-            x |= (c & 0x1F) << (5 * k)  # 0x1F = 31
-            more = bool(c & 0x20)  # 0x20 = 32
-            p += 1
-            k += 1
-            if not more and bool(c & 0x10):  # 0x10 = 16
-                x |= -1 << (5 * k)
-        if m > 2:
-            x += cnts[m - 2]
-        cnts.append(x)  # cnts[m] = x
-        m += 1
-
-    # don't do this as pycocotools also ignores this
-    # if len(cnts) % 2 != 0:
-    #     cnts.append(0)
+    # Preserve odd-length count sequences, matching pycocotools.
 
     grad = requires_grad if requires_grad else False
-    result = torch.tensor(cnts, device=device, requires_grad=grad)  # TODO: Performance
+    result = torch.tensor(_decode_counts(s), device=device, requires_grad=grad)  # TODO: Performance
 
     # uneven number of values means we cant reshape
     # result = result.view(-1, 2)

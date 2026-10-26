@@ -9,6 +9,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 import pytest
+from pytest import FixtureRequest
 from pytest_benchmark.fixture import BenchmarkFixture
 from torch import Tensor
 
@@ -19,6 +20,12 @@ _SEGM_UPDATE_XFAIL = pytest.mark.xfail(
     reason="Segmentation mAP still differs from torchmetrics because the local PyTorch-only mask IoU backend "
     "produces slightly different threshold behavior than the pycocotools-backed reference.",
 )
+
+
+@pytest.fixture
+def segm_update_xfail(request: FixtureRequest, device: str) -> None:
+    if device == "mps":
+        request.applymarker(_SEGM_UPDATE_XFAIL)
 
 
 class TestComputeFixtures:
@@ -104,7 +111,6 @@ class TestComputeFixtures:
     # Segmentation single image
     # ---------------------------------------------------------------------------
 
-    @_SEGM_UPDATE_XFAIL
     def test_segm_single_image(
         self,
         segm_preds: list[dict[str, Tensor]],
@@ -112,6 +118,7 @@ class TestComputeFixtures:
         pt_compute: ComputeFn,
         tm_compute: ComputeFn,
         assert_map_close: AssertMapClose,
+        segm_update_xfail: None,
     ) -> None:
         result = pt_compute(segm_preds, segm_target, iou_type="segm")
         reference = tm_compute(segm_preds, segm_target, iou_type="segm")
