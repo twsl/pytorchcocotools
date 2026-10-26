@@ -14,6 +14,7 @@ from pytorchcocotools.internal.entities import RLE, RleObj
 from pytorchcocotools.internal.mask_api.rle_fr_poly import rleFrPoly
 from pytorchcocotools.internal.mask_api.rle_to_string import rleToString
 from pytorchcocotools.utils.callable import resolve_actual_function
+from pytorchcocotools.utils.device import get_float_dtype
 
 
 class RleFrPolyCases:
@@ -270,7 +271,7 @@ def test_rle_fr_poly_pt(
     expected: RleObj,
 ) -> None:
     """Test PyTorch implementation of rleFrPoly."""
-    poly = poly.to(device)  # ty:ignore[invalid-assignment]
+    poly = poly.to(device=device, dtype=get_float_dtype(device))  # ty:ignore[invalid-assignment]
 
     rle = cast(RLE, benchmark(rleFrPoly, poly))
 
@@ -289,7 +290,7 @@ def test_rle_fr_poly_pt_profiling(
     expected: RleObj,
 ) -> None:
     """Profile PyTorch implementation of rleFrPoly using torch.profiler."""
-    poly = poly.to(device)  # ty:ignore[invalid-assignment]
+    poly = poly.to(device=device, dtype=get_float_dtype(device))  # ty:ignore[invalid-assignment]
 
     # Warmup
     for _ in range(5):
@@ -330,7 +331,7 @@ def test_rle_fr_poly_pt_line_profiling(
     """Profile PyTorch implementation of rleFrPoly using line_profiler."""
     from line_profiler import LineProfiler
 
-    poly = poly.to(device)  # ty:ignore[invalid-assignment]
+    poly = poly.to(device=device, dtype=get_float_dtype(device))  # ty:ignore[invalid-assignment]
 
     # Warmup
     for _ in range(5):

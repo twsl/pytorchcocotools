@@ -7,8 +7,10 @@ from pytest_cases import parametrize_with_cases
 import torch
 from torch import Tensor
 
-from pytorchcocotools.internal.entities import PyObj, RleObj, RleObjs
+from pytorchcocotools.internal.entities import RLE, PyObj, RleObj, RleObjs
+from pytorchcocotools.internal.mask_api.rle_iou import rleIou
 import pytorchcocotools.mask as tmask
+from pytorchcocotools.utils.device import get_float_dtype
 
 
 class PyObjectsCases:
@@ -145,6 +147,9 @@ class PyObjectsCases:
 def test_frPyObjects_pt(  # noqa: N802
     benchmark: BenchmarkFixture, device: str, h: int, w: int, obj: PyObj, result
 ) -> None:
+    if isinstance(obj, Tensor) and obj.is_floating_point():
+        obj = obj.to(dtype=get_float_dtype(device))
+
     # convert the polygon to a mask
     mask_pt = benchmark(tmask.frPyObjects, obj, h, w, device=device)
     # mask_pt = tmask.frPyObjects(obj, h, w)
@@ -162,7 +167,7 @@ def test_frPyObjects_pt(  # noqa: N802
 @pytest.mark.benchmark(group="pyObjects", warmup=True)
 @parametrize_with_cases("h, w, obj, result", cases=PyObjectsCases)
 def test_frPyObjects_np(  # noqa: N802
-    benchmark: BenchmarkFixture, device: str, h: int, w: int, obj: PyObj, result
+    benchmark: BenchmarkFixture, h: int, w: int, obj: PyObj, result
 ) -> None:
     # fix input
     if isinstance(obj, list):
@@ -194,9 +199,13 @@ def test_frPyObjects(device: str, h: int, w: int, obj: PyObj, result) -> None:  
     else:
         obj_np = obj
 
+    obj_pt = obj
+    if isinstance(obj_pt, Tensor) and obj_pt.is_floating_point():
+        obj_pt = obj_pt.to(dtype=get_float_dtype(device))
+
     # convert the polygon to a mask
     mask_np = mask.frPyObjects(obj_np, h, w)
-    mask_pt = tmask.frPyObjects(obj, h, w, device=device)
+    mask_pt = tmask.frPyObjects(obj_pt, h, w, device=device)
 
     # fix output
     if not isinstance(mask_np, list) and not isinstance(mask_pt, list):
@@ -210,3 +219,30 @@ def test_frPyObjects(device: str, h: int, w: int, obj: PyObj, result) -> None:  
         assert mask_pt[i]["size"] == mask_np[i]["size"]
         assert mask_np[i]["counts"] == result[i]["counts"]
         assert mask_np[i]["size"] == result[i]["size"]
+
+
+def test_fractional_polygon_matches_reference_on_cpu() -> None:
+    polygon = [[0.49999999, 1.0, 4.0, 1.0, 4.0, 4.0]]
+    expected = mask.frPyObjects(polygon, 8, 8)[0]["counts"]
+    result = tmask.frPyObjects(polygon, 8, 8, device="cpu")[0]["counts"]
+
+    assert result == expected
+
+
+def test_rle_iou_uses_device_supported_float_precision(device: str) -> None:
+    height = 8192
+    width = 4096
+    total_pixels = height * width
+    gt_area = 1 << 24
+    dt_area = gt_area + 1
+    dt = RLE(height, width, torch.tensor([0, dt_area, total_pixels - dt_area], dtype=torch.long, device=device))
+    gt = RLE(height, width, torch.tensor([0, gt_area, total_pixels - gt_area], dtype=torch.long, device=device))
+
+    result = rleIou([dt], [gt], [False])
+    expected_dtype = get_float_dtype(device)
+    expected_intersection = torch.tensor(gt_area, dtype=expected_dtype, device=device)
+    expected_union = torch.tensor(dt_area, dtype=expected_dtype, device=device)
+    expected = expected_intersection / expected_union
+
+    assert result.dtype == expected_dtype
+    torch.testing.assert_close(result[0, 0], expected, rtol=0, atol=0)

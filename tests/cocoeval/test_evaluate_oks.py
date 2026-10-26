@@ -65,7 +65,9 @@ def test_evaluate_pt(benchmark: BenchmarkFixture, coco_eval_pt: COCOevalpt, resu
     for combo in result:
         iou = coco_eval_pt.ious[combo]
         assert iou is not None, f"IOU pt is None for combo {combo}"
-        assert torch.allclose(iou, torch.tensor(result[combo])), f"IOU pt mismatch for combo {combo}"
+        assert torch.allclose(iou.cpu(), torch.tensor(result[combo], dtype=coco_eval_pt.float_dtype)), (
+            f"IOU pt mismatch for combo {combo}"
+        )
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, result", cases=COCOEvalCasesBoth)
@@ -78,4 +80,6 @@ def test_evaluate(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, result: TE
         assert iou_np is not None, f"IOU np is None for combo {combo}"
         assert np.allclose(iou_np, np.array(result[combo])), f"IOU np mismatch for combo {combo}"
         assert iou_pt is not None, f"IOU pt is None for combo {combo}"
-        assert torch.allclose(iou_pt, torch.tensor(result[combo])), f"IOU pt mismatch for combo {combo}"
+        assert torch.allclose(iou_pt.cpu(), torch.tensor(result[combo], dtype=coco_eval_pt.float_dtype)), (
+            f"IOU pt mismatch for combo {combo}"
+        )

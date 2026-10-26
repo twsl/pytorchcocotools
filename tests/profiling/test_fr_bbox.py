@@ -14,6 +14,7 @@ from pytorchcocotools.internal.entities import RLE, RleObj
 from pytorchcocotools.internal.mask_api import rleToString
 from pytorchcocotools.internal.mask_api.rle_fr_bbox import rleFrBbox
 from pytorchcocotools.utils.callable import resolve_actual_function
+from pytorchcocotools.utils.device import get_float_dtype
 
 
 class RleFrBboxCases:
@@ -61,7 +62,8 @@ def test_rle_fr_bbox_pt(
     expected: RleObj | list[RleObj],
 ) -> None:
     """Test PyTorch implementation of rleFrBbox."""
-    bbox_tv = tv.BoundingBoxes(bbox, format="XYWH", canvas_size=(h, w), device=device)  # ty:ignore[no-matching-overload]
+    bbox = bbox.to(device=device, dtype=get_float_dtype(device))
+    bbox_tv = tv.BoundingBoxes(bbox, format="XYWH", canvas_size=(h, w))  # ty:ignore[no-matching-overload]
 
     result = cast(list[RLE], benchmark(rleFrBbox, bbox_tv))
 
@@ -97,7 +99,8 @@ def test_rle_fr_bbox_pt_profiling(
     expected: RleObj | list[RleObj],
 ) -> None:
     """Profile PyTorch implementation of rleFrBbox using torch.profiler."""
-    bbox_tv = tv.BoundingBoxes(bbox, format="XYWH", canvas_size=(h, w), device=device)  # ty:ignore[no-matching-overload]
+    bbox = bbox.to(device=device, dtype=get_float_dtype(device))
+    bbox_tv = tv.BoundingBoxes(bbox, format="XYWH", canvas_size=(h, w))  # ty:ignore[no-matching-overload]
 
     # Warmup
     for _ in range(5):
@@ -138,7 +141,8 @@ def test_rle_fr_bbox_pt_line_profiling(
     """Profile PyTorch implementation of rleFrBbox using line_profiler."""
     from line_profiler import LineProfiler
 
-    bbox_tv = tv.BoundingBoxes(bbox, format="XYWH", canvas_size=(h, w), device=device)  # ty:ignore[no-matching-overload]
+    bbox = bbox.to(device=device, dtype=get_float_dtype(device))
+    bbox_tv = tv.BoundingBoxes(bbox, format="XYWH", canvas_size=(h, w))  # ty:ignore[no-matching-overload]
 
     # Warmup
     for _ in range(5):

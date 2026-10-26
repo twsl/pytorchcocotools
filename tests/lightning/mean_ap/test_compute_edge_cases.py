@@ -16,6 +16,7 @@ import torch
 from torch import IntTensor, Tensor
 
 from pytorchcocotools.lightning.metrics.mean_ap import MeanAveragePrecision
+from pytorchcocotools.utils.device import get_float_dtype
 
 from .protocols import AssertMapClose, ComputeFn
 
@@ -29,10 +30,14 @@ class TestComputeEdgeCases:
         self,
         tm_compute: ComputeFn,
         assert_map_close: AssertMapClose,
+        device: str,
+        to_device,
     ) -> None:
-        m = MeanAveragePrecision(iou_type="bbox")
+        m = MeanAveragePrecision(iou_type="bbox").to(device)
         empty_preds = [{"boxes": Tensor([]).reshape(0, 4), "scores": Tensor([]), "labels": IntTensor([])}]
         target = [{"boxes": Tensor([[1.0, 2.0, 3.0, 4.0]]), "labels": IntTensor([0])}]
+        empty_preds = to_device(empty_preds)
+        target = to_device(target)
         m.update(empty_preds, target)
         result = m.compute()
         reference = tm_compute(deepcopy(empty_preds), deepcopy(target), iou_type="bbox")
@@ -59,9 +64,13 @@ class TestComputeEdgeCases:
         bbox_preds: list[dict[str, Tensor]],
         tm_compute: ComputeFn,
         assert_map_close: AssertMapClose,
+        device: str,
+        to_device,
     ) -> None:
-        m = MeanAveragePrecision(iou_type="bbox")
+        m = MeanAveragePrecision(iou_type="bbox").to(device)
         empty_target = [{"boxes": Tensor([]).reshape(0, 4), "labels": IntTensor([])}]
+        bbox_preds = to_device(bbox_preds)
+        empty_target = to_device(empty_target)
         m.update(bbox_preds, empty_target)
         result = m.compute()
         reference = tm_compute(deepcopy(bbox_preds), deepcopy(empty_target), iou_type="bbox")
@@ -182,7 +191,7 @@ class TestComputeEdgeCases:
     # ---------------------------------------------------------------------------
 
     def test_perfect_predictions_map_is_one(
-        self, pt_compute: ComputeFn, tm_compute: ComputeFn, assert_map_close: AssertMapClose
+        self, pt_compute: ComputeFn, tm_compute: ComputeFn, assert_map_close: AssertMapClose, device: str
     ) -> None:
         """Exact predictions should yield mAP ≈ 1.0."""
         boxes = torch.tensor([[10.0, 20.0, 100.0, 200.0]])
@@ -191,7 +200,9 @@ class TestComputeEdgeCases:
         result = pt_compute(preds, target, iou_type="bbox")
         reference = tm_compute(preds, target, iou_type="bbox")
         assert_map_close(result, reference)
-        torch.testing.assert_close(result["map"].float(), torch.tensor(1.0), atol=1e-4, rtol=0.0)
+        torch.testing.assert_close(
+            result["map"].cpu(), torch.tensor(1.0, dtype=get_float_dtype(device)), atol=1e-4, rtol=0.0
+        )
 
     @pytest.mark.benchmark(group="compute_perfect", warmup=True)
     def test_perfect_predictions_tm(self, benchmark: BenchmarkFixture, tm_compute: ComputeFn) -> None:

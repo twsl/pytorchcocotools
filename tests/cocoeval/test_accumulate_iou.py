@@ -124,9 +124,9 @@ def test_accumulate_pt(
     # coco_eval_pt.accumulate()
     benchmark(coco_eval_pt.accumulate, params)
     scores, precision, recall = result
-    assert torch.allclose(coco_eval_pt.eval.scores.mean(), scores)
-    assert torch.allclose(coco_eval_pt.eval.precision.mean(), precision)
-    assert torch.allclose(coco_eval_pt.eval.recall.mean(), recall)
+    assert torch.allclose(coco_eval_pt.eval.scores.mean().cpu(), scores.to(dtype=coco_eval_pt.float_dtype))
+    assert torch.allclose(coco_eval_pt.eval.precision.mean().cpu(), precision.to(dtype=coco_eval_pt.float_dtype))
+    assert torch.allclose(coco_eval_pt.eval.recall.mean().cpu(), recall.to(dtype=coco_eval_pt.float_dtype))
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, params, result", cases=COCOEvalCasesBoth)
@@ -139,9 +139,9 @@ def test_accumulate(
     coco_eval_np.accumulate(params_np)
     coco_eval_pt.accumulate(params)
     scores, precision, recall = result
-    assert torch.allclose(coco_eval_pt.eval.scores.mean(), scores)
-    assert torch.allclose(coco_eval_pt.eval.precision.mean(), precision)
-    assert torch.allclose(coco_eval_pt.eval.recall.mean(), recall)
+    assert torch.allclose(coco_eval_pt.eval.scores.mean().cpu(), scores.to(dtype=coco_eval_pt.float_dtype))
+    assert torch.allclose(coco_eval_pt.eval.precision.mean().cpu(), precision.to(dtype=coco_eval_pt.float_dtype))
+    assert torch.allclose(coco_eval_pt.eval.recall.mean().cpu(), recall.to(dtype=coco_eval_pt.float_dtype))
     eval_np = cast(dict[str, Any], coco_eval_np.eval)
     assert np.allclose(eval_np["scores"].mean(), scores.numpy())
     assert np.allclose(eval_np["precision"].mean(), precision.numpy())

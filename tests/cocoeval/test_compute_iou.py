@@ -9,8 +9,19 @@ import torch
 from torch import Tensor
 
 from pytorchcocotools.cocoeval import COCOeval as COCOevalpt  # noqa: N811
+from pytorchcocotools.utils.device import get_float_dtype
 
 type TEST_DATA = tuple[int, int, Any]
+
+
+def test_computeIoU_empty_result_uses_evaluator_device(device: str) -> None:  # noqa: N802
+    evaluator = COCOevalpt(iouType="bbox", enable_logging=False, device=device)
+
+    result = evaluator.computeIoU(1, 1)
+
+    assert result.shape == (0,)
+    assert result.device.type == torch.device(device).type
+    assert result.dtype == get_float_dtype(device)
 
 
 class BBoxCases:
@@ -234,9 +245,9 @@ def test_computeIoU_pt(  # noqa: N802
 ) -> None:
     # ious = coco_eval_pt.computeIoU(img_id, cat_id)
     ious = cast(Tensor, benchmark(coco_eval_pt.computeIoU, img_id, cat_id))
-    result = torch.tensor(result, dtype=torch.float32)
+    result = torch.tensor(result, dtype=coco_eval_pt.float_dtype)
     assert ious.shape == result.shape
-    assert torch.allclose(ious, result)
+    assert torch.allclose(ious.cpu(), result)
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, img_id, cat_id, result", cases=COCOEvalCasesBoth)
@@ -244,4 +255,4 @@ def test_computeIoU(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, img_id: 
     ious_np = coco_eval_np.computeIoU(img_id, cat_id)
     ious_pt = coco_eval_pt.computeIoU(img_id, cat_id)
     assert np.allclose(ious_np, np.array(result))
-    assert torch.allclose(ious_pt, torch.tensor(result, dtype=torch.float32))
+    assert torch.allclose(ious_pt.cpu(), torch.tensor(result, dtype=coco_eval_pt.float_dtype))

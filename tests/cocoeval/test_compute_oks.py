@@ -60,7 +60,7 @@ def test_computeOks_pt(  # noqa: N802
 ) -> None:
     ious = cast(Tensor, benchmark(coco_eval_pt.computeOks, img_id, cat_id))
     assert len(ious) == len(result)
-    assert torch.allclose(ious, torch.tensor(result))
+    assert torch.allclose(ious.cpu(), torch.tensor(result, dtype=coco_eval_pt.float_dtype))
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, img_id, cat_id, result", cases=COCOEvalCasesBoth)
@@ -68,4 +68,4 @@ def test_ccomputeOks(coco_eval_np: COCOevalnp, coco_eval_pt: COCOevalpt, img_id:
     ious_np = coco_eval_np.computeOks(img_id, cat_id)
     ious_pt = coco_eval_pt.computeOks(img_id, cat_id)
     assert np.allclose(ious_np, np.array(result))
-    assert torch.allclose(ious_pt, torch.tensor(result))
+    assert torch.allclose(ious_pt.cpu(), torch.tensor(result, dtype=coco_eval_pt.float_dtype))

@@ -16,9 +16,9 @@ from .protocols import AssertMapClose, ComputeFn
 
 
 class TestComputeInternal:
-    def test_empty_metric_pt(self) -> None:
+    def test_empty_metric_pt(self, device: str) -> None:
         """compute() called before any update should not raise (but return sentinel -1)."""
-        m = MeanAveragePrecision()
+        m = MeanAveragePrecision().to(device)
         result = m.compute()
         assert result["map"].item() == -1.0
 
@@ -52,13 +52,17 @@ class TestComputeInternal:
         multi_image_preds: list[dict[str, Tensor]],
         multi_image_target: list[dict[str, Tensor]],
         assert_map_close: AssertMapClose,
+        device: str,
+        to_device,
     ) -> None:
         """Calling update() twice with one image each should equal one call with two images."""
-        m_single = MeanAveragePrecision(iou_type="bbox")
+        multi_image_preds = to_device(multi_image_preds)
+        multi_image_target = to_device(multi_image_target)
+        m_single = MeanAveragePrecision(iou_type="bbox").to(device)
         m_single.update(multi_image_preds, multi_image_target)
         result_single = m_single.compute()
 
-        m_incremental = MeanAveragePrecision(iou_type="bbox")
+        m_incremental = MeanAveragePrecision(iou_type="bbox").to(device)
         for p, t in zip(multi_image_preds, multi_image_target, strict=False):
             m_incremental.update([p], [t])
         result_incremental = m_incremental.compute()

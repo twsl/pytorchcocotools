@@ -50,7 +50,7 @@ def _det(bbox: list[float], *, image_id: int = 1, score: float = 0.9, **extra: A
 
 
 def _stats(
-    dataset: dict[str, Any], detections: list[dict[str, Any]], iou_type: IoUType
+    dataset: dict[str, Any], detections: list[dict[str, Any]], iou_type: IoUType, device: str
 ) -> tuple[np.ndarray, np.ndarray]:
     with tempfile.TemporaryDirectory() as directory:
         gt_path = Path(directory) / "gt.json"
@@ -63,22 +63,26 @@ def _stats(
         eval_np.evaluate()
         eval_np.accumulate()
 
-        coco_pt = COCOpt(str(gt_path), enable_logging=False)
-        eval_pt = COCOevalpt(coco_pt, coco_pt.loadRes(str(dt_path)), iou_type, enable_logging=False)
+        coco_pt = COCOpt(str(gt_path), enable_logging=False, device=device)
+        eval_pt = COCOevalpt(
+            coco_pt, coco_pt.loadRes(str(dt_path)), iou_type, enable_logging=False, device=device
+        )
         eval_pt.evaluate()
         eval_pt.accumulate()
 
         return np.asarray(eval_np.stats), eval_pt.stats.detach().cpu().numpy()
 
 
-def test_upstream_empty_gt_and_all_crowd_cases_match_reference() -> None:
+def test_upstream_empty_gt_and_all_crowd_cases_match_reference(device: str) -> None:
     empty = _dataset("bbox", [])
-    np_stats, pt_stats = _stats(empty, [_det([10, 10, 100, 100], score=0.5)], "bbox")
+    np_stats, pt_stats = _stats(empty, [_det([10, 10, 100, 100], score=0.5)], "bbox", device)
     np.testing.assert_allclose(np_stats, pt_stats)
     assert np.all(pt_stats[:6] == -1.0)
 
     crowd = _dataset("bbox", [_ann(1, [10, 10, 100, 100], iscrowd=1), _ann(2, [200, 200, 50, 50], iscrowd=1)])
-    np_stats, pt_stats = _stats(crowd, [_det([10, 10, 100, 100]), _det([200, 200, 50, 50], score=0.5)], "bbox")
+    np_stats, pt_stats = _stats(
+        crowd, [_det([10, 10, 100, 100]), _det([200, 200, 50, 50], score=0.5)], "bbox", device
+    )
     np.testing.assert_allclose(np_stats, pt_stats)
     assert np.all(pt_stats == -1.0)
 
@@ -101,27 +105,27 @@ def test_upstream_empty_gt_and_all_crowd_cases_match_reference() -> None:
     ],
 )
 def test_upstream_bbox_edge_cases_match_reference(
-    annotations: list[dict[str, Any]], detections: list[dict[str, Any]]
+    annotations: list[dict[str, Any]], detections: list[dict[str, Any]], device: str
 ) -> None:
-    np_stats, pt_stats = _stats(_dataset("bbox", annotations), detections, "bbox")
+    np_stats, pt_stats = _stats(_dataset("bbox", annotations), detections, "bbox", device)
     np.testing.assert_allclose(np_stats, pt_stats)
 
 
-def test_upstream_segmentation_and_keypoint_cases_match_reference() -> None:
+def test_upstream_segmentation_and_keypoint_cases_match_reference(device: str) -> None:
     segmentation = [[10, 10, 110, 10, 110, 110, 10, 110]]
     dataset = _dataset("segm", [_ann(1, [10, 10, 100, 100], segmentation=segmentation)])
-    np_stats, pt_stats = _stats(dataset, [_det([10, 10, 100, 100], segmentation=segmentation)], "segm")
+    np_stats, pt_stats = _stats(dataset, [_det([10, 10, 100, 100], segmentation=segmentation)], "segm", device)
     np.testing.assert_allclose(np_stats, pt_stats)
 
     keypoints = [float(i) for i in range(51)]
     dataset = _dataset("keypoints", [_ann(1, [50, 50, 200, 200], keypoints=keypoints, num_keypoints=17)])
     detection = {"image_id": 1, "category_id": 1, "score": 0.9, "keypoints": keypoints}
-    np_stats, pt_stats = _stats(dataset, [detection], "keypoints")
+    np_stats, pt_stats = _stats(dataset, [detection], "keypoints", device)
     np.testing.assert_allclose(np_stats, pt_stats)
 
 
-def test_upstream_rle_counts_forms_round_trip() -> None:
-    array = tv.Mask(torch.zeros((10, 10), dtype=torch.uint8))
+def test_upstream_rle_counts_forms_round_trip(device: str) -> None:
+    array = tv.Mask(torch.zeros((10, 10), dtype=torch.uint8, device=device))
     array[2:5, 2:5] = 1
-    encoded = mask.encode(array)
-    assert mask.decode(encoded).sum().item() == 9
+    encoded = mask.encode(array, device=device)
+    assert mask.decode(encoded, device=device).sum().item() == 9

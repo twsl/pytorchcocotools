@@ -32,7 +32,7 @@ def test_annToMask_pt(benchmark: BenchmarkFixture, coco_pt: COCOpt, img_ids: int
     mask_pt = cast(tv.Mask, benchmark(coco_pt.annToMask, ann_pt[0]))
     # compare the results
     # np.nonzero(mask_np)
-    assert np.array_equal(result, mask_pt.squeeze(-1).numpy())
+    assert np.array_equal(result, mask_pt.squeeze(-1).cpu().numpy())
 
 
 @pytest.mark.benchmark(group="annToMask", warmup=True)
@@ -56,5 +56,5 @@ def test_annToMask(coco_np: COCOnp, coco_pt: COCOpt, img_ids: int, result) -> No
     mask_pt = coco_pt.annToMask(ann_pt[0])
     # compare the results
     # np.nonzero(mask_np)
-    assert np.array_equal(mask_np, mask_pt.squeeze(-1).numpy())
+    assert np.array_equal(mask_np, mask_pt.squeeze(-1).cpu().numpy())
     assert np.array_equal(mask_np, result)

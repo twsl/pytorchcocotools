@@ -194,8 +194,8 @@ def test_evaluateImg_pt(  # noqa: N802
     coco_eval_pt.evaluate()
     # result_pt: EvalImgResult = coco_eval_pt.evaluateImg(img_id, cat_id, range, max_det)
     result_pt = cast(EvalImgResult, benchmark(coco_eval_pt.evaluateImg, img_id, cat_id, list(range), max_det))
-    assert torch.allclose(result_pt.dtScores, result.dtScores)
-    assert torch.allclose(result_pt.dtMatches, result.dtMatches)
+    assert torch.allclose(result_pt.dtScores.cpu(), result.dtScores.to(dtype=coco_eval_pt.float_dtype))
+    assert torch.equal(result_pt.dtMatches.cpu(), result.dtMatches)
 
 
 @parametrize_with_cases("coco_eval_np, coco_eval_pt, img_id, cat_id, range, max_det, result", cases=COCOEvalCasesBoth)
@@ -215,5 +215,5 @@ def test_evaluateImg(  # noqa: N802
     assert np.allclose(result_np["dtScores"], result.dtScores.tolist())
     assert np.allclose(result_np["dtMatches"], result.dtMatches.tolist())
     assert result_pt is not None
-    assert torch.allclose(result_pt.dtScores, result.dtScores)
-    assert torch.allclose(result_pt.dtMatches, result.dtMatches)
+    assert torch.allclose(result_pt.dtScores.cpu(), result.dtScores.to(dtype=coco_eval_pt.float_dtype))
+    assert torch.equal(result_pt.dtMatches.cpu(), result.dtMatches)

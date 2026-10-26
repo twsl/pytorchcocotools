@@ -23,15 +23,19 @@ class TestStressCompute:
         self,
         make_stress_batch: MakeStressBatch,
         assert_map_close: AssertMapClose,
+        device: str,
+        to_device,
     ) -> None:
         """Incremental vs batch update must produce identical compute() results."""
         preds, target = make_stress_batch(n_images=4, n_boxes_per_image=30)
+        preds = to_device(preds)
+        target = to_device(target)
 
-        m_batch = MeanAveragePrecision(iou_type="bbox")
+        m_batch = MeanAveragePrecision(iou_type="bbox").to(device)
         m_batch.update(preds, target)
         result_batch = m_batch.compute()
 
-        m_inc = MeanAveragePrecision(iou_type="bbox")
+        m_inc = MeanAveragePrecision(iou_type="bbox").to(device)
         for p, t in zip(preds, target, strict=False):
             m_inc.update([p], [t])
         result_inc = m_inc.compute()
