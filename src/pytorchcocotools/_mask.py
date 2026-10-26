@@ -19,6 +19,7 @@ from pytorchcocotools.internal.mask_api import (
     rleToBbox,
     rleToString,
 )
+from pytorchcocotools.utils.device import get_float_dtype
 from pytorchcocotools.utils.list import is_list_of_type
 
 
@@ -215,7 +216,7 @@ def iou(
                 objs_clean = [
                     RleObj(counts=obj["counts"], size=obj["size"]) if isinstance(obj, dict) else obj for obj in objs
                 ]
-                return _frString(objs_clean)  # ty:ignore[invalid-argument-type]
+                return _frString(objs_clean, device=device, requires_grad=requires_grad)  # ty:ignore[invalid-argument-type]
             else:
                 raise Exception("list input can be bounding box (Nx4) or RLEs ([RLE])")  # noqa: TRY002
         else:
@@ -360,6 +361,8 @@ def frPyObjects(  # noqa: N802
     Returns:
         The encoded mask.
     """
+    coordinate_dtype = get_float_dtype(device)
+
     # encode rle from a list of python objects
     if isinstance(py_obj, tv.BoundingBoxes):
         return frBbox(py_obj)
@@ -382,7 +385,7 @@ def frPyObjects(  # noqa: N802
     elif isinstance(py_obj, list) and isinstance(py_obj[0], list) and len(py_obj[0]) > 4:
         poly_list = [
             KeyPoints(
-                torch.tensor(obj, dtype=torch.float64, device=device, requires_grad=requires_grad).view(-1, 2),
+                torch.tensor(obj, dtype=coordinate_dtype, device=device, requires_grad=requires_grad).view(-1, 2),
                 canvas_size=(h, w),
                 device=device,
                 requires_grad=requires_grad,
@@ -405,7 +408,7 @@ def frPyObjects(  # noqa: N802
         return frBbox(boxes, device=device, requires_grad=requires_grad)
     elif isinstance(py_obj, list) and len(py_obj) > 4:
         poly = KeyPoints(
-            torch.tensor(py_obj, dtype=torch.float64, device=device, requires_grad=requires_grad).view(-1, 2),
+            torch.tensor(py_obj, dtype=coordinate_dtype, device=device, requires_grad=requires_grad).view(-1, 2),
             canvas_size=(h, w),
             device=device,
             requires_grad=requires_grad,
