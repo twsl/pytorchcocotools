@@ -1,4 +1,4 @@
-from typing import Literal, TypeAlias
+from typing import Literal, NamedTuple, TypeAlias
 
 import torch
 from torch import Tensor
@@ -25,6 +25,15 @@ class RLE:
         self.w = w
         self.canvas_size = (h, w)
         self.cnts = cnts  # rle tensor [N, 2] consecutive (start, length) pairs
+
+
+class RaggedRle(NamedTuple):
+    """Many RLE masks stored as flat counts plus per-mask lengths and canvas sizes."""
+
+    counts: Tensor
+    lengths: Tensor
+    h: Tensor
+    w: Tensor
 
 
 # Called at runtime as a list constructor, e.g. `RLEs([r])`; a `type` alias would not be callable.
