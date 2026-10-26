@@ -1379,32 +1379,32 @@ def coco_keypoint_dt_np(dataset_keypoint_dt: dict) -> COCOnp:
 
 
 @fixture(scope="session")
-def coco_object_gt_pt(dataset_object_gt: dict) -> COCOpt:
-    coco = COCOpt(enable_logging=False)
+def coco_object_gt_pt(dataset_object_gt: dict, device: str) -> COCOpt:
+    coco = COCOpt(enable_logging=False, device=device)
     coco.dataset = CocoDetectionDataset.from_dict(dataset_object_gt)
     coco.createIndex()
     return coco
 
 
 @fixture(scope="session")
-def coco_object_dt_pt(dataset_object_dt: dict) -> COCOpt:
-    coco = COCOpt(enable_logging=False)
+def coco_object_dt_pt(dataset_object_dt: dict, device: str) -> COCOpt:
+    coco = COCOpt(enable_logging=False, device=device)
     coco.dataset = CocoDetectionDataset.from_dict(dataset_object_dt)
     coco.createIndex()
     return coco
 
 
 @fixture(scope="session")
-def coco_keypoint_gt_pt(dataset_keypoint_gt: dict) -> COCOpt:
-    coco = COCOpt(enable_logging=False)
+def coco_keypoint_gt_pt(dataset_keypoint_gt: dict, device: str) -> COCOpt:
+    coco = COCOpt(enable_logging=False, device=device)
     coco.dataset = CocoDetectionDataset.from_dict(dataset_keypoint_gt)
     coco.createIndex()
     return coco
 
 
 @fixture(scope="session")
-def coco_keypoint_dt_pt(dataset_keypoint_dt: dict) -> COCOpt:
-    coco = COCOpt(enable_logging=False)
+def coco_keypoint_dt_pt(dataset_keypoint_dt: dict, device: str) -> COCOpt:
+    coco = COCOpt(enable_logging=False, device=device)
     coco.dataset = CocoDetectionDataset.from_dict(dataset_keypoint_dt)
     coco.createIndex()
     return coco
@@ -1421,8 +1421,8 @@ def eval_bbox_np(coco_object_gt_np: COCOnp, coco_object_dt_np: COCOnp) -> COCOev
 
 
 @fixture(scope="session")
-def eval_bbox_pt(coco_object_gt_pt: COCOpt, coco_object_dt_pt: COCOpt) -> COCOevalpt:
-    eval = COCOevalpt(coco_object_gt_pt, coco_object_dt_pt, "bbox", enable_logging=False)
+def eval_bbox_pt(coco_object_gt_pt: COCOpt, coco_object_dt_pt: COCOpt, device: str) -> COCOevalpt:
+    eval = COCOevalpt(coco_object_gt_pt, coco_object_dt_pt, "bbox", enable_logging=False, device=device)
     eval._prepare()
     return eval
 
@@ -1435,8 +1435,8 @@ def eval_segm_np(coco_object_gt_np: COCOnp, coco_object_dt_np: COCOnp) -> COCOev
 
 
 @fixture(scope="session")
-def eval_segm_pt(coco_object_gt_pt: COCOpt, coco_object_dt_pt: COCOpt) -> COCOevalpt:
-    eval = COCOevalpt(coco_object_gt_pt, coco_object_dt_pt, "segm", enable_logging=False)
+def eval_segm_pt(coco_object_gt_pt: COCOpt, coco_object_dt_pt: COCOpt, device: str) -> COCOevalpt:
+    eval = COCOevalpt(coco_object_gt_pt, coco_object_dt_pt, "segm", enable_logging=False, device=device)
     eval._prepare()
     return eval
 
@@ -1449,8 +1449,8 @@ def eval_keypoints_np(coco_keypoint_gt_np: COCOnp, coco_keypoint_dt_np: COCOnp) 
 
 
 @fixture(scope="session")
-def eval_keypoints_pt(coco_keypoint_gt_pt: COCOpt, coco_keypoint_dt_pt: COCOpt) -> COCOevalpt:
-    eval = COCOevalpt(coco_keypoint_gt_pt, coco_keypoint_dt_pt, "keypoints", enable_logging=False)
+def eval_keypoints_pt(coco_keypoint_gt_pt: COCOpt, coco_keypoint_dt_pt: COCOpt, device: str) -> COCOevalpt:
+    eval = COCOevalpt(coco_keypoint_gt_pt, coco_keypoint_dt_pt, "keypoints", enable_logging=False, device=device)
     eval._prepare()
     return eval
 
@@ -1663,16 +1663,16 @@ def coco_inputs_dt_np(dataset_inputs_dt: dict) -> COCOnp:
 
 
 @fixture(scope="session")
-def coco_inputs_gt_pt(dataset_inputs_gt: dict) -> COCOpt:
-    coco = COCOpt(enable_logging=False)
+def coco_inputs_gt_pt(dataset_inputs_gt: dict, device: str) -> COCOpt:
+    coco = COCOpt(enable_logging=False, device=device)
     coco.dataset = CocoDetectionDataset.from_dict(dataset_inputs_gt)
     coco.createIndex()
     return coco
 
 
 @fixture(scope="session")
-def coco_inputs_dt_pt(dataset_inputs_dt: dict) -> COCOpt:
-    coco = COCOpt(enable_logging=False)
+def coco_inputs_dt_pt(dataset_inputs_dt: dict, device: str) -> COCOpt:
+    coco = COCOpt(enable_logging=False, device=device)
     coco.dataset = CocoDetectionDataset.from_dict(dataset_inputs_dt)
     coco.createIndex()
     return coco
@@ -1686,7 +1686,7 @@ def eval_bbox_inputs_np(coco_inputs_gt_np: COCOnp, coco_inputs_dt_np: COCOnp) ->
 
 
 @fixture(scope="session")
-def eval_bbox_inputs_pt(coco_inputs_gt_pt: COCOpt, coco_inputs_dt_pt: COCOpt) -> COCOevalpt:
-    eval = COCOevalpt(coco_inputs_gt_pt, coco_inputs_dt_pt, "bbox", enable_logging=False)
+def eval_bbox_inputs_pt(coco_inputs_gt_pt: COCOpt, coco_inputs_dt_pt: COCOpt, device: str) -> COCOevalpt:
+    eval = COCOevalpt(coco_inputs_gt_pt, coco_inputs_dt_pt, "bbox", enable_logging=False, device=device)
     eval._prepare()
     return eval

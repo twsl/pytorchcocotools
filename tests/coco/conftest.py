@@ -16,5 +16,5 @@ def coco_np(path: str) -> COCOnp:
 
 
 @fixture(scope="session")
-def coco_pt(path: str) -> COCOpt:
-    return COCOpt(path)
+def coco_pt(path: str, device: str) -> COCOpt:
+    return COCOpt(path, device=device)
