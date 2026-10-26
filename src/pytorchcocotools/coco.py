@@ -366,7 +366,7 @@ class COCO:
         Returns:
             The result api object.
         """
-        res = COCO()
+        res = COCO(device=self.device, requires_grad=self.requires_grad)
         res.dataset.info = copy.deepcopy(self.dataset.info)
         res.dataset.images = list(self.dataset.images)
 
@@ -470,12 +470,14 @@ class COCO:
         if isinstance(segm, list):
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
-            rles = mask.frPyObjects(segm, h, w)
-            merged = mask.merge(rles)
+            rles = mask.frPyObjects(segm, h, w, device=self.device, requires_grad=self.requires_grad)
+            merged = mask.merge(rles, device=self.device, requires_grad=self.requires_grad)
             return merged
         elif isinstance(segm, dict) and isinstance(segm["counts"], list):
             # uncompressed RLE
-            objs = mask.frPyObjects(cast(RleObj, segm), h, w)
+            objs = mask.frPyObjects(
+                cast(RleObj, segm), h, w, device=self.device, requires_grad=self.requires_grad
+            )
             return objs
         else:
             return segm  # type: ignore  # noqa: PGH003 # TODO: fix this, shouldn't happen???
@@ -490,5 +492,5 @@ class COCO:
             _description_
         """
         rle = self.annToRLE(CocoDetectionDataset._get_annotation(ann))
-        decoded = mask.decode(rle)
+        decoded = mask.decode(rle, device=self.device, requires_grad=self.requires_grad)
         return decoded

@@ -23,6 +23,7 @@ from pytorchcocotools.internal.structure.annotations import (
     CocoAnnotationObjectDetection,
     Segmentation,
 )
+from pytorchcocotools.utils.device import get_float_dtype
 from pytorchcocotools.utils.logging import get_logger
 
 
@@ -61,6 +62,7 @@ class COCOeval:
         self.stats: Tensor = torch.Tensor()  # result summarization
         self.ious: dict[tuple[int, int], Tensor] = {}  # ious between all gts and dts
         self.device = device
+        self.float_dtype = get_float_dtype(device)
         self.requires_grad = requires_grad if requires_grad is not None else False
         if cocoGt is not None:
             self.params.imgIds = sorted(cocoGt.getImgIds())
@@ -118,17 +120,17 @@ class COCOeval:
         for key, gt_list in self._gts.items():
             if gt_list:
                 self._gt_tensor_cache[key] = (
-                    torch.tensor([g.id for g in gt_list], dtype=torch.float64, device=dev),
-                    torch.tensor([g.area for g in gt_list], dtype=torch.float64, device=dev),
+                    torch.tensor([g.id for g in gt_list], dtype=torch.long, device=dev),
+                    torch.tensor([g.area for g in gt_list], dtype=self.float_dtype, device=dev),
                     torch.tensor([int(g.iscrowd) for g in gt_list], dtype=torch.bool, device=dev),
                     torch.tensor([1 if g.ignore else 0 for g in gt_list], dtype=torch.bool, device=dev),
                 )
         for key, dt_list in self._dts.items():
             if dt_list:
                 self._dt_tensor_cache[key] = (
-                    torch.tensor([d.id for d in dt_list], dtype=torch.float64, device=dev),
-                    torch.tensor([d.score for d in dt_list], dtype=torch.float64, device=dev),
-                    torch.tensor([d.area for d in dt_list], dtype=torch.float64, device=dev),
+                    torch.tensor([d.id for d in dt_list], dtype=torch.long, device=dev),
+                    torch.tensor([d.score for d in dt_list], dtype=self.float_dtype, device=dev),
+                    torch.tensor([d.area for d in dt_list], dtype=self.float_dtype, device=dev),
                 )
 
         self.eval_imgs: list[EvalImgResult | None] = []  # per-image per-category evaluation results
@@ -139,6 +141,10 @@ class COCOeval:
         tic = time.time()
         self.logger.info("Running per image evaluation...")
         p = self.params
+        p.iouThrs = p.iouThrs.to(dtype=self.float_dtype)
+        p.recThrs = p.recThrs.to(dtype=self.float_dtype)
+        if p.iouType == "keypoints":
+            p.kpt_oks_sigmas = p.kpt_oks_sigmas.to(dtype=self.float_dtype)
         self.logger.info(f"Evaluate annotation type *{p.iouType}*")
         p.imgIds = torch.unique(torch.tensor(p.imgIds, device=self.device, requires_grad=self.requires_grad)).tolist()
         if p.useCats:
@@ -162,11 +168,11 @@ class COCOeval:
         max_det = p.maxDets[-1]
 
         # Pre-compute clamped IoU thresholds once for all evaluateImg calls
-        _limit = float(1.0 - torch.finfo(torch.float32).eps)
+        _limit = float(1.0 - torch.finfo(self.float_dtype).eps)
         iou_thrs_t = torch.tensor(
             [min(float(t.item()), _limit) for t in p.iouThrs],
             device=self.device,
-            dtype=torch.float64,
+            dtype=self.float_dtype,
         )  # [T]
 
         # Batch evaluateImg across all area ranges per (catId, imgId)
@@ -213,7 +219,7 @@ class COCOeval:
                 dt.extend(self._dts[imgId, c_id])
 
         if len(gt) == 0 or len(dt) == 0:
-            return Tensor([])
+            return torch.empty(0, dtype=self.float_dtype, device=self.device)
         if not self.params.useCats:
             # Combined list needs sorting; per-category lists are pre-sorted in _prepare()
             inds = torch.argsort(
@@ -261,7 +267,7 @@ class COCOeval:
         elif self.params.iouType == "bbox":
             g = tv.BoundingBoxes(
                 torch.tensor(
-                    [g.bbox for g in gt], dtype=torch.float32, device=self.device, requires_grad=self.requires_grad
+                    [g.bbox for g in gt], dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
                 ),
                 format=tv.BoundingBoxFormat.XYWH,
                 canvas_size=size,
@@ -270,7 +276,7 @@ class COCOeval:
             )  # ty:ignore[no-matching-overload]
             d = tv.BoundingBoxes(
                 torch.tensor(
-                    [d.bbox for d in dt], dtype=torch.float32, device=self.device, requires_grad=self.requires_grad
+                    [d.bbox for d in dt], dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
                 ),
                 format=tv.BoundingBoxFormat.XYWH,
                 canvas_size=size,
@@ -278,14 +284,14 @@ class COCOeval:
                 requires_grad=self.requires_grad,
             )  # ty:ignore[no-matching-overload]
             if g.numel() == 0 or d.numel() == 0:
-                return Tensor([])
+                return torch.empty(0, dtype=self.float_dtype, device=self.device)
         else:
             raise ValueError("Unknown iouType for iou computation.")  # noqa: TRY002
 
         # compute iou between each dt and gt region
         iscrowd = [bool(o.iscrowd) for o in gt]
-        ious = mask.iou(d, g, iscrowd)
-        return ious.float()  # Normalize to float32; evaluateImg upcasts to float64 internally
+        ious = mask.iou(d, g, iscrowd, device=self.device, requires_grad=self.requires_grad)
+        return ious.to(dtype=self.float_dtype)
 
     @torch.inference_mode()
     @torch.compile(fullgraph=False, mode="reduce-overhead")
@@ -306,9 +312,11 @@ class COCOeval:
             dts = dts[0 : self.params.maxDets[-1]]
         # if len(gts) == 0 and len(dts) == 0:
         if len(gts) == 0 or len(dts) == 0:
-            return torch.tensor([], device=self.device, requires_grad=self.requires_grad)
-        ious = torch.zeros((len(dts), len(gts)), device=self.device, requires_grad=self.requires_grad)
-        sigmas = self.params.kpt_oks_sigmas
+            return torch.empty(0, dtype=self.float_dtype, device=self.device)
+        ious = torch.zeros(
+            (len(dts), len(gts)), dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+        )
+        sigmas = self.params.kpt_oks_sigmas.to(device=self.device, dtype=self.float_dtype)
         vars = (sigmas * 2) ** 2
         k = len(sigmas)
 
@@ -317,16 +325,31 @@ class COCOeval:
         if len(gts) > 0 and len(dts) > 0:
             # Stack all gt keypoints and bboxes
             gt_keypoints = torch.stack(
-                [torch.tensor(gt.keypoints, device=self.device, requires_grad=self.requires_grad) for gt in gts]
+                [
+                    torch.tensor(
+                        gt.keypoints, dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+                    )
+                    for gt in gts
+                ]
             )  # [num_gts, 3*k]
             gt_bboxes = torch.stack(
-                [torch.tensor(gt.bbox, device=self.device, requires_grad=self.requires_grad) for gt in gts]
+                [
+                    torch.tensor(gt.bbox, dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad)
+                    for gt in gts
+                ]
             )  # [num_gts, 4]
-            gt_areas = torch.tensor([gt.area for gt in gts], device=self.device, requires_grad=self.requires_grad)
+            gt_areas = torch.tensor(
+                [gt.area for gt in gts], dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+            )
 
             # Stack all dt keypoints
             dt_keypoints = torch.stack(
-                [torch.tensor(dt.keypoints, device=self.device, requires_grad=self.requires_grad) for dt in dts]
+                [
+                    torch.tensor(
+                        dt.keypoints, dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+                    )
+                    for dt in dts
+                ]
             )  # [num_dts, 3*k]
 
             # Extract x, y, v for all gts and dts
@@ -369,7 +392,7 @@ class COCOeval:
             e = (
                 (torch.pow(dx, 2) + torch.pow(dy, 2))
                 / vars.unsqueeze(0).unsqueeze(0)
-                / (gt_areas.unsqueeze(0).unsqueeze(-1) + torch.finfo(torch.float32).eps)
+                / (gt_areas.unsqueeze(0).unsqueeze(-1) + torch.finfo(self.float_dtype).eps)
                 / 2
             )
 
@@ -385,7 +408,11 @@ class COCOeval:
             )  # [D, G, k]
             exp_neg_e = torch.exp(-e).sum(dim=2)  # [D, G]
             # Denominator: number of visible keypoints (k1) or k (for k1==0).
-            denom_counts = torch.where(k1_pos, k1.float(), torch.full_like(k1, float(k), dtype=torch.float32))  # [G]
+            denom_counts = torch.where(
+                k1_pos,
+                k1.to(dtype=self.float_dtype),
+                torch.full_like(k1, float(k), dtype=self.float_dtype),
+            )  # [G]
             ious = exp_neg_e / denom_counts[None, :]  # [D, G]
 
         return ious
@@ -417,7 +444,7 @@ class COCOeval:
 
         ignored = [1 if g.ignore or (g.area < aRng[0] or g.area > aRng[1]) else 0 for g in gt]
 
-        gt_ig = torch.tensor(ignored, device=self.device, requires_grad=self.requires_grad)
+        gt_ig = torch.tensor(ignored, dtype=torch.bool, device=self.device, requires_grad=self.requires_grad)
         # sort dt highest score first, sort gt ignore last
         gtind = torch.argsort(gt_ig, stable=True)
         gt_ig = gt_ig[gtind]
@@ -438,19 +465,19 @@ class COCOeval:
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
         # Precompute clamped IoU thresholds once (avoids tensor alloc per loop iteration).
-        _limit = float(1.0 - torch.finfo(torch.float32).eps)
+        _limit = float(1.0 - torch.finfo(self.float_dtype).eps)
         iou_thrs_t = torch.tensor(
             [min(float(t.item()), _limit) for t in self.params.iouThrs],
             device=self.device,
-            dtype=torch.float64,
+            dtype=self.float_dtype,
         )  # [T]
 
         num_iou_thrs = len(self.params.iouThrs)  # T
         num_gt = len(gt)  # G
         num_dt = len(dt)  # D
-        gtm = torch.zeros((num_iou_thrs, num_gt), device=self.device, requires_grad=self.requires_grad)
-        dtm = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
-        dt_ig = torch.zeros((num_iou_thrs, num_dt), device=self.device, requires_grad=self.requires_grad)
+        gtm = torch.zeros((num_iou_thrs, num_gt), dtype=torch.long, device=self.device)
+        dtm = torch.zeros((num_iou_thrs, num_dt), dtype=torch.long, device=self.device)
+        dt_ig = torch.zeros((num_iou_thrs, num_dt), dtype=torch.bool, device=self.device)
         if len(ious) != 0:
             # --- Vectorized matching: iterate over D detections, vectorize over T thresholds ---
             # GTs are already sorted: non-ignored (gt_ig==0) first, ignored (gt_ig==1) last.
@@ -459,11 +486,11 @@ class COCOeval:
             non_ignored = ~gt_ig_bool  # [G]
 
             # Pre-extract GT and DT ids as tensors for fast assignment
-            gt_ids_t = torch.tensor([g.id for g in gt], dtype=dtm.dtype, device=self.device)  # [G]
-            dt_ids_t = torch.tensor([d.id for d in dt], dtype=gtm.dtype, device=self.device)  # [D]
+            gt_ids_t = torch.tensor([g.id for g in gt], dtype=torch.long, device=self.device)  # [G]
+            dt_ids_t = torch.tensor([d.id for d in dt], dtype=torch.long, device=self.device)  # [D]
 
             # ious: [D, G] already (subset-selected above)
-            ious_f = ious.to(dtype=torch.float64, device=self.device)  # [D, G]
+            ious_f = ious.to(dtype=self.float_dtype, device=self.device)  # [D, G]
 
             # matched_gt_t[t, g] = True when GT g has been matched at threshold t
             matched_gt_t = torch.zeros((num_iou_thrs, num_gt), dtype=torch.bool, device=self.device)
@@ -537,11 +564,13 @@ class COCOeval:
             category_id=catId,
             aRng=aRng,
             maxDet=maxDet,
-            dtIds=torch.tensor([d.id for d in dt], device=self.device, requires_grad=self.requires_grad),
-            gtIds=torch.tensor([g.id for g in gt], device=self.device, requires_grad=self.requires_grad),
+            dtIds=torch.tensor([d.id for d in dt], dtype=torch.long, device=self.device),
+            gtIds=torch.tensor([g.id for g in gt], dtype=torch.long, device=self.device),
             dtMatches=dtm,
             gtMatches=gtm,
-            dtScores=torch.tensor([d.score for d in dt], device=self.device, requires_grad=self.requires_grad),
+            dtScores=torch.tensor(
+                [d.score for d in dt], dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+            ),
             gtIgnore=gt_ig,
             dtIgnore=dt_ig,
         )
@@ -582,8 +611,8 @@ class COCOeval:
             if key in self._gt_tensor_cache:
                 gt_ids, gt_areas, gt_iscrowd, gt_ignore_base = self._gt_tensor_cache[key]
             else:
-                gt_ids = torch.tensor([g.id for g in gt_list], dtype=torch.float64, device=dev)
-                gt_areas = torch.tensor([g.area for g in gt_list], dtype=torch.float64, device=dev)
+                gt_ids = torch.tensor([g.id for g in gt_list], dtype=torch.long, device=dev)
+                gt_areas = torch.tensor([g.area for g in gt_list], dtype=self.float_dtype, device=dev)
                 gt_iscrowd = torch.tensor([int(g.iscrowd) for g in gt_list], dtype=torch.bool, device=dev)
                 gt_ignore_base = torch.tensor([1 if g.ignore else 0 for g in gt_list], dtype=torch.bool, device=dev)
 
@@ -602,13 +631,13 @@ class COCOeval:
                     stable=True,
                 )[:maxDet]
                 sorted_dt = [dt_list[i] for i in inds.tolist()]
-                dt_ids = torch.tensor([d.id for d in sorted_dt], dtype=torch.float64, device=dev)
-                dt_scores = torch.tensor([d.score for d in sorted_dt], dtype=torch.float64, device=dev)
-                dt_areas = torch.tensor([d.area for d in sorted_dt], dtype=torch.float64, device=dev)
+                dt_ids = torch.tensor([d.id for d in sorted_dt], dtype=torch.long, device=dev)
+                dt_scores = torch.tensor([d.score for d in sorted_dt], dtype=self.float_dtype, device=dev)
+                dt_areas = torch.tensor([d.area for d in sorted_dt], dtype=self.float_dtype, device=dev)
                 num_dt = len(sorted_dt)
 
         # --- GT ignore per area range: [A, G] ---
-        a_rng_t = torch.tensor(a_rngs, dtype=torch.float64, device=dev)  # [A, 2]
+        a_rng_t = torch.tensor(a_rngs, dtype=self.float_dtype, device=dev)  # [A, 2]
         if num_gt > 0:
             area_out = (gt_areas.unsqueeze(0) < a_rng_t[:, 0:1]) | (gt_areas.unsqueeze(0) > a_rng_t[:, 1:2])
             gt_ig = gt_ignore_base.unsqueeze(0) | area_out  # [A, G] bool
@@ -616,14 +645,14 @@ class COCOeval:
             gt_ig = torch.zeros((num_a, 0), dtype=torch.bool, device=dev)
 
         # --- Match tensors: [A, T, D/G] ---
-        gtm = torch.zeros((num_a, num_t, num_gt), dtype=torch.float64, device=dev)
-        dtm = torch.zeros((num_a, num_t, num_dt), dtype=torch.float64, device=dev)
-        dt_ig_out = torch.zeros((num_a, num_t, num_dt), dtype=torch.float64, device=dev)
+        gtm = torch.zeros((num_a, num_t, num_gt), dtype=torch.long, device=dev)
+        dtm = torch.zeros((num_a, num_t, num_dt), dtype=torch.long, device=dev)
+        dt_ig_out = torch.zeros((num_a, num_t, num_dt), dtype=torch.bool, device=dev)
 
         ious_raw = self.ious.get(key, torch.tensor([]))
 
         if ious_raw.numel() > 0 and num_gt > 0 and num_dt > 0:
-            ious_f = ious_raw[:num_dt].to(dtype=torch.float64, device=dev)  # [D, G]
+            ious_f = ious_raw[:num_dt].to(dtype=self.float_dtype, device=dev)  # [D, G]
             non_ignored = ~gt_ig  # [A, G]
             matched_gt = torch.zeros((num_a, num_t, num_gt), dtype=torch.bool, device=dev)
 
@@ -631,7 +660,6 @@ class COCOeval:
             iscrowd_exp = gt_iscrowd.unsqueeze(0).unsqueeze(0)  # [1, 1, G]
             t_thrs = iou_thrs_t.unsqueeze(0).unsqueeze(-1)  # [1, T, 1]
             non_ignored_exp = non_ignored.unsqueeze(1)  # [A, 1, G]
-            gt_ig_exp = gt_ig.unsqueeze(1)  # [A, 1, G]
             a_range_idx = torch.arange(num_a, device=dev)
 
             # Greedy matching per detection, vectorized over [A, T]
@@ -641,20 +669,12 @@ class COCOeval:
                 above_thr = iou_atg >= t_thrs  # [A, T, G]
                 avail = ~matched_gt | iscrowd_exp  # [A, T, G]
 
-                # Non-ignored candidates
-                ni_valid = above_thr & avail & non_ignored_exp
-                ni_score = iou_atg.masked_fill(~ni_valid, -1.0)
-                best_ni_val, best_ni_idx = ni_score.max(dim=2)  # [A, T]
-                has_ni = best_ni_val >= 0
-
-                # Ignored candidates (only where no non-ignored match)
-                ig_valid = above_thr & avail & gt_ig_exp & ~has_ni.unsqueeze(2)
-                ig_score = iou_atg.masked_fill(~ig_valid, -1.0)
-                best_ig_val, best_ig_idx = ig_score.max(dim=2)  # [A, T]
-                has_ig = best_ig_val >= 0
-
-                best_idx = torch.where(has_ni, best_ni_idx, best_ig_idx)
-                has_match = has_ni | has_ig
+                # IoU lies in [-1, 1]; this offset makes non-ignored GTs rank first.
+                candidate_valid = above_thr & avail
+                candidate_score = iou_atg + non_ignored_exp.to(iou_atg.dtype) * 3.0
+                candidate_score = candidate_score.masked_fill(~candidate_valid, -float("inf"))
+                best_score, best_idx = candidate_score.max(dim=2)  # [A, T]
+                has_match = best_score > -float("inf")
 
                 if not has_match.any():
                     continue
@@ -693,10 +713,11 @@ class COCOeval:
             )
 
         # Build results per area range
-        empty_t = torch.tensor([], device=dev)
-        dt_ids_out = dt_ids if num_dt > 0 else empty_t
-        gt_ids_out = gt_ids if num_gt > 0 else empty_t
-        dt_scores_out = dt_scores if num_dt > 0 else empty_t
+        empty_ids = torch.empty(0, dtype=torch.long, device=dev)
+        empty_scores = torch.empty(0, dtype=self.float_dtype, device=dev)
+        dt_ids_out = dt_ids if num_dt > 0 else empty_ids
+        gt_ids_out = gt_ids if num_gt > 0 else empty_ids
+        dt_scores_out = dt_scores if num_dt > 0 else empty_scores
 
         results: list[EvalImgResult | None] = []
         for a_idx in range(num_a):
@@ -711,7 +732,7 @@ class COCOeval:
                     dtMatches=dtm[a_idx],
                     gtMatches=gtm[a_idx],
                     dtScores=dt_scores_out,
-                    gtIgnore=gt_ig[a_idx].to(dtype=torch.float64) if num_gt > 0 else empty_t,
+                    gtIgnore=gt_ig[a_idx] if num_gt > 0 else torch.empty(0, dtype=torch.bool, device=dev),
                     dtIgnore=dt_ig_out[a_idx],
                 )
             )
@@ -750,19 +771,19 @@ class COCOeval:
         precision = -torch.ones(
             (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
             device=self.device,
-            dtype=torch.float64,
+            dtype=self.float_dtype,
             requires_grad=self.requires_grad,
         )  # -1 for the precision of absent categories
         recall = -torch.ones(
             (num_iou_thrs, num_cat_ids, num_area_rng, num_max_dets),
             device=self.device,
-            dtype=torch.float64,
+            dtype=self.float_dtype,
             requires_grad=self.requires_grad,
         )
         scores = -torch.ones(
             (num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets),
             device=self.device,
-            dtype=torch.float64,
+            dtype=self.float_dtype,
             requires_grad=self.requires_grad,
         )
 
@@ -781,9 +802,9 @@ class COCOeval:
         len_area_rng = len(self._paramsEval.areaRng)  # A0
 
         # Pre-compute rec_thrs_2d once (invariant across all iterations)
-        eps64 = torch.finfo(torch.float64).eps
+        eps = torch.finfo(self.float_dtype).eps
         rec_thrs_2d = (
-            p.recThrs.to(device=self.device or "cpu", dtype=torch.float64)
+            p.recThrs.to(device=self.device or "cpu", dtype=self.float_dtype)
             .unsqueeze(0)
             .expand(num_iou_thrs, -1)
             .contiguous()
@@ -808,7 +829,7 @@ class COCOeval:
                 # Pre-concatenate for the largest max_det
                 max_max_det = max_dets_indices[-1]
                 dt_scores_full = torch.cat([el.dtScores[0:max_max_det] for el in eval_img_results_ka]).to(
-                    dtype=torch.float64
+                    dtype=self.float_dtype
                 )
                 inds_full = torch.argsort(dt_scores_full, descending=True, stable=True)
                 dt_scores_sorted_full = dt_scores_full[inds_full]
@@ -827,7 +848,7 @@ class COCOeval:
                     else:
                         # For smaller max_dets, re-concatenate with the limit
                         dt_scores_m = torch.cat([el.dtScores[0:max_det] for el in eval_img_results_ka]).to(
-                            dtype=torch.float64
+                            dtype=self.float_dtype
                         )
                         inds_m = torch.argsort(dt_scores_m, descending=True, stable=True)
                         dt_scores_sorted = dt_scores_m[inds_m]
@@ -839,8 +860,8 @@ class COCOeval:
                     tps = torch.logical_and(dt_matches, torch.logical_not(dt_ig))
                     fps = torch.logical_and(torch.logical_not(dt_matches), torch.logical_not(dt_ig))
 
-                    tp_sum = torch.cumsum(tps, dim=1, dtype=torch.float64)
-                    fp_sum = torch.cumsum(fps, dim=1, dtype=torch.float64)
+                    tp_sum = torch.cumsum(tps, dim=1, dtype=self.float_dtype)
+                    fp_sum = torch.cumsum(fps, dim=1, dtype=self.float_dtype)
                     # Vectorized over all T IoU thresholds at once:
                     nd = tp_sum.shape[1]
                     if nd == 0:
@@ -850,7 +871,7 @@ class COCOeval:
                         continue
                     # rc_all, pr_all: [T, nd]
                     rc_all = tp_sum / npig
-                    pr_all = tp_sum / (fp_sum + tp_sum + eps64)
+                    pr_all = tp_sum / (fp_sum + tp_sum + eps)
                     pr_all = torch.flip(torch.cummax(torch.flip(pr_all, dims=[1]), dim=1).values, dims=[1])
                     recall[:, k, a, m] = rc_all[:, -1]
                     rec_inds = torch.searchsorted(rc_all, rec_thrs_2d, side="left")  # [T, R]
@@ -866,9 +887,9 @@ class COCOeval:
             params=p,
             counts=[num_iou_thrs, num_rec_thrs, num_cat_ids, num_area_rng, num_max_dets],
             date=datetime.datetime.now(),  # .strftime("%Y-%m-%d %H:%M:%S"),
-            precision=precision.to(dtype=torch.float32),
-            recall=recall.to(dtype=torch.float32),
-            scores=scores.to(dtype=torch.float32),
+            precision=precision.to(dtype=self.float_dtype),
+            recall=recall.to(dtype=self.float_dtype),
+            scores=scores.to(dtype=self.float_dtype),
         )
         toc = time.time()
         self.logger.info(f"DONE (t={toc - tic:0.2f}s).")
@@ -903,16 +924,24 @@ class COCOeval:
                 prec = self.eval.precision
                 # IoU
                 if iouThr is not None:
-                    iou_thr_tensor = torch.tensor(iouThr, device=self.device, requires_grad=self.requires_grad)
-                    thr = torch.where(iou_thr_tensor == self.params.iouThrs)[0]
+                    iou_thr_tensor = torch.tensor(
+                        iouThr, dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+                    )
+                    thr = torch.where(
+                        iou_thr_tensor == self.params.iouThrs.to(device=self.device, dtype=self.float_dtype)
+                    )[0]
                     prec = prec[thr]
                 prec = prec[:, :, :, aind, mind]
             else:
                 # dimension of recall: [TxKxAxM]
                 prec = self.eval.recall
                 if iouThr is not None:
-                    iou_thr_tensor = torch.tensor(iouThr, device=self.device, requires_grad=self.requires_grad)
-                    thr = torch.where(iou_thr_tensor == self.params.iouThrs)[0]
+                    iou_thr_tensor = torch.tensor(
+                        iouThr, dtype=self.float_dtype, device=self.device, requires_grad=self.requires_grad
+                    )
+                    thr = torch.where(
+                        iou_thr_tensor == self.params.iouThrs.to(device=self.device, dtype=self.float_dtype)
+                    )[0]
                     prec = prec[thr]
                 prec = prec[:, :, aind, mind]
             mean_s = (
@@ -924,7 +953,7 @@ class COCOeval:
             return mean_s
 
         def _summarizeDets() -> Tensor:  # noqa: N802
-            stats = torch.zeros((12,))
+            stats = torch.zeros((12,), dtype=self.float_dtype, device=self.device)
             stats[0] = _summarize(1)
             stats[1] = _summarize(1, iouThr=0.5, maxDets=self.params.maxDets[2])
             stats[2] = _summarize(1, iouThr=0.75, maxDets=self.params.maxDets[2])
@@ -940,7 +969,7 @@ class COCOeval:
             return stats
 
         def _summarizeKps() -> Tensor:  # noqa: N802
-            stats = torch.zeros((10,))
+            stats = torch.zeros((10,), dtype=self.float_dtype, device=self.device)
             stats[0] = _summarize(1, maxDets=20)
             stats[1] = _summarize(1, maxDets=20, iouThr=0.5)
             stats[2] = _summarize(1, maxDets=20, iouThr=0.75)
