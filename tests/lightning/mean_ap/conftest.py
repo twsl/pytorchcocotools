@@ -141,21 +141,61 @@ def inputs3():
 
 
 @pytest.fixture()
-def tm_compute() -> ComputeFn:
+def tm_compute(device: str) -> ComputeFn:
     def _compute(preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]], **kwargs: Any) -> dict[str, Tensor]:
-        m = TorchmetricsMeanAveragePrecision(**kwargs)
-        m.update(preds, target)
+        m = TorchmetricsMeanAveragePrecision(**kwargs).to(device)
+        preds_device = [{key: value.to(device) for key, value in item.items()} for item in preds]
+        target_device = [{key: value.to(device) for key, value in item.items()} for item in target]
+        m.update(preds_device, target_device)
         return m.compute()
 
     return _compute
 
 
 @pytest.fixture()
-def pt_compute() -> ComputeFn:
+def pt_compute(device: str) -> ComputeFn:
     def _compute(preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]], **kwargs: Any) -> dict[str, Tensor]:
-        m = MeanAveragePrecision(**kwargs)
-        m.update(preds, target)
+        m = MeanAveragePrecision(**kwargs).to(device)
+        preds_device = [{key: value.to(device) for key, value in item.items()} for item in preds]
+        target_device = [{key: value.to(device) for key, value in item.items()} for item in target]
+        m.update(preds_device, target_device)
         return m.compute()
+
+    return _compute
+
+
+@pytest.fixture()
+def to_device(device: str) -> Callable[[Any], Any]:
+    def _move(value: Any) -> Any:
+        if isinstance(value, Tensor):
+            return value.to(device)
+        if isinstance(value, dict):
+            return {key: _move(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [_move(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(_move(item) for item in value)
+        return value
+
+    return _move
+
+
+@pytest.fixture()
+def cpu_tm_compute() -> ComputeFn:
+    def _compute(preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]], **kwargs: Any) -> dict[str, Tensor]:
+        metric = TorchmetricsMeanAveragePrecision(**kwargs)
+        metric.update(preds, target)
+        return metric.compute()
+
+    return _compute
+
+
+@pytest.fixture()
+def cpu_pt_compute() -> ComputeFn:
+    def _compute(preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]], **kwargs: Any) -> dict[str, Tensor]:
+        metric = MeanAveragePrecision(**kwargs)
+        metric.update(preds, target)
+        return metric.compute()
 
     return _compute
 
@@ -167,11 +207,11 @@ def assert_map_close() -> AssertMapClose:
         for key in scalar_keys:
             assert key in result, f"Missing key '{key}' in result"
             torch.testing.assert_close(
-                result[key].float(),
-                reference[key].float(),
+                result[key].cpu().float(),
+                reference[key].cpu().float(),
                 atol=atol,
                 rtol=0.0,
-                msg=f"Mismatch for key '{key}'",
+                msg=f"Mismatch for key '{key}': {result[key]} != {reference[key]}",
             )
 
     return _assert
