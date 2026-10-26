@@ -6,6 +6,7 @@ from pytorchcocotools.internal.entities import RLE, RLEs
 from pytorchcocotools.internal.mask_api.bb_iou import bbIou
 from pytorchcocotools.internal.mask_api.rle_area import rleArea
 from pytorchcocotools.internal.mask_api.rle_to_bbox import rleToBbox
+from pytorchcocotools.utils.device import get_float_dtype
 
 
 def _build_fg_intervals(rles: RLEs, src_device: torch.device) -> tuple[Tensor, Tensor, Tensor]:
@@ -109,10 +110,10 @@ def _rle_iou_core(
     # Zero out padded entries (padding sentinel = -1)
     valid = (ds >= 0) & (gs >= 0)  # [m, n, K, L]
 
-    intersection = (overlap * valid).sum(dim=(2, 3)).double()  # [m, n]
+    intersection = (overlap * valid).sum(dim=(2, 3)).to(dtype=dt_areas.dtype)  # [m, n]
 
-    dt_area_f = dt_areas.double()
-    gt_area_f = gt_areas.double()
+    dt_area_f = dt_areas.to(dtype=dt_areas.dtype)
+    gt_area_f = gt_areas.to(dtype=dt_areas.dtype)
 
     union = dt_area_f[:, None] + gt_area_f[None, :] - intersection
     union = torch.where(iscrowd_t[None, :], dt_area_f[:, None].expand(m, n), union)
@@ -144,15 +145,18 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     """
     m = len(dt)
     n = len(gt)
+    src_device = dt[0].cnts.device if dt else gt[0].cnts.device if gt else torch.device("cpu")
+    float_dtype = get_float_dtype(src_device)
     if m == 0 or n == 0:
-        return torch.zeros((m, n), dtype=torch.float64)
+        return torch.zeros((m, n), dtype=float_dtype, device=src_device)
 
-    src_device = dt[0].cnts.device
+    dt_h, dt_w = dt[0].h, dt[0].w
+    same_canvas = all(r.h == dt_h and r.w == dt_w for r in dt) and all(r.h == dt_h and r.w == dt_w for r in gt)
 
-    # Bounding-box pre-filter: zero out pairs with no bbox overlap (fast vectorised path)
-    db = rleToBbox(dt)
-    gb = rleToBbox(gt)
-    o = bbIou(db, gb, iscrowd)  # [m, n]; 0 where no bbox overlap
+    if not same_canvas:
+        db = rleToBbox(dt)
+        gb = rleToBbox(gt)
+        o = bbIou(db, gb, iscrowd)
 
     # Build foreground-interval tensors for all dt and gt masks
     dt_starts, dt_ends, dt_areas = _build_fg_intervals(dt, src_device)  # [m, K]
@@ -160,7 +164,18 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
 
     iscrowd_t = torch.tensor(iscrowd, dtype=torch.bool, device=src_device)
 
-    iou = _rle_iou_core(dt_starts, dt_ends, dt_areas, gt_starts, gt_ends, gt_areas, iscrowd_t)
+    iou = _rle_iou_core(
+        dt_starts,
+        dt_ends,
+        dt_areas.to(dtype=float_dtype),
+        gt_starts,
+        gt_ends,
+        gt_areas.to(dtype=float_dtype),
+        iscrowd_t,
+    )
+
+    if same_canvas:
+        return iou
 
     # Apply bbox pre-filter mask and dimension/size guard from original
     dt_hw = torch.tensor([(r.h, r.w) for r in dt], dtype=torch.long, device=src_device)  # [m, 2]
@@ -171,4 +186,4 @@ def rleIou(dt: RLEs, gt: RLEs, iscrowd: list[bool]) -> Tensor:  # noqa: N802
     iou = torch.where(size_mismatch, torch.full_like(iou, -1.0), iou)
     iou = torch.where(o <= 0, torch.zeros_like(iou), iou)
 
-    return iou.double()
+    return iou
