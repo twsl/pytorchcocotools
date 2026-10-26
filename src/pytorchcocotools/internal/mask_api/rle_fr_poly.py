@@ -3,6 +3,7 @@ from torch import Tensor
 from torchvision.tv_tensors import KeyPoints
 
 from pytorchcocotools.internal.entities import RLE, TorchDevice
+from pytorchcocotools.utils.device import get_float_dtype
 
 
 @torch.inference_mode()
@@ -33,7 +34,8 @@ def _rle_fr_poly_core(xy: Tensor, h: int, w: int) -> Tensor:
     xy_cond = dx >= dy
     dxy = torch.where(xy_cond, dx, dy)
     # Merged slope computation — single where for numerator and denominator
-    s = torch.where(xy_cond, ye - ys, xe - xs).double() / dxy.clamp(min=1)
+    slope_dtype = get_float_dtype(device)
+    s = torch.where(xy_cond, ye - ys, xe - xs).to(dtype=slope_dtype) / dxy.clamp(min=1)
 
     # 2. Dense point expansion via 2D grid + mask
     d = torch.arange(dxy.max() + 1, device=device).unsqueeze(0).expand(dxy.size(0), -1)  # ty:ignore[no-matching-overload]
@@ -96,6 +98,6 @@ def rleFrPoly(  # noqa: N802
     """
     h = xy.canvas_size[0]
     w = xy.canvas_size[1]
-    xy_tensor = xy.as_subclass(Tensor)
+    xy_tensor = xy.as_subclass(Tensor).to(dtype=get_float_dtype(xy.device))
     cnts = _rle_fr_poly_core(xy_tensor, h, w)
     return RLE(h=h, w=w, cnts=cnts)
