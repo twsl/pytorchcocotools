@@ -444,9 +444,9 @@ class MeanAveragePrecision(Metric):
                     map_per_class_values = torch.tensor([-1], dtype=torch.float32)
                     mar_per_class_values = torch.tensor([-1], dtype=torch.float32)
                 else:
-                    coco_eval = COCOeval(coco_target, coco_preds, iouType=i_type)
-                    coco_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
-                    coco_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
+                    coco_eval = COCOeval(coco_target, coco_preds, iouType=i_type, device=self.device)
+                    coco_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=coco_eval.float_dtype)
+                    coco_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=coco_eval.float_dtype)
                     coco_eval.params.maxDets = self.max_detection_thresholds
 
                     coco_eval.evaluate()
@@ -479,9 +479,11 @@ class MeanAveragePrecision(Metric):
                                 for anno in class_coco_preds.dataset["annotations"]:
                                     anno["area"] = anno[f"area_{i_type}"]
 
-                            class_eval = COCOeval(class_coco_target, class_coco_preds, iouType=i_type)
-                            class_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=torch.float64)
-                            class_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=torch.float64)
+                            class_eval = COCOeval(
+                                class_coco_target, class_coco_preds, iouType=i_type, device=self.device
+                            )
+                            class_eval.params.iouThrs = torch.tensor(self.iou_thresholds, dtype=class_eval.float_dtype)
+                            class_eval.params.recThrs = torch.tensor(self.rec_thresholds, dtype=class_eval.float_dtype)
                             class_eval.params.maxDets = self.max_detection_thresholds
 
                             with contextlib.redirect_stdout(io.StringIO()):
@@ -545,7 +547,7 @@ class MeanAveragePrecision(Metric):
 
         all_labels = [0] if average == "micro" else self._get_classes()
 
-        coco_target, coco_preds = COCO(), COCO()
+        coco_target, coco_preds = COCO(device=self.device), COCO(device=self.device)
 
         coco_target.dataset = self._get_coco_format(
             labels=groundtruth_labels,
