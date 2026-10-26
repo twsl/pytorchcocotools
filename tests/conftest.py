@@ -22,19 +22,19 @@ def pytest_benchmark_group_stats(
 ) -> list[tuple[str | None, list[Any]]]:
     """Grouping for pytest-benchmark using pytest-park.
 
-    Groups benchmarks by clustering methods ending with _np and _pt together
-    using pytest-park's default grouping method.
+    Groups benchmarks by implementation suffix using pytest-park's default grouping method.
     """
     return default_pytest_benchmark_group_stats(
         config,
         benchmarks,
         group_by,
-        original_postfix=["_np", "_tm"],
+        original_postfix=["_np", "_tm", "_hotcoco"],
         reference_postfix="_pt",
         group_values_by_postfix={
             "_np": "numpy",
             "_pt": "pytorch",
             "_tm": "torchmetrics",
+            "_hotcoco": "hotcoco",
             "none": "unlabeled",
         },
         ignore_params=["device"],

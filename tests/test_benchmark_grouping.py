@@ -16,8 +16,8 @@ def _import_conftest():
 pytest_benchmark_group_stats = _import_conftest()
 
 
-def test_benchmark_grouping_np_pt_clustering():
-    """Test that _np and _pt methods are clustered together."""
+def test_benchmark_grouping_np_pt_hotcoco_clustering():
+    """Test that numpy, PyTorch, and hotcoco methods are clustered together."""
     # Create mock benchmarks
     benchmarks = [
         {
@@ -34,17 +34,24 @@ def test_benchmark_grouping_np_pt_clustering():
             "param": "param1-param2",
             "params": {"param1": "value1", "param2": "value2"},
         },
+        {
+            "fullname": "tests/test_file.py::test_func_hotcoco[param1-param2]",
+            "name": "test_func_hotcoco[param1-param2]",
+            "group": "test_group",
+            "param": "param1-param2",
+            "params": {"param1": "value1", "param2": "value2"},
+        },
     ]
 
     # Test grouping by 'group'
     config = None
     result = pytest_benchmark_group_stats(config, benchmarks, "group")
 
-    # Both benchmarks should be in the same group
+    # All implementation benchmarks should be in the same group
     assert len(result) == 1
     group_key, group_benchmarks = result[0]
     assert group_key == "test_func"
-    assert len(group_benchmarks) == 2
+    assert len(group_benchmarks) == 3
 
 
 def test_benchmark_grouping_with_device_parameter():
@@ -79,6 +86,13 @@ def test_benchmark_grouping_with_device_parameter():
             "param": "cuda-param1",
             "params": {"device": "cuda", "param1": "value1"},
         },
+        {
+            "fullname": "tests/test_file.py::test_func_pt[mps-param1]",
+            "name": "test_func_pt[mps-param1]",
+            "group": "test_group",
+            "param": "mps-param1",
+            "params": {"device": "mps", "param1": "value1"},
+        },
     ]
 
     # Test grouping by 'group,param'
@@ -89,7 +103,7 @@ def test_benchmark_grouping_with_device_parameter():
     assert len(result) == 1
     group_key, group_benchmarks = result[0]
     assert group_key == "test_func param1"
-    assert len(group_benchmarks) == 4
+    assert len(group_benchmarks) == 5
 
 
 def test_benchmark_grouping_by_name():
