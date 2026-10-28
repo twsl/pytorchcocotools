@@ -64,9 +64,7 @@ def _stats(
         eval_np.accumulate()
 
         coco_pt = COCOpt(str(gt_path), enable_logging=False, device=device)
-        eval_pt = COCOevalpt(
-            coco_pt, coco_pt.loadRes(str(dt_path)), iou_type, enable_logging=False, device=device
-        )
+        eval_pt = COCOevalpt(coco_pt, coco_pt.loadRes(str(dt_path)), iou_type, enable_logging=False, device=device)
         eval_pt.evaluate()
         eval_pt.accumulate()
 
@@ -80,9 +78,7 @@ def test_upstream_empty_gt_and_all_crowd_cases_match_reference(device: str) -> N
     assert np.all(pt_stats[:6] == -1.0)
 
     crowd = _dataset("bbox", [_ann(1, [10, 10, 100, 100], iscrowd=1), _ann(2, [200, 200, 50, 50], iscrowd=1)])
-    np_stats, pt_stats = _stats(
-        crowd, [_det([10, 10, 100, 100]), _det([200, 200, 50, 50], score=0.5)], "bbox", device
-    )
+    np_stats, pt_stats = _stats(crowd, [_det([10, 10, 100, 100]), _det([200, 200, 50, 50], score=0.5)], "bbox", device)
     np.testing.assert_allclose(np_stats, pt_stats)
     assert np.all(pt_stats == -1.0)
 
