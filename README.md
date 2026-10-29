@@ -2,8 +2,9 @@
 
 [![Build](https://github.com/twsl/pytorchcocotools/actions/workflows/build.yaml/badge.svg)](https://github.com/twsl/pytorchcocotools/actions/workflows/build.yaml)
 [![Documentation](https://github.com/twsl/pytorchcocotools/actions/workflows/docs.yaml/badge.svg)](https://github.com/twsl/pytorchcocotools/actions/workflows/docs.yaml)
-<!--- [![PyPI - Package Version](https://img.shields.io/pypi/v/pytorchcocotools?logo=pypi&style=flat&color=orange)](https://pypi.org/project/pytorchcocotools/) -->
-<!--- [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pytorchcocotools?logo=pypi&style=flat&color=blue)](https://pypi.org/project/pytorchcocotools/) -->
+[![PyPI - Package Version](https://img.shields.io/pypi/v/pytorchcocotools?logo=pypi&style=flat&color=orange)](https://pypi.org/project/pytorchcocotools/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pytorchcocotools?logo=pypi&style=flat&color=blue)](https://pypi.org/project/pytorchcocotools/)
+
 [![Docs with MkDocs](https://img.shields.io/badge/MkDocs-docs?style=flat&logo=materialformkdocs&logoColor=white&color=%23526CFE)](https://squidfunk.github.io/mkdocs-material/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![linting: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
