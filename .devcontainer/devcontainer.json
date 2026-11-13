@@ -10,9 +10,11 @@
             "VARIANT": "3.12-trixie"
         }
     },
-    // "runArgs": [
-    //     "--gpus=all"
-    // ],
+    "initializeCommand": "test -f .env || touch .env",
+    "runArgs": [
+        "--env-file",
+        ".env"
+    ],
     "remoteEnv": {
         "RTK_TELEMETRY_DISABLED": "1",
         "CODEGRAPH_TELEMETRY": "0",
